@@ -4,11 +4,11 @@ public class Asistencia
 {
     public int IdAsistencia { get; set; }
     
-    public int SocioId { get; set; }
+    public int IdSocio { get; set; }
     public Socio Socio { get; set; }=new Socio();
     
 
-    public int? ClaseId { get; set; }
+    public int? IdClase { get; set; }
     public Clase? Clase { get; set; }
     
   
