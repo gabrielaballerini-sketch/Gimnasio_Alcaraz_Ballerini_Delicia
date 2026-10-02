@@ -21,4 +21,15 @@ public abstract class RepositorioBase
         int i = r.GetOrdinal(col);
         return r.IsDBNull(i) ? null : r.GetInt32(i);
     }
+    protected static string? LeerStringNull(MySqlDataReader r, string col)
+    {
+        int i = r.GetOrdinal(col);
+        return r.IsDBNull(i) ? null : r.GetString(i);
+    }
+
+    protected static bool LeerBool(MySqlDataReader r, string col, bool valorPorDefecto = true)
+    {
+        int i = r.GetOrdinal(col);
+        return r.IsDBNull(i) ? valorPorDefecto : r.GetBoolean(i);
+    }
 }

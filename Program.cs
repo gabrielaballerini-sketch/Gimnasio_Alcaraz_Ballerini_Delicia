@@ -1,9 +1,17 @@
+using Gimnasio_Alcaraz_Ballerini_Delicia.Service;
+using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllersWithViews();
 
-//builder.Services.AddScoped<RepositorioSocio>();
+builder.Services.AddControllersWithViews()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.SuppressModelStateInvalidFilter = true;
+    });
+
+builder.Services.AddScoped<IRepositorioSocio, RepositorioSocio>();
+builder.Services.AddScoped<SocioService>();
 
 var app = builder.Build();
 
@@ -16,6 +24,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 app.UseRouting();
 
 app.UseAuthorization();

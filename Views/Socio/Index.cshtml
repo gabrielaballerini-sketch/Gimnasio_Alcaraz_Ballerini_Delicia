@@ -1,0 +1,354 @@
+@{
+    ViewData["Title"] = "Socios";
+}
+
+<div id="app" class="mt-4">
+    <h2>Socios</h2>
+
+    <!-- Aviso (toast) -->
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1100">
+        <div v-if="aviso.texto" class="toast show align-items-center text-white border-0"
+             v-bind:class="aviso.tipo === 'ok' ? 'bg-success' : 'bg-danger'">
+            <div class="d-flex">
+                <div class="toast-body">{{ aviso.texto }}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto"
+                        v-on:click="aviso.texto = ''"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de confirmación -->
+    <div class="modal fade" tabindex="-1" ref="modalConfirmar">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-body text-center p-4">
+                    <div class="mx-auto mb-3 rounded-circle d-flex align-items-center justify-content-center fs-2"
+                         style="width:64px;height:64px"
+                         v-bind:class="confirmacion.tipo === 'danger' ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success'">
+                        {{ confirmacion.tipo === 'danger' ? '!' : '✓' }}
+                    </div>
+
+                    <h5 class="mb-2">{{ confirmacion.titulo }}</h5>
+                    <p class="text-muted mb-3">{{ confirmacion.mensaje }}</p>
+
+                    <div v-if="confirmacion.socio" class="d-flex align-items-center justify-content-center bg-light rounded p-2 mb-3">
+                        <img v-if="confirmacion.socio.avatar" v-bind:src="confirmacion.socio.avatar"
+                             class="rounded-circle me-2" style="width:40px;height:40px;object-fit:cover">
+                        <div class="text-start">
+                            <div class="fw-semibold">{{ confirmacion.socio.apellido }}, {{ confirmacion.socio.nombre }}</div>
+                            <small class="text-muted">DNI {{ confirmacion.socio.dni }}</small>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 justify-content-center">
+                        <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn px-4"
+                                v-bind:class="confirmacion.tipo === 'danger' ? 'btn-danger' : 'btn-success'"
+                                v-on:click="confirmar">{{ confirmacion.textoBoton }}</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulario -->
+    <div class="card mb-4">
+        <div class="card-header">{{ form.idSocio ? 'Editar socio' : 'Nuevo socio' }}</div>
+        <div class="card-body">
+            <div v-if="mensaje" class="alert alert-danger">
+                <div>{{ mensaje }}</div>
+                <ul class="mb-0" v-if="errores.length">
+                    <li v-for="e in errores" v-bind:key="e">{{ e }}</li>
+                </ul>
+            </div>
+
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <label class="form-label">Nombre</label>
+                    <input class="form-control" v-model="form.nombre">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Apellido</label>
+                    <input class="form-control" v-model="form.apellido">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">DNI</label>
+                    <input class="form-control" v-model="form.dni">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Teléfono</label>
+                    <input class="form-control" v-model="form.telefono">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Domicilio</label>
+                    <input class="form-control" v-model="form.domicilio">
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label">Foto de perfil (JPG, PNG o WEBP, máx. 2 MB)</label>
+                    <input type="file" class="form-control" accept=".jpg,.jpeg,.png,.webp"
+                           ref="inputArchivo" v-on:change="elegirArchivo">
+                </div>
+                <div class="col-md-4 d-flex align-items-end" v-if="form.idSocio && form.avatar">
+                    <img v-bind:src="form.avatar" class="rounded-circle me-2"
+                         style="width:48px;height:48px;object-fit:cover">
+                    <small class="text-muted">Foto actual (se mantiene si no elegís otra)</small>
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <button class="btn btn-primary me-2" v-on:click="guardar">
+                    {{ form.idSocio ? 'Guardar cambios' : 'Crear socio' }}
+                </button>
+                <button class="btn btn-secondary" v-on:click="limpiar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pestañas -->
+    <ul class="nav nav-tabs mb-3">
+        <li class="nav-item">
+            <a href="#" class="nav-link" v-bind:class="{ active: pestana === 'activos' }"
+               v-on:click.prevent="cambiarPestana('activos')">Activos</a>
+        </li>
+        <li class="nav-item">
+            <a href="#" class="nav-link" v-bind:class="{ active: pestana === 'inactivos' }"
+               v-on:click.prevent="cambiarPestana('inactivos')">Inactivos</a>
+        </li>
+    </ul>
+
+    <!-- Tabla -->
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th></th>
+                <th>Apellido y nombre</th>
+                <th>DNI</th>
+                <th>Teléfono</th>
+                <th>Domicilio</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr v-for="s in socios" v-bind:key="s.idSocio">
+                <td style="width:60px">
+                    <img v-if="s.avatar" v-bind:src="s.avatar" class="rounded-circle"
+                         style="width:40px;height:40px;object-fit:cover">
+                </td>
+                <td>{{ s.apellido }}, {{ s.nombre }}</td>
+                <td>{{ s.dni }}</td>
+                <td>{{ s.telefono }}</td>
+                <td>{{ s.domicilio }}</td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-primary me-1" v-on:click="editar(s)">Editar</button>
+                    <button class="btn btn-sm btn-outline-danger" v-if="pestana === 'activos'"
+                            v-on:click="pedirBaja(s)">Dar de baja</button>
+                    <button class="btn btn-sm btn-outline-success" v-if="pestana === 'inactivos'"
+                            v-on:click="pedirReactivar(s)">Reactivar</button>
+                </td>
+            </tr>
+            <tr v-if="socios.length === 0">
+                <td colspan="6" class="text-center text-muted">No hay socios para mostrar.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Paginación -->
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <label class="me-2">Por página:</label>
+            <select class="form-select d-inline-block w-auto" v-model.number="tamPagina" v-on:change="cambiarTamano">
+                <option v-bind:value="5">5</option>
+                <option v-bind:value="10">10</option>
+                <option v-bind:value="20">20</option>
+            </select>
+            <span class="ms-3 text-muted">{{ total }} socios en total</span>
+        </div>
+        <div>
+            <button class="btn btn-outline-secondary btn-sm me-2" v-bind:disabled="pagina <= 1"
+                    v-on:click="irAPagina(pagina - 1)">Anterior</button>
+            <span>Página {{ pagina }} de {{ totalPaginas }}</span>
+            <button class="btn btn-outline-secondary btn-sm ms-2" v-bind:disabled="pagina >= totalPaginas"
+                    v-on:click="irAPagina(pagina + 1)">Siguiente</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script>
+        const API = '/api/socios';
+
+        const formVacio = () => ({
+            idSocio: 0, nombre: '', apellido: '', dni: '',
+            telefono: '', domicilio: '', avatar: null
+        });
+
+        const confirmacionVacia = () => ({
+            titulo: '', mensaje: '', textoBoton: '', tipo: 'danger', socio: null, accion: null
+        });
+
+        Vue.createApp({
+            data() {
+                return {
+                    socios: [],
+                    pestana: 'activos',   // 'activos' | 'inactivos'
+                    pagina: 1,
+                    tamPagina: 10,
+                    total: 0,
+                    totalPaginas: 1,
+                    form: formVacio(),
+                    archivo: null,
+                    mensaje: '',
+                    errores: [],
+                    aviso: { tipo: 'ok', texto: '' },
+                    temporizadorAviso: null,
+                    confirmacion: confirmacionVacia(),
+                    modal: null
+                };
+            },
+            mounted() {
+                this.modal = new bootstrap.Modal(this.$refs.modalConfirmar);
+                this.cargar();
+            },
+            methods: {
+                // ---------- Avisos ----------
+                mostrarAviso(tipo, texto) {
+                    this.aviso = { tipo, texto };
+                    clearTimeout(this.temporizadorAviso);
+                    this.temporizadorAviso = setTimeout(() => { this.aviso.texto = ''; }, 4000);
+                },
+
+                // ---------- Listado ----------
+                async cargar() {
+                    const url = `${API}/${this.pestana}?pagina=${this.pagina}&tamPagina=${this.tamPagina}`;
+                    const resp = await fetch(url);
+                    const datos = await resp.json();
+
+                    // Si quedó una página que ya no existe (por ejemplo, al dar de baja al último de la página), retrocede
+                    if (this.pagina > datos.totalPaginas) {
+                        this.pagina = datos.totalPaginas;
+                        return this.cargar();
+                    }
+
+                    this.socios = datos.items;
+                    this.total = datos.total;
+                    this.totalPaginas = datos.totalPaginas;
+                },
+                cambiarPestana(nombre) {
+                    if (this.pestana === nombre) return;
+                    this.pestana = nombre;
+                    this.pagina = 1;
+                    this.cargar();
+                },
+                cambiarTamano() {
+                    this.pagina = 1;
+                    this.cargar();
+                },
+                irAPagina(numero) {
+                    if (numero < 1 || numero > this.totalPaginas) return;
+                    this.pagina = numero;
+                    this.cargar();
+                },
+
+                // ---------- Formulario ----------
+                elegirArchivo(evento) {
+                    this.archivo = evento.target.files[0] || null;
+                },
+                async guardar() {
+                    this.mensaje = '';
+                    this.errores = [];
+
+                    const editando = this.form.idSocio > 0;
+                    const datos = new FormData();
+                    datos.append('nombre', this.form.nombre ?? '');
+                    datos.append('apellido', this.form.apellido ?? '');
+                    datos.append('dni', this.form.dni ?? '');
+                    datos.append('telefono', this.form.telefono ?? '');
+                    datos.append('domicilio', this.form.domicilio ?? '');
+                    if (this.archivo) datos.append('avatarFile', this.archivo);
+
+                    // Con FormData no se define Content-Type: el navegador lo arma solo
+                    const resp = await fetch(editando ? `${API}/${this.form.idSocio}` : API, {
+                        method: editando ? 'PUT' : 'POST',
+                        body: datos
+                    });
+
+                    if (!resp.ok) {
+                        const error = await resp.json();
+                        this.mensaje = error.mensaje || 'Ocurrió un error.';
+                        this.errores = error.errores || [];
+                        return;
+                    }
+
+                    this.limpiar();
+                    this.mostrarAviso('ok', editando ? 'Socio actualizado correctamente.' : 'Socio creado correctamente.');
+                    this.cargar();
+                },
+                editar(socio) {
+                    this.mensaje = '';
+                    this.errores = [];
+                    this.archivo = null;
+                    this.$refs.inputArchivo.value = '';
+                    this.form = { ...socio };
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                },
+                limpiar() {
+                    this.form = formVacio();
+                    this.archivo = null;
+                    this.$refs.inputArchivo.value = '';
+                    this.mensaje = '';
+                    this.errores = [];
+                },
+
+                // ---------- Confirmaciones ----------
+                pedirBaja(socio) {
+                    this.confirmacion = {
+                        titulo: 'Dar de baja al socio',
+                        mensaje: 'Pasará a la lista de inactivos. Podés reactivarlo cuando quieras.',
+                        textoBoton: 'Dar de baja',
+                        tipo: 'danger',
+                        socio,
+                        accion: () => this.ejecutarBaja(socio)
+                    };
+                    this.modal.show();
+                },
+                pedirReactivar(socio) {
+                    this.confirmacion = {
+                        titulo: 'Reactivar al socio',
+                        mensaje: 'Volverá a la lista de socios activos.',
+                        textoBoton: 'Reactivar',
+                        tipo: 'success',
+                        socio,
+                        accion: () => this.ejecutarReactivar(socio)
+                    };
+                    this.modal.show();
+                },
+                async confirmar() {
+                    const accion = this.confirmacion.accion;
+                    this.modal.hide();
+                    if (accion) await accion();
+                },
+                async ejecutarBaja(socio) {
+                    const resp = await fetch(`${API}/${socio.idSocio}`, { method: 'DELETE' });
+                    if (!resp.ok) {
+                        const error = await resp.json();
+                        this.mostrarAviso('error', error.mensaje || 'No se pudo dar de baja.');
+                        return;
+                    }
+                    this.mostrarAviso('ok', `${socio.apellido}, ${socio.nombre} fue dado de baja.`);
+                    this.cargar();
+                },
+                async ejecutarReactivar(socio) {
+                    const resp = await fetch(`${API}/${socio.idSocio}/reactivar`, { method: 'PUT' });
+                    if (!resp.ok) {
+                        const error = await resp.json();
+                        this.mostrarAviso('error', error.mensaje || 'No se pudo reactivar.');
+                        return;
+                    }
+                    this.mostrarAviso('ok', `${socio.apellido}, ${socio.nombre} fue reactivado.`);
+                    this.cargar();
+                }
+            }
+        }).mount('#app');
+    </script>
+}

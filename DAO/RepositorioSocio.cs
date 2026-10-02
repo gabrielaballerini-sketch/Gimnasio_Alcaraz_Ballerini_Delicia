@@ -1,11 +1,10 @@
 using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
 using MySql.Data.MySqlClient;
 
-public class RepositorioSocio : RepositorioBase
+public class RepositorioSocio : RepositorioBase,IRepositorioSocio
 {
     public RepositorioSocio(IConfiguration configuration) : base(configuration) { }
 
-    private const string Columnas = "id_socio, nombre, apellido, dni, telefono, domicilio, avatar, estado";
 
     public int Alta(Socio socio)
     {   int res =-1;
@@ -25,7 +24,7 @@ public class RepositorioSocio : RepositorioBase
         return res;
     }
 
-    public int Modificar(Socio socio)
+    public int Modificacion(Socio socio)
     {
         int res= -1;
         using var conexion = CrearConexion();
@@ -59,9 +58,30 @@ public class RepositorioSocio : RepositorioBase
       
         return res;
     }
+    public int Reactivar(int id)
+    {
+        int filas = 0;
+
+        using (var conexion = CrearConexion())
+        {
+            string sql = @"
+            UPDATE socio
+            SET Estado = 1
+            WHERE IdSocio = @id AND Estado = 0;";
+
+            using (var comand = new MySqlCommand(sql, conexion))
+            {
+                comand.Parameters.AddWithValue("@id", id);
+                conexion.Open();
+                filas = comand.ExecuteNonQuery();
+            }
+        }
+
+        return filas;
+    }
 
     public Socio? ObtenerPorId(int IdSocio)
-    {   
+    {
         Socio? socio = null;
         using var conexion = CrearConexion();
       
@@ -104,50 +124,126 @@ public class RepositorioSocio : RepositorioBase
         using var comand = new MySqlCommand(sql, conexion);
 
         comand.Parameters.AddWithValue("@Dni", dni);
-        
+
         comand.Parameters.AddWithValue("@excluir", ValorODbNull(excluirId));
         conexion.Open();
-        res=Convert.ToInt32(comand.ExecuteScalar()) > 0;
+        res = Convert.ToInt32(comand.ExecuteScalar()) > 0;
         return res;
     }
 
     // Listado de socios, filtrando opcionalmente por estado (null = todos)
-    public List<Socio> ObtenerTodos(bool? estado = null)
+    public IList<Socio> ObtenerActivos(int pagina = 1, int tamPagina = 10)
     {
-        var lista = new List<Socio>();
-        using var conexion = CrearConexion();
-        
-        string sql=@"SELECT IdSocio, Nombre, Apellido, Dni, Telefono, Domicilio, Avatar, Estado FROM socio WHERE (@Estado IS NULL OR Estado=@Estado) ORDER BY Apellido, Nombre";
+        if (pagina < 1) pagina = 1;
+        if (tamPagina < 1) tamPagina = 10;
 
-        using var comand = new MySqlCommand(sql, conexion);
-        comand.Parameters.AddWithValue("@estado", ValorODbNull(estado));
-        conexion.Open();
-        using var read = comand.ExecuteReader();
-        while (read.Read()) lista.Add(Mapear(read));
-        
+        IList<Socio> lista = new List<Socio>();
+
+        using (var conexion = CrearConexion())
+        {
+            string sql = @"
+            SELECT IdSocio, Nombre, Apellido, Dni, Telefono, Domicilio, Avatar, Estado
+            FROM socio
+            WHERE Estado = 1
+            ORDER BY Apellido, Nombre, IdSocio
+            LIMIT @tamPagina OFFSET @desplazamiento;";
+
+            using (var comand = new MySqlCommand(sql, conexion))
+            {
+                comand.Parameters.AddWithValue("@tamPagina", tamPagina);
+                comand.Parameters.AddWithValue("@desplazamiento", (pagina - 1) * tamPagina);
+                conexion.Open();
+
+                using (var read = comand.ExecuteReader())
+                {
+                    while (read.Read())
+                    {
+                        lista.Add(Mapear(read));
+                    }
+                }
+            }
+        }
+
         return lista;
     }
 
+    public IList<Socio> ObtenerInactivos(int pagina = 1, int tamPagina = 10)
+    {
+        if (pagina < 1) pagina = 1;
+        if (tamPagina < 1) tamPagina = 10;
+
+        IList<Socio> lista = new List<Socio>();
+
+        using (var conexion = CrearConexion())
+        {
+            string sql = @"
+            SELECT IdSocio, Nombre, Apellido, Dni, Telefono, Domicilio, Avatar, Estado
+            FROM socio
+            WHERE Estado = 0
+            ORDER BY Apellido, Nombre, IdSocio
+            LIMIT @tamPagina OFFSET @desplazamiento;";
+
+            using (var comand = new MySqlCommand(sql, conexion))
+            {
+                comand.Parameters.AddWithValue("@tamPagina", tamPagina);
+                comand.Parameters.AddWithValue("@desplazamiento", (pagina - 1) * tamPagina);
+                conexion.Open();
+
+                using (var read = comand.ExecuteReader())
+                {
+                    while (read.Read())
+                    {
+                        lista.Add(Mapear(read));
+                    }
+                }
+            }
+        }
+
+        return lista;
+    }
+    public int ObtenerCantidad(bool? soloActivos = true)
+    {
+        int cantidad = 0;
+
+        using (var conexion = CrearConexion())
+        {
+            string sql = @"
+            SELECT COUNT(*)
+            FROM socio
+            WHERE (@estado IS NULL OR Estado = @estado);";
+
+            using (var comand = new MySqlCommand(sql, conexion))
+            {
+                comand.Parameters.AddWithValue("@estado", ValorODbNull(soloActivos));
+                conexion.Open();
+                cantidad = Convert.ToInt32(comand.ExecuteScalar());
+            }
+        }
+
+        return cantidad;
+    }
+    
+
     private static void CargarParametros(MySqlCommand cmd, Socio s)
     {
-        cmd.Parameters.AddWithValue("@nombre", s.Nombre ?? string.Empty);
-        cmd.Parameters.AddWithValue("@apellido", s.Apellido ?? string.Empty);
-        cmd.Parameters.AddWithValue("@dni", s.Dni ?? string.Empty);
-        cmd.Parameters.AddWithValue("@telefono", s.Telefono ?? string.Empty);
-        cmd.Parameters.AddWithValue("@domicilio", s.Domicilio ?? string.Empty);
-        cmd.Parameters.AddWithValue("@avatar", s.Avatar ?? string.Empty);
-        cmd.Parameters.AddWithValue("@estado", s.Estado);
+        cmd.Parameters.AddWithValue("@Nombre", s.Nombre ?? string.Empty);
+        cmd.Parameters.AddWithValue("@Apellido", s.Apellido ?? string.Empty);
+        cmd.Parameters.AddWithValue("@Dni", s.Dni ?? string.Empty);
+        cmd.Parameters.AddWithValue("@Telefono", s.Telefono ?? string.Empty);
+        cmd.Parameters.AddWithValue("@Domicilio", s.Domicilio ?? string.Empty);
+        cmd.Parameters.AddWithValue("@Avatar", s.Avatar ?? string.Empty);
+        cmd.Parameters.AddWithValue("@Estado", s.Estado);
     }
 
     private static Socio Mapear(MySqlDataReader r) => new Socio
     {
-        IdSocio = r.GetInt32("id_socio"),
-        Nombre = r.GetString("nombre"),
-        Apellido = r.GetString("apellido"),
-        Dni = r.GetString("dni"),
-        Telefono = r.GetString("telefono"),
-        Domicilio = r.GetString("domicilio"),
-        Avatar = r.GetString("avatar"),
-        Estado = r.GetBoolean("estado")
+        IdSocio = r.GetInt32("IdSocio"),
+        Nombre = r.GetString("Nombre"),
+        Apellido = r.GetString("Apellido"),
+        Dni = r.GetString("Dni"),
+        Telefono = r.GetString("Telefono"),
+        Domicilio = r.GetString("Domicilio"),
+        Avatar = r.GetString("Avatar"),
+        Estado = r.GetBoolean("Estado")
     };
 }
