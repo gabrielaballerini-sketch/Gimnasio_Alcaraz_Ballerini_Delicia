@@ -1,0 +1,837 @@
+@{
+    ViewData["Title"] = "Profesores";
+}
+
+<div id="app" class="mt-4">
+
+    <h2>Profesores</h2>
+
+    <!-- Aviso (toast) -->
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1100">
+        <div v-if="aviso.texto" class="toast show align-items-center text-white border-0"
+            v-bind:class="aviso.tipo === 'ok' ? 'bg-success' : 'bg-danger'">
+
+            <div class="d-flex">
+                <div class="toast-body">
+                    {{ aviso.texto }}
+                </div>
+
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" v-on:click="aviso.texto = ''">
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- Modal de confirmación -->
+    <div class="modal fade" tabindex="-1" ref="modalConfirmar">
+
+        <div class="modal-dialog modal-dialog-centered">
+
+            <div class="modal-content border-0 shadow">
+
+                <div class="modal-body text-center p-4">
+
+                    <div class="mx-auto mb-3 rounded-circle d-flex align-items-center justify-content-center fs-2"
+                        style="width:64px;height:64px" v-bind:class="confirmacion.tipo === 'danger'
+                             ? 'bg-danger-subtle text-danger'
+                             : 'bg-success-subtle text-success'">
+
+                        {{ confirmacion.tipo === 'danger' ? '!' : '✓' }}
+
+                    </div>
+
+                    <h5 class="mb-2">
+                        {{ confirmacion.titulo }}
+                    </h5>
+
+                    <p class="text-muted mb-3">
+                        {{ confirmacion.mensaje }}
+                    </p>
+
+
+                    <!-- Datos del profesor -->
+                    <div v-if="confirmacion.profesor"
+                        class="d-flex align-items-center justify-content-center bg-light rounded p-2 mb-3">
+
+                        <div class="text-start">
+
+                            <div class="fw-semibold">
+                                {{ confirmacion.profesor.apellido }},
+                                {{ confirmacion.profesor.nombre }}
+                            </div>
+
+                            <small class="text-muted">
+                                DNI {{ confirmacion.profesor.dni }}
+                            </small>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="d-flex gap-2 justify-content-center">
+
+                        <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">
+                            Cancelar
+                        </button>
+
+                        <button type="button" class="btn px-4" v-bind:class="confirmacion.tipo === 'danger'
+                                    ? 'btn-danger'
+                                    : 'btn-success'" v-on:click="confirmar">
+
+                            {{ confirmacion.textoBoton }}
+
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Formulario -->
+    <div class="card mb-4">
+
+        <div class="card-header">
+            {{ form.idProfesor ? 'Editar profesor' : 'Nuevo profesor' }}
+        </div>
+
+        <div class="card-body">
+
+            <div v-if="mensaje" class="alert alert-danger">
+
+                <div>
+                    {{ mensaje }}
+                </div>
+
+                <ul class="mb-0" v-if="errores.length">
+
+                    <li v-for="e in errores" v-bind:key="e">
+
+                        {{ e }}
+
+                    </li>
+
+                </ul>
+
+            </div>
+
+
+            <div class="row g-2">
+
+                <div class="col-md-3">
+
+                    <label class="form-label">
+                        Nombre
+                    </label>
+
+                    <input class="form-control" v-model="form.nombre">
+
+                </div>
+
+
+                <div class="col-md-3">
+
+                    <label class="form-label">
+                        Apellido
+                    </label>
+
+                    <input class="form-control" v-model="form.apellido">
+
+                </div>
+
+
+                <div class="col-md-2">
+
+                    <label class="form-label">
+                        DNI
+                    </label>
+
+                    <input class="form-control" v-model="form.dni">
+
+                </div>
+
+
+                <div class="col-md-2">
+
+                    <label class="form-label">
+                        Teléfono
+                    </label>
+
+                    <input class="form-control" v-model="form.telefono">
+
+                </div>
+
+
+                <div class="col-md-2">
+
+                    <label class="form-label">
+                        Domicilio
+                    </label>
+
+                    <input class="form-control" v-model="form.domicilio">
+
+                </div>
+
+            </div>
+
+
+            <div class="mt-3">
+
+                <button class="btn btn-primary me-2" v-on:click="guardar">
+
+                    {{ form.idProfesor
+                    ? 'Guardar cambios'
+                    : 'Crear profesor' }}
+
+                </button>
+
+                <button class="btn btn-secondary" v-on:click="limpiar">
+
+                    Cancelar
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- Pestañas -->
+    <ul class="nav nav-tabs mb-3">
+
+        <li class="nav-item">
+
+            <a href="#" class="nav-link" v-bind:class="{ active: pestana === 'activos' }"
+                v-on:click.prevent="cambiarPestana('activos')">
+
+                Activos
+
+            </a>
+
+        </li>
+
+
+        <li class="nav-item">
+
+            <a href="#" class="nav-link" v-bind:class="{ active: pestana === 'inactivos' }"
+                v-on:click.prevent="cambiarPestana('inactivos')">
+
+                Inactivos
+
+            </a>
+
+        </li>
+
+    </ul>
+
+
+    <!-- Tabla -->
+    <table class="table table-striped align-middle">
+
+        <thead>
+
+            <tr>
+
+                <th>
+                    Apellido y nombre
+                </th>
+
+                <th>
+                    DNI
+                </th>
+
+                <th>
+                    Teléfono
+                </th>
+
+                <th>
+                    Domicilio
+                </th>
+
+                <th>
+                </th>
+
+            </tr>
+
+        </thead>
+
+
+        <tbody>
+
+            <tr v-for="p in profesores" v-bind:key="p.idProfesor">
+
+                <td>
+                    {{ p.apellido }}, {{ p.nombre }}
+                </td>
+
+                <td>
+                    {{ p.dni }}
+                </td>
+
+                <td>
+                    {{ p.telefono }}
+                </td>
+
+                <td>
+                    {{ p.domicilio }}
+                </td>
+
+                <td class="text-end">
+
+                    <button class="btn btn-sm btn-outline-primary me-1" v-on:click="editar(p)">
+
+                        Editar
+
+                    </button>
+
+
+                    <button class="btn btn-sm btn-outline-danger" v-if="pestana === 'activos'"
+                        v-on:click="pedirBaja(p)">
+
+                        Dar de baja
+
+                    </button>
+
+
+                    <button class="btn btn-sm btn-outline-success" v-if="pestana === 'inactivos'"
+                        v-on:click="pedirReactivar(p)">
+
+                        Reactivar
+
+                    </button>
+
+                </td>
+
+            </tr>
+
+
+            <tr v-if="profesores.length === 0">
+
+                <td colspan="5" class="text-center text-muted">
+
+                    No hay profesores para mostrar.
+
+                </td>
+
+            </tr>
+
+        </tbody>
+
+    </table>
+
+
+    <!-- Paginación -->
+    <div class="d-flex justify-content-between align-items-center">
+
+        <div>
+
+            <label class="me-2">
+                Por página:
+            </label>
+
+            <select class="form-select d-inline-block w-auto" v-model.number="tamPagina" v-on:change="cambiarTamano">
+
+                <option v-bind:value="5">
+                    5
+                </option>
+
+                <option v-bind:value="10">
+                    10
+                </option>
+
+                <option v-bind:value="20">
+                    20
+                </option>
+
+            </select>
+
+
+            <span class="ms-3 text-muted">
+                {{ total }} profesores en total
+            </span>
+
+        </div>
+
+
+        <div>
+
+            <button class="btn btn-outline-secondary btn-sm me-2" v-bind:disabled="pagina <= 1"
+                v-on:click="irAPagina(pagina - 1)">
+
+                Anterior
+
+            </button>
+
+
+            <span>
+                Página {{ pagina }} de {{ totalPaginas }}
+            </span>
+
+
+            <button class="btn btn-outline-secondary btn-sm ms-2" v-bind:disabled="pagina >= totalPaginas"
+                v-on:click="irAPagina(pagina + 1)">
+
+                Siguiente
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+@section Scripts {
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+
+    <script>
+
+        const API = '/api/profesores';
+
+
+        const formVacio = () => ({
+            idProfesor: 0,
+            nombre: '',
+            apellido: '',
+            dni: '',
+            telefono: '',
+            domicilio: ''
+        });
+
+
+        const confirmacionVacia = () => ({
+            titulo: '',
+            mensaje: '',
+            textoBoton: '',
+            tipo: 'danger',
+            profesor: null,
+            accion: null
+        });
+
+
+        Vue.createApp({
+
+            data() {
+
+                return {
+
+                    profesores: [],
+
+                    pestana: 'activos',
+
+                    pagina: 1,
+
+                    tamPagina: 10,
+
+                    total: 0,
+
+                    totalPaginas: 1,
+
+                    form: formVacio(),
+
+                    mensaje: '',
+
+                    errores: [],
+
+                    aviso: {
+                        tipo: 'ok',
+                        texto: ''
+                    },
+
+                    temporizadorAviso: null,
+
+                    confirmacion: confirmacionVacia(),
+
+                    modal: null
+
+                };
+
+            },
+
+
+            mounted() {
+
+                this.modal =
+                    new bootstrap.Modal(
+                        this.$refs.modalConfirmar
+                    );
+
+                this.cargar();
+
+            },
+
+
+            methods: {
+
+                // ---------- Avisos ----------
+
+                mostrarAviso(tipo, texto) {
+
+                    this.aviso = {
+                        tipo,
+                        texto
+                    };
+
+                    clearTimeout(
+                        this.temporizadorAviso
+                    );
+
+                    this.temporizadorAviso =
+                        setTimeout(() => {
+
+                            this.aviso.texto = '';
+
+                        }, 4000);
+
+                },
+
+
+                // ---------- Listado ----------
+
+                async cargar() {
+
+                    const url =
+                        `${API}/${this.pestana}?pagina=${this.pagina}&tamPagina=${this.tamPagina}`;
+
+                    const resp =
+                        await fetch(url);
+
+
+                    const datos =
+                        await resp.json();
+
+
+                    if (this.pagina > datos.totalPaginas) {
+
+                        this.pagina =
+                            datos.totalPaginas;
+
+                        return this.cargar();
+
+                    }
+
+
+                    this.profesores =
+                        datos.items;
+
+                    this.total =
+                        datos.total;
+
+                    this.totalPaginas =
+                        datos.totalPaginas;
+
+                },
+
+
+                cambiarPestana(nombre) {
+
+                    if (this.pestana === nombre)
+                        return;
+
+                    this.pestana = nombre;
+
+                    this.pagina = 1;
+
+                    this.cargar();
+
+                },
+
+
+                cambiarTamano() {
+
+                    this.pagina = 1;
+
+                    this.cargar();
+
+                },
+
+
+                irAPagina(numero) {
+
+                    if (
+                        numero < 1 ||
+                        numero > this.totalPaginas
+                    )
+                        return;
+
+                    this.pagina = numero;
+
+                    this.cargar();
+
+                },
+
+
+                // ---------- Formulario ----------
+
+                async guardar() {
+
+                    this.mensaje = '';
+
+                    this.errores = [];
+
+
+                    const editando =
+                        this.form.idProfesor > 0;
+
+
+                    const datos =
+                        new FormData();
+
+
+                    datos.append(
+                        'nombre',
+                        this.form.nombre ?? ''
+                    );
+
+                    datos.append(
+                        'apellido',
+                        this.form.apellido ?? ''
+                    );
+
+                    datos.append(
+                        'dni',
+                        this.form.dni ?? ''
+                    );
+
+                    datos.append(
+                        'telefono',
+                        this.form.telefono ?? ''
+                    );
+
+                    datos.append(
+                        'domicilio',
+                        this.form.domicilio ?? ''
+                    );
+
+
+                    const resp =
+                        await fetch(
+                            editando
+                                ? `${API}/${this.form.idProfesor}`
+                                : API,
+                            {
+                                method:
+                                    editando
+                                        ? 'PUT'
+                                        : 'POST',
+
+                                body: datos
+                            }
+                        );
+
+
+                    if (!resp.ok) {
+
+                        const error =
+                            await resp.json();
+
+                        this.mensaje =
+                            error.mensaje ||
+                            'Ocurrió un error.';
+
+                        this.errores =
+                            error.errores || [];
+
+                        return;
+
+                    }
+
+
+                    this.limpiar();
+
+
+                    this.mostrarAviso(
+                        'ok',
+                        editando
+                            ? 'Profesor actualizado correctamente.'
+                            : 'Profesor creado correctamente.'
+                    );
+
+
+                    this.cargar();
+
+                },
+
+
+                editar(profesor) {
+
+                    this.mensaje = '';
+
+                    this.errores = [];
+
+                    this.form = {
+                        ...profesor
+                    };
+
+                    window.scrollTo({
+                        top: 0,
+                        behavior: 'smooth'
+                    });
+
+                },
+
+
+                limpiar() {
+
+                    this.form =
+                        formVacio();
+
+                    this.mensaje = '';
+
+                    this.errores = [];
+
+                },
+
+
+                // ---------- Confirmaciones ----------
+
+                pedirBaja(profesor) {
+
+                    this.confirmacion = {
+
+                        titulo:
+                            'Dar de baja al profesor',
+
+                        mensaje:
+                            'Pasará a la lista de inactivos. Podés reactivarlo cuando quieras.',
+
+                        textoBoton:
+                            'Dar de baja',
+
+                        tipo:
+                            'danger',
+
+                        profesor,
+
+                        accion:
+                            () =>
+                                this.ejecutarBaja(
+                                    profesor
+                                )
+
+                    };
+
+
+                    this.modal.show();
+
+                },
+
+
+                pedirReactivar(profesor) {
+
+                    this.confirmacion = {
+
+                        titulo:
+                            'Reactivar al profesor',
+
+                        mensaje:
+                            'Volverá a la lista de profesores activos.',
+
+                        textoBoton:
+                            'Reactivar',
+
+                        tipo:
+                            'success',
+
+                        profesor,
+
+                        accion:
+                            () =>
+                                this.ejecutarReactivar(
+                                    profesor
+                                )
+
+                    };
+
+
+                    this.modal.show();
+
+                },
+
+
+                async confirmar() {
+
+                    const accion =
+                        this.confirmacion.accion;
+
+                    this.modal.hide();
+
+                    if (accion)
+                        await accion();
+
+                },
+
+
+                async ejecutarBaja(profesor) {
+
+                    const resp =
+                        await fetch(
+                            `${API}/${profesor.idProfesor}`,
+                            {
+                                method: 'DELETE'
+                            }
+                        );
+
+
+                    if (!resp.ok) {
+
+                        const error =
+                            await resp.json();
+
+                        this.mostrarAviso(
+                            'error',
+                            error.mensaje ||
+                            'No se pudo dar de baja.'
+                        );
+
+                        return;
+                    }
+
+                    this.mostrarAviso(
+                        'ok',
+                        `${profesor.apellido}, ${profesor.nombre} fue dado de baja.`
+                    );
+                    this.cargar();
+                },
+
+                async ejecutarReactivar(profesor) {
+
+                    const resp =
+                        await fetch(
+                            `${API}/${profesor.idProfesor}/reactivar`,
+                            {
+                                method: 'PUT'
+                            }
+                        );
+
+                    if (!resp.ok) {
+
+                        const error =
+                            await resp.json();
+
+                        this.mostrarAviso(
+                            'error',
+                            error.mensaje ||
+                            'No se pudo reactivar.'
+                        );
+                        return;
+                    }
+
+                    this.mostrarAviso(
+                        'ok',
+                        `${profesor.apellido}, ${profesor.nombre} fue reactivado.`
+                    );
+
+                    this.cargar();
+                }
+            }
+        }).mount('#app');
+    </script>
+}

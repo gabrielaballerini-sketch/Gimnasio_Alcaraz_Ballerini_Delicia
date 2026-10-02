@@ -12,6 +12,8 @@ builder.Services.AddControllersWithViews()
 
 builder.Services.AddScoped<IRepositorioSocio, RepositorioSocio>();
 builder.Services.AddScoped<SocioService>();
+builder.Services.AddScoped<IRepositorioProfesor, RepositorioProfesor>();
+builder.Services.AddScoped<ProfesorService>();
 
 var app = builder.Build();
 
