@@ -1,0 +1,571 @@
+@{
+    ViewData["Title"] = "Usuarios";
+}
+
+<div id="app" class="container mt-4">
+
+    <h2>Usuarios</h2>
+
+    <div v-if="mensaje"
+         class="alert"
+         :class="mensajeTipo === 'ok'
+            ? 'alert-success'
+            : 'alert-danger'">
+
+        {{ mensaje }}
+
+    </div>
+
+    <div class="card mb-4">
+
+        <div class="card-header">
+            {{ form.idUsuario > 0
+                ? 'Modificar usuario'
+                : 'Nuevo usuario' }}
+        </div>
+
+        <div class="card-body">
+
+            <form @@submit.prevent="guardar">
+
+                <div class="mb-3">
+
+                    <label class="form-label">
+                        Email
+                    </label>
+
+                    <input type="email"
+                           class="form-control"
+                           v-model="form.email">
+
+                </div>
+
+                <div class="mb-3">
+
+                    <label class="form-label">
+                        Password
+                    </label>
+
+                    <input type="password"
+                           class="form-control"
+                           v-model="form.password">
+
+                </div>
+
+                <div class="mb-3">
+
+                    <label class="form-label">
+                        Rol
+                    </label>
+
+                    <select class="form-select"
+                            v-model.number="form.roles">
+
+                        <option :value="1">
+                            Socio
+                        </option>
+
+                        <option :value="2">
+                            Empleado
+                        </option>
+
+                        <option :value="3">
+                            Administrador
+                        </option>
+
+                    </select>
+
+                </div>
+
+                <button type="submit"
+                        class="btn btn-primary">
+
+                    {{ form.idUsuario > 0
+                        ? 'Modificar'
+                        : 'Guardar' }}
+
+                </button>
+
+                <button type="button"
+                        class="btn btn-secondary ms-2"
+                        @@click="limpiar">
+
+                    Cancelar
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    <div class="d-flex justify-content-between mb-3">
+
+        <div>
+
+            <button class="btn"
+                    :class="pestana === 'activos'
+                        ? 'btn-primary'
+                        : 'btn-outline-primary'"
+                    @@click="cambiarPestana('activos')">
+
+                Activos
+
+            </button>
+
+            <button class="btn ms-2"
+                    :class="pestana === 'inactivos'
+                        ? 'btn-primary'
+                        : 'btn-outline-primary'"
+                    @@click="cambiarPestana('inactivos')">
+
+                Inactivos
+
+            </button>
+
+        </div>
+
+        <select class="form-select"
+                style="width: 100px"
+                v-model.number="tamPagina"
+                @@change="cambiarTamano">
+
+            <option :value="5">5</option>
+            <option :value="10">10</option>
+            <option :value="20">20</option>
+
+        </select>
+
+    </div>
+
+
+    <table class="table table-striped">
+
+        <thead>
+
+            <tr>
+
+                <th>ID</th>
+
+                <th>Email</th>
+
+                <th>Rol</th>
+
+                <th>Acciones</th>
+
+            </tr>
+
+        </thead>
+
+        <tbody>
+
+            <tr v-for="usuario in usuarios"
+                :key="usuario.idUsuario">
+
+                <td>
+                    {{ usuario.idUsuario }}
+                </td>
+
+                <td>
+                    {{ usuario.email }}
+                </td>
+
+                <td>
+
+                    <span v-if="usuario.roles === 1">
+                        Socio
+                    </span>
+
+                    <span v-else-if="usuario.roles === 2">
+                        Empleado
+                    </span>
+
+                    <span v-else-if="usuario.roles === 3">
+                        Administrador
+                    </span>
+
+                </td>
+
+                <td>
+
+                    <button v-if="pestana === 'activos'"
+                            class="btn btn-sm btn-warning"
+                            @@click="editar(usuario)">
+
+                        Editar
+
+                    </button>
+
+                    <button v-if="pestana === 'activos'"
+                            class="btn btn-sm btn-danger ms-1"
+                            @@click="darDeBaja(usuario)">
+
+                        Baja
+
+                    </button>
+
+                    <button v-if="pestana === 'inactivos'"
+                            class="btn btn-sm btn-success"
+                            @@click="reactivar(usuario)">
+
+                        Reactivar
+
+                    </button>
+
+                </td>
+
+            </tr>
+
+        </tbody>
+
+    </table>
+
+
+    <div class="d-flex justify-content-center">
+
+        <button class="btn btn-secondary"
+                :disabled="pagina <= 1"
+                @@click="irAPagina(pagina - 1)">
+
+            Anterior
+
+        </button>
+
+        <span class="mx-3 align-self-center">
+
+            Página {{ pagina }}
+            de {{ totalPaginas }}
+
+        </span>
+
+        <button class="btn btn-secondary"
+                :disabled="pagina >= totalPaginas"
+                @@click="irAPagina(pagina + 1)">
+
+            Siguiente
+
+        </button>
+
+    </div>
+
+</div>
+
+
+@section Scripts {
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <script>
+
+        const API = '/api/usuarios';
+
+        function formVacio() {
+
+            return {
+                idUsuario: 0,
+                email: '',
+                password: '',
+                roles: 1
+            };
+
+        }
+
+        Vue.createApp({
+
+            data() {
+
+                return {
+
+                    usuarios: [],
+
+                    pagina: 1,
+
+                    tamPagina: 10,
+
+                    total: 0,
+
+                    totalPaginas: 1,
+
+                    pestana: 'activos',
+
+                    form: formVacio(),
+
+                    mensaje: '',
+
+                    mensajeTipo: 'ok'
+
+                };
+
+            },
+
+            mounted() {
+
+                this.cargar();
+
+            },
+
+            methods: {
+
+                async cargar() {
+
+                    const resp =
+                        await fetch(
+                            `${API}/${this.pestana}?pagina=${this.pagina}&tamPagina=${this.tamPagina}`
+                        );
+
+                    if (!resp.ok) {
+
+                        this.mostrarAviso(
+                            'error',
+                            'No se pudieron cargar los usuarios.'
+                        );
+
+                        return;
+
+                    }
+
+                    const datos =
+                        await resp.json();
+
+                    this.usuarios =
+                        datos.items;
+
+                    this.total =
+                        datos.total;
+
+                    this.totalPaginas =
+                        datos.totalPaginas;
+
+                },
+
+                async guardar() {
+
+                    this.mensaje = '';
+
+                    const editando =
+                        this.form.idUsuario > 0;
+
+                    const datos = {
+
+                        email:
+                            this.form.email,
+
+                        password:
+                            this.form.password,
+
+                        roles:
+                            this.form.roles
+
+                    };
+
+                    const resp =
+                        await fetch(
+
+                            editando
+                                ? `${API}/${this.form.idUsuario}`
+                                : API,
+
+                            {
+
+                                method:
+                                    editando
+                                        ? 'PUT'
+                                        : 'POST',
+
+                                headers: {
+                                    'Content-Type':
+                                        'application/json'
+                                },
+
+                                body:
+                                    JSON.stringify(datos)
+
+                            }
+
+                        );
+
+                    if (!resp.ok) {
+
+                        const error =
+                            await resp.json();
+
+                        this.mostrarAviso(
+                            'error',
+                            error.mensaje ||
+                            'Ocurrió un error.'
+                        );
+
+                        return;
+
+                    }
+
+                    this.limpiar();
+
+                    this.mostrarAviso(
+                        'ok',
+                        editando
+                            ? 'Usuario actualizado correctamente.'
+                            : 'Usuario creado correctamente.'
+                    );
+
+                    this.cargar();
+
+                },
+
+                editar(usuario) {
+
+                    this.form = {
+
+                        ...usuario,
+
+                        password:
+                            usuario.password
+
+                    };
+
+                    window.scrollTo({
+                        top: 0,
+                        behavior: 'smooth'
+                    });
+
+                },
+
+                limpiar() {
+
+                    this.form =
+                        formVacio();
+
+                    this.mensaje = '';
+
+                },
+
+                async darDeBaja(usuario) {
+
+                    const confirmar =
+                        confirm(
+                            `¿Dar de baja al usuario ${usuario.email}?`
+                        );
+
+                    if (!confirmar)
+                        return;
+
+                    const resp =
+                        await fetch(
+                            `${API}/${usuario.idUsuario}`,
+                            {
+                                method: 'DELETE'
+                            }
+                        );
+
+                    if (!resp.ok) {
+
+                        const error =
+                            await resp.json();
+
+                        this.mostrarAviso(
+                            'error',
+                            error.mensaje ||
+                            'No se pudo dar de baja.'
+                        );
+
+                        return;
+
+                    }
+
+                    this.mostrarAviso(
+                        'ok',
+                        'Usuario dado de baja correctamente.'
+                    );
+
+                    this.cargar();
+
+                },
+
+                async reactivar(usuario) {
+
+                    const resp =
+                        await fetch(
+                            `${API}/${usuario.idUsuario}/reactivar`,
+                            {
+                                method: 'PUT'
+                            }
+                        );
+
+                    if (!resp.ok) {
+
+                        const error =
+                            await resp.json();
+
+                        this.mostrarAviso(
+                            'error',
+                            error.mensaje ||
+                            'No se pudo reactivar.'
+                        );
+
+                        return;
+
+                    }
+
+                    this.mostrarAviso(
+                        'ok',
+                        'Usuario reactivado correctamente.'
+                    );
+
+                    this.cargar();
+
+                },
+
+                cambiarPestana(nombre) {
+
+                    this.pestana =
+                        nombre;
+
+                    this.pagina = 1;
+
+                    this.cargar();
+
+                },
+
+                cambiarTamano() {
+
+                    this.pagina = 1;
+
+                    this.cargar();
+
+                },
+
+                irAPagina(numero) {
+
+                    if (
+                        numero < 1 ||
+                        numero > this.totalPaginas
+                    )
+                        return;
+
+                    this.pagina =
+                        numero;
+
+                    this.cargar();
+
+                },
+
+                mostrarAviso(tipo, mensaje) {
+
+                    this.mensajeTipo =
+                        tipo === 'ok'
+                            ? 'ok'
+                            : 'error';
+
+                    this.mensaje =
+                        mensaje;
+
+                }
+
+            }
+
+        }).mount('#app');
+
+    </script>
+}

@@ -15,6 +15,9 @@ public class Usuario
      public string? Password { get; set; } 
      
     public Roles Roles { get; set; }
+
+    public bool Estado { get; set; } = true;
+
 }
 
 public enum Roles

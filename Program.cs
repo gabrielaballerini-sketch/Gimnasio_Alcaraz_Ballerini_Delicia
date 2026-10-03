@@ -14,6 +14,8 @@ builder.Services.AddScoped<IRepositorioSocio, RepositorioSocio>();
 builder.Services.AddScoped<SocioService>();
 builder.Services.AddScoped<IRepositorioProfesor, RepositorioProfesor>();
 builder.Services.AddScoped<ProfesorService>();
+builder.Services.AddScoped<IRepositorioUsuario,RepositorioUsuario>();
+builder.Services.AddScoped<UsuarioService>();
 
 var app = builder.Build();
 
