@@ -1,0 +1,676 @@
+@{
+    ViewData["Title"] = "Actividades";
+}
+
+<div id="app" class="mt-4">
+
+    <h2>Actividades</h2>
+
+
+    <!-- AVISO -->
+
+    <div class="toast-container position-fixed top-0 end-0 p-3"
+         style="z-index:1100">
+
+        <div v-if="aviso.texto"
+             class="toast show align-items-center text-white border-0"
+             v-bind:class="aviso.tipo === 'ok'
+                 ? 'bg-success'
+                 : 'bg-danger'">
+
+            <div class="d-flex">
+
+                <div class="toast-body">
+                    {{ aviso.texto }}
+                </div>
+
+                <button type="button"
+                        class="btn-close btn-close-white me-2 m-auto"
+                        v-on:click="aviso.texto = ''">
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- FORMULARIO -->
+
+    <div class="card mb-4">
+
+        <div class="card-header">
+
+            {{ form.idActividad
+                ? 'Editar actividad'
+                : 'Nueva actividad' }}
+
+        </div>
+
+
+        <div class="card-body">
+
+            <div v-if="mensaje"
+                 class="alert alert-danger">
+
+                <div>
+                    {{ mensaje }}
+                </div>
+
+                <ul class="mb-0"
+                    v-if="errores.length">
+
+                    <li v-for="e in errores"
+                        v-bind:key="e">
+
+                        {{ e }}
+
+                    </li>
+
+                </ul>
+
+            </div>
+
+
+            <div class="row g-3">
+
+                <div class="col-md-6">
+
+                    <label class="form-label">
+                        Nombre
+                    </label>
+
+                    <input type="text"
+                           class="form-control"
+                           v-model="form.nombre">
+
+                </div>
+
+            </div>
+
+
+            <div class="mt-3">
+
+                <button class="btn btn-primary me-2"
+                        v-on:click="guardar">
+
+                    {{ form.idActividad
+                        ? 'Guardar cambios'
+                        : 'Crear actividad' }}
+
+                </button>
+
+
+                <button class="btn btn-secondary"
+                        v-on:click="limpiar">
+
+                    Cancelar
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- PESTAÑAS -->
+
+    <ul class="nav nav-tabs mb-3">
+
+        <li class="nav-item">
+
+            <a href="#"
+               class="nav-link"
+               v-bind:class="{ active: pestana === 'activos' }"
+               v-on:click.prevent="cambiarPestana('activos')">
+
+                Activos
+
+            </a>
+
+        </li>
+
+
+        <li class="nav-item">
+
+            <a href="#"
+               class="nav-link"
+               v-bind:class="{ active: pestana === 'inactivos' }"
+               v-on:click.prevent="cambiarPestana('inactivos')">
+
+                Inactivos
+
+            </a>
+
+        </li>
+
+    </ul>
+
+
+    <!-- TABLA -->
+
+    <table class="table table-striped align-middle">
+
+        <thead>
+
+            <tr>
+
+                <th>
+                    Nombre
+                </th>
+
+                <th class="text-end">
+                    Acciones
+                </th>
+
+            </tr>
+
+        </thead>
+
+
+        <tbody>
+
+            <tr v-for="actividad in actividades"
+                v-bind:key="actividad.idActividad">
+
+                <td>
+                    {{ actividad.nombre }}
+                </td>
+
+
+                <td class="text-end">
+
+                    <template v-if="pestana === 'activos'">
+
+                        <button class="btn btn-sm btn-outline-primary me-1"
+                                v-on:click="editar(actividad)">
+
+                            Editar
+
+                        </button>
+
+
+                        <button class="btn btn-sm btn-outline-danger"
+                                v-on:click="darDeBaja(actividad)">
+
+                            Dar de baja
+
+                        </button>
+
+                    </template>
+
+
+                    <template v-else>
+
+                        <button class="btn btn-sm btn-outline-success"
+                                v-on:click="reactivar(actividad)">
+
+                            Reactivar
+
+                        </button>
+
+                    </template>
+
+                </td>
+
+            </tr>
+
+
+            <tr v-if="actividades.length === 0">
+
+                <td colspan="2"
+                    class="text-center text-muted">
+
+                    No hay actividades para mostrar.
+
+                </td>
+
+            </tr>
+
+        </tbody>
+
+    </table>
+
+
+    <!-- PAGINACIÓN -->
+
+    <div class="d-flex justify-content-between align-items-center">
+
+        <div>
+
+            Mostrando {{ actividades.length }}
+            de {{ total }} actividades
+
+        </div>
+
+
+        <div class="d-flex align-items-center gap-2">
+
+            <select class="form-select"
+                    style="width:auto"
+                    v-model.number="tamPagina"
+                    v-on:change="cambiarTamano">
+
+                <option :value="5">
+                    5
+                </option>
+
+                <option :value="10">
+                    10
+                </option>
+
+                <option :value="20">
+                    20
+                </option>
+
+            </select>
+
+
+            <button class="btn btn-outline-secondary"
+                    v-on:click="irAPagina(pagina - 1)"
+                    v-bind:disabled="pagina <= 1">
+
+                Anterior
+
+            </button>
+
+
+            <span>
+
+                Página {{ pagina }}
+                de {{ totalPaginas }}
+
+            </span>
+
+
+            <button class="btn btn-outline-secondary"
+                    v-on:click="irAPagina(pagina + 1)"
+                    v-bind:disabled="pagina >= totalPaginas">
+
+                Siguiente
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+@section Scripts {
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <script>
+
+        const API = '/api/actividades';
+
+
+        function formVacio() {
+
+            return {
+                idActividad: 0,
+                nombre: ''
+            };
+
+        }
+
+
+        Vue.createApp({
+
+            data() {
+
+                return {
+
+                    actividades: [],
+
+                    pestana: 'activos',
+
+                    pagina: 1,
+
+                    tamPagina: 10,
+
+                    total: 0,
+
+                    totalPaginas: 1,
+
+                    form: formVacio(),
+
+                    mensaje: '',
+
+                    errores: [],
+
+                    aviso: {
+                        tipo: 'ok',
+                        texto: ''
+                    },
+
+                    temporizadorAviso: null
+
+                };
+
+            },
+
+
+            mounted() {
+
+                this.cargar();
+
+            },
+
+
+            methods: {
+
+                mostrarAviso(tipo, texto) {
+
+                    this.aviso = {
+                        tipo,
+                        texto
+                    };
+
+
+                    clearTimeout(
+                        this.temporizadorAviso
+                    );
+
+
+                    this.temporizadorAviso =
+                        setTimeout(() => {
+
+                            this.aviso.texto = '';
+
+                        }, 4000);
+
+                },
+
+
+                async cargar() {
+
+                    const url =
+                        `${API}/${this.pestana}?pagina=${this.pagina}&tamPagina=${this.tamPagina}`;
+
+
+                    const resp =
+                        await fetch(url);
+
+
+                    const datos =
+                        await resp.json();
+
+
+                    if (this.pagina > datos.totalPaginas) {
+
+                        this.pagina =
+                            datos.totalPaginas;
+
+                        return this.cargar();
+
+                    }
+
+
+                    this.actividades =
+                        datos.items;
+
+                    this.total =
+                        datos.total;
+
+                    this.totalPaginas =
+                        datos.totalPaginas;
+
+                },
+
+
+                cambiarPestana(nombre) {
+
+                    if (this.pestana === nombre)
+                        return;
+
+
+                    this.pestana = nombre;
+
+                    this.pagina = 1;
+
+                    this.cargar();
+
+                },
+
+
+                cambiarTamano() {
+
+                    this.pagina = 1;
+
+                    this.cargar();
+
+                },
+
+
+                irAPagina(numero) {
+
+                    if (
+                        numero < 1 ||
+                        numero > this.totalPaginas
+                    )
+                        return;
+
+
+                    this.pagina = numero;
+
+                    this.cargar();
+
+                },
+
+
+                editar(actividad) {
+
+                    this.form = {
+                        idActividad:
+                            actividad.idActividad,
+
+                        nombre:
+                            actividad.nombre
+                    };
+
+
+                    this.mensaje = '';
+
+                    this.errores = [];
+
+                },
+
+
+                limpiar() {
+
+                    this.form =
+                        formVacio();
+
+                    this.mensaje = '';
+
+                    this.errores = [];
+
+                },
+
+
+                async guardar() {
+
+                    this.mensaje = '';
+
+                    this.errores = [];
+
+
+                    const editando =
+                        this.form.idActividad > 0;
+
+
+                    const datos =
+                        new FormData();
+
+
+                    datos.append(
+                        'nombre',
+                        this.form.nombre ?? ''
+                    );
+
+
+                    let resp;
+
+
+                    if (editando) {
+
+                        resp = await fetch(
+                            `${API}/${this.form.idActividad}`,
+                            {
+                                method: 'PUT',
+                                body: datos
+                            }
+                        );
+
+                    }
+                    else {
+
+                        resp = await fetch(
+                            API,
+                            {
+                                method: 'POST',
+                                body: datos
+                            }
+                        );
+
+                    }
+
+
+                    const resultado =
+                        await resp.json()
+                            .catch(() => null);
+
+
+                    if (!resp.ok) {
+
+                        this.mensaje =
+                            resultado?.mensaje
+                            ?? 'Ocurrió un error.';
+
+                        this.errores =
+                            resultado?.errores
+                            ?? [];
+
+                        return;
+
+                    }
+
+
+                    this.mostrarAviso(
+                        'ok',
+                        editando
+                            ? 'Actividad modificada correctamente.'
+                            : 'Actividad creada correctamente.'
+                    );
+
+
+                    this.limpiar();
+
+                    this.pagina = 1;
+
+                    await this.cargar();
+
+                },
+
+
+                async darDeBaja(actividad) {
+
+                    if (!confirm(
+                        `¿Dar de baja la actividad "${actividad.nombre}"?`
+                    ))
+                        return;
+
+
+                    const resp =
+                        await fetch(
+                            `${API}/${actividad.idActividad}`,
+                            {
+                                method: 'DELETE'
+                            }
+                        );
+
+
+                    if (!resp.ok) {
+
+                        const resultado =
+                            await resp.json()
+                                .catch(() => null);
+
+                        this.mostrarAviso(
+                            'error',
+                            resultado?.mensaje
+                            ?? 'No se pudo dar de baja.'
+                        );
+
+                        return;
+
+                    }
+
+
+                    this.mostrarAviso(
+                        'ok',
+                        'Actividad dada de baja correctamente.'
+                    );
+
+
+                    await this.cargar();
+
+                },
+
+
+                async reactivar(actividad) {
+
+                    if (!confirm(
+                        `¿Reactivar la actividad "${actividad.nombre}"?`
+                    ))
+                        return;
+
+
+                    const resp =
+                        await fetch(
+                            `${API}/${actividad.idActividad}/reactivar`,
+                            {
+                                method: 'PUT'
+                            }
+                        );
+
+
+                    if (!resp.ok) {
+
+                        const resultado =
+                            await resp.json()
+                                .catch(() => null);
+
+                        this.mostrarAviso(
+                            'error',
+                            resultado?.mensaje
+                            ?? 'No se pudo reactivar.'
+                        );
+
+                        return;
+
+                    }
+
+
+                    this.mostrarAviso(
+                        'ok',
+                        'Actividad reactivada correctamente.'
+                    );
+
+
+                    await this.cargar();
+
+                }
+
+            }
+
+        }).mount('#app');
+
+    </script>
+}

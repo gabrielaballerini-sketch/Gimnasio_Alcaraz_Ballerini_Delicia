@@ -18,6 +18,8 @@ builder.Services.AddScoped<IRepositorioUsuario,RepositorioUsuario>();
 builder.Services.AddScoped<UsuarioService>();
 builder.Services.AddScoped<IRepositorio<Plan>,RepositorioPlan>();
 builder.Services.AddScoped<PlanService>();
+builder.Services.AddScoped<IRepositorio<Actividad>, RepositorioActividad>();
+builder.Services.AddScoped<ActividadService>();
 
 
 
