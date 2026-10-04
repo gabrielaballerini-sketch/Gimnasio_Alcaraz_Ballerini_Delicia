@@ -1,4 +1,5 @@
 using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
+using Gimnasio_Alcaraz_Ballerini_Delicia.DAO;
 
 namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
 {
@@ -120,32 +121,32 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
                 plan.Nombre?.Trim();
         }
 
-       private void Validar(Plan plan)
-{
-    if (string.IsNullOrWhiteSpace(plan.Nombre))
-        throw new ReglaNegocioException(
-            "El nombre del plan es obligatorio.");
+        private void Validar(Plan plan)
+        {
+            if (string.IsNullOrWhiteSpace(plan.Nombre))
+                throw new ReglaNegocioException(
+                    "El nombre del plan es obligatorio.");
 
-    if (plan.Precio <= 0)
-        throw new ReglaNegocioException(
-            "El precio debe ser mayor a cero.");
+            if (plan.Precio <= 0)
+                throw new ReglaNegocioException(
+                    "El precio debe ser mayor a cero.");
 
-    if (plan.EsIlimitado)
-    {
-        // Es ilimitado.
-        // UtilizacionesMensuales debe ser null.
-        return;
-    }
+            if (plan.EsIlimitado)
+            {
+                // Es ilimitado.
+                // UtilizacionesMensuales debe ser null.
+                return;
+            }
 
-    // Si llegó acá, NO es ilimitado.
-    // Por lo tanto tiene que tener un número válido.
-    if (!plan.UtilizacionesMensuales.HasValue ||
-        plan.UtilizacionesMensuales.Value <= 0)
-    {
-        throw new ReglaNegocioException(
-            "Las utilizaciones mensuales deben ser mayores a cero.");
-    }
-}
-        
+            // Si llegó acá, NO es ilimitado.
+            // Por lo tanto tiene que tener un número válido.
+            if (!plan.UtilizacionesMensuales.HasValue ||
+                plan.UtilizacionesMensuales.Value <= 0)
+            {
+                throw new ReglaNegocioException(
+                    "Las utilizaciones mensuales deben ser mayores a cero.");
+            }
+        }
+
     }
 }

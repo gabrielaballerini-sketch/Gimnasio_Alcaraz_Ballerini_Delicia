@@ -1,35 +1,38 @@
 using MySql.Data.MySqlClient;
 
-public abstract class RepositorioBase
+namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
 {
-    private readonly string _connectionString;
-
-    protected RepositorioBase(IConfiguration configuration)
+    public abstract class RepositorioBase
     {
-        _connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidOperationException("Falta la cadena de conexión 'DefaultConnection' en appsettings.json");
-    }
+        private readonly string _connectionString;
 
-    protected MySqlConnection CrearConexion() => new MySqlConnection(_connectionString);
+        protected RepositorioBase(IConfiguration configuration)
+        {
+            _connectionString = configuration.GetConnectionString("DefaultConnection")
+                ?? throw new InvalidOperationException("Falta la cadena de conexión 'DefaultConnection' en appsettings.json");
+        }
 
-    // Convierte null en DBNull para poder usarlo como parámetro
-    protected static object ValorODbNull(object? valor) => valor ?? DBNull.Value;
+        protected MySqlConnection CrearConexion() => new MySqlConnection(_connectionString);
 
-    // Lectura de columnas nullable
-    protected static int? LeerIntNull(MySqlDataReader r, string col)
-    {
-        int i = r.GetOrdinal(col);
-        return r.IsDBNull(i) ? null : r.GetInt32(i);
-    }
-    protected static string? LeerStringNull(MySqlDataReader r, string col)
-    {
-        int i = r.GetOrdinal(col);
-        return r.IsDBNull(i) ? null : r.GetString(i);
-    }
+        // Convierte null en DBNull para poder usarlo como parámetro
+        protected static object ValorODbNull(object? valor) => valor ?? DBNull.Value;
 
-    protected static bool LeerBool(MySqlDataReader r, string col, bool valorPorDefecto = true)
-    {
-        int i = r.GetOrdinal(col);
-        return r.IsDBNull(i) ? valorPorDefecto : r.GetBoolean(i);
+        // Lectura de columnas nullable
+        protected static int? LeerIntNull(MySqlDataReader r, string col)
+        {
+            int i = r.GetOrdinal(col);
+            return r.IsDBNull(i) ? null : r.GetInt32(i);
+        }
+        protected static string? LeerStringNull(MySqlDataReader r, string col)
+        {
+            int i = r.GetOrdinal(col);
+            return r.IsDBNull(i) ? null : r.GetString(i);
+        }
+
+        protected static bool LeerBool(MySqlDataReader r, string col, bool valorPorDefecto = true)
+        {
+            int i = r.GetOrdinal(col);
+            return r.IsDBNull(i) ? valorPorDefecto : r.GetBoolean(i);
+        }
     }
 }

@@ -1,5 +1,6 @@
 using Gimnasio_Alcaraz_Ballerini_Delicia.Service;
 using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
+using Gimnasio_Alcaraz_Ballerini_Delicia.DAO;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -14,12 +15,14 @@ builder.Services.AddScoped<IRepositorioSocio, RepositorioSocio>();
 builder.Services.AddScoped<SocioService>();
 builder.Services.AddScoped<IRepositorioProfesor, RepositorioProfesor>();
 builder.Services.AddScoped<ProfesorService>();
-builder.Services.AddScoped<IRepositorioUsuario,RepositorioUsuario>();
+builder.Services.AddScoped<IRepositorioUsuario, RepositorioUsuario>();
 builder.Services.AddScoped<UsuarioService>();
-builder.Services.AddScoped<IRepositorio<Plan>,RepositorioPlan>();
+builder.Services.AddScoped<IRepositorio<Plan>, RepositorioPlan>();
 builder.Services.AddScoped<PlanService>();
 builder.Services.AddScoped<IRepositorio<Actividad>, RepositorioActividad>();
 builder.Services.AddScoped<ActividadService>();
+builder.Services.AddScoped<IRepositorioMembresia, RepositorioMembresia>();
+builder.Services.AddScoped<MembresiaService>();
 
 
 

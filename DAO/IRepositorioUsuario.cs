@@ -1,6 +1,6 @@
 using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
 
-namespace Gimnasio_Alcaraz_Ballerini_Delicia.Models
+namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
 {
     public interface IRepositorioUsuario : IRepositorio<Usuario>
     {
