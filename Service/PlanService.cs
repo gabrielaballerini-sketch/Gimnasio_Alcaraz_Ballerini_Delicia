@@ -70,19 +70,19 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
         public Plan Crear(Plan plan)
         {
             BorrarEspacios(plan);
+            plan.EsIlimitado = !plan.UtilizacionesMensuales.HasValue;
 
             Validar(plan);
 
             plan.Estado = true;
+          
 
             _repo.Alta(plan);
 
             return plan;
         }
 
-        public Plan? Modificar(
-            int id,
-            Plan plan)
+        public Plan? Modificar(int id,Plan plan)
         {
             var existente =
                 _repo.ObtenerPorId(id);
@@ -96,8 +96,10 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
 
             plan.IdPlan = id;
 
-            plan.Estado =
-                existente.Estado;
+            plan.Estado = existente.Estado;
+
+
+                
 
             _repo.Modificacion(plan);
 

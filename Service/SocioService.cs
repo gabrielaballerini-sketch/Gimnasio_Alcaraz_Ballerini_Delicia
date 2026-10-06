@@ -170,5 +170,16 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             var archivo = Path.Combine(carpetaAvatars, Path.GetFileName(ruta));
             if (File.Exists(archivo)) File.Delete(archivo);
         }
+        public IList<Socio> Buscar(string? texto, int limite = 10)
+        {
+            texto = texto?.Trim();
+
+            if (string.IsNullOrEmpty(texto) || texto.Length < 2)
+                return new List<Socio>();
+
+            if (limite < 1 || limite > 20) limite = 10;
+
+            return _repo.Buscar(texto, limite);
+        }
     }
 }

@@ -213,20 +213,74 @@
                             Socio
                         </label>
 
-                        <select class="form-select" v-model="form.idSocio">
+                        <div class="mb-3">
 
-                            <option value="0">
-                                Seleccione un socio
-                            </option>
+                            <label class="form-label">
+                                Socio
+                            </label>
 
-                            <option v-for="s in socios" :key="s.idSocio" :value="s.idSocio">
+                            <!-- Socio ya elegido -->
+                            <div v-if="socioSeleccionado"
+                                 class="d-flex align-items-center justify-content-between border rounded p-2">
 
-                                {{ s.apellido }}, {{ s.nombre }}
-                                - DNI: {{ s.dni }}
+                                <div class="d-flex align-items-center">
 
-                            </option>
+                                    <img v-if="socioSeleccionado.avatar" :src="socioSeleccionado.avatar"
+                                         class="rounded-circle me-2" style="width:36px;height:36px;object-fit:cover" />
 
-                        </select>
+                                    <div>
+                                        <div class="fw-semibold">
+                                            {{ socioSeleccionado.apellido }}, {{ socioSeleccionado.nombre }}
+                                        </div>
+                                        <small class="text-muted">
+                                            DNI {{ socioSeleccionado.dni }}
+                                        </small>
+                                    </div>
+
+                                </div>
+
+                                <button type="button" class="btn btn-sm btn-outline-secondary" @@click="quitarSocio">
+                                    Cambiar
+                                </button>
+
+                            </div>
+
+                            <!-- Buscador -->
+                            <div v-else class="position-relative">
+
+                                <input type="text" class="form-control"
+                                       placeholder="Buscar por nombre, apellido..."
+                                       autocomplete="off" v-model="busquedaSocio" @@input="buscarSocios" />
+
+                                <div v-if="busquedaSocio.trim().length >= 2"
+                                     class="list-group position-absolute w-100 shadow-sm"
+                                     style="z-index:1056;max-height:240px;overflow-y:auto">
+
+                                    <div v-if="buscandoSocios" class="list-group-item text-muted">
+                                        Buscando...
+                                    </div>
+
+                                    <template v-else>
+
+                                        <button v-for="s in resultadosSocios" :key="s.idSocio" type="button"
+                                                class="list-group-item list-group-item-action" @@click="elegirSocio(s)">
+
+                                            <strong>{{ s.apellido }}, {{ s.nombre }}</strong>
+                                            <small class="text-muted ms-2">DNI {{ s.dni }}</small>
+
+                                        </button>
+
+                                        <div v-if="resultadosSocios.length === 0" class="list-group-item text-muted">
+                                            No se encontraron socios activos.
+                                        </div>
+
+                                    </template>
+
+                                </div>
+
+                            </div>
+
+                        </div>
 
                     </div>
 
@@ -317,7 +371,11 @@
                 return {
 
                     membresias: [],
-                    socios: [],
+                    busquedaSocio: '',
+                    resultadosSocios: [],
+                    buscandoSocios: false,
+                    socioSeleccionado: null,
+                    temporizadorBusqueda: null,
                     planes: [],
                     pagina: 1,
                     tamPagina: 10,
@@ -369,7 +427,6 @@
             methods: {
                 async cargarDatos() {
                     await Promise.all([
-                        this.cargarSocios(),
                         this.cargarPlanes(),
                         this.cargarMembresias()
                     ]);
@@ -418,33 +475,68 @@
 
                 },
 
-                async cargarSocios() {
+                buscarSocios() {
 
-                    try {
+                    clearTimeout(this.temporizadorBusqueda);
 
-                        const response =
-                            await fetch(
-                                '/api/socios/activos?pagina=1&tamPagina=1000'
+                    const texto = this.busquedaSocio.trim();
+
+                    if (texto.length < 2) {
+                        this.resultadosSocios = [];
+                        this.buscandoSocios = false;
+                        return;
+                    }
+
+                    this.buscandoSocios = true;
+
+                    // Espera 300 ms sin tipear para no consultar en cada tecla
+                    this.temporizadorBusqueda = setTimeout(async () => {
+
+                        try {
+
+                            const response = await fetch(
+                                `/api/socios/buscar?texto=${encodeURIComponent(texto)}`
                             );
 
-                        if (!response.ok)
-                            throw new Error(
-                                'No se pudieron cargar los socios.'
-                            );
+                            if (!response.ok)
+                                throw new Error('No se pudo buscar socios.');
 
-                        const data =
-                            await response.json();
+                            const datos = await response.json();
 
-                        this.socios =
-                            data.items ?? [];
+                            // Si el usuario siguió escribiendo, esta respuesta quedó vieja
+                            if (texto !== this.busquedaSocio.trim())
+                                return;
 
-                    }
-                    catch (e) {
+                            this.resultadosSocios = datos;
+                            this.buscandoSocios = false;
 
-                        this.error =
-                            e.message;
+                        }
+                        catch (e) {
 
-                    }
+                            this.errorModal = e.message;
+                            this.buscandoSocios = false;
+
+                        }
+
+                    }, 300);
+
+                },
+
+                elegirSocio(socio) {
+
+                    this.socioSeleccionado = socio;
+                    this.form.idSocio = socio.idSocio;
+                    this.busquedaSocio = '';
+                    this.resultadosSocios = [];
+
+                },
+
+                quitarSocio() {
+
+                    this.socioSeleccionado = null;
+                    this.form.idSocio = 0;
+                    this.busquedaSocio = '';
+                    this.resultadosSocios = [];
 
                 },
 
@@ -485,6 +577,9 @@
                     this.idEditando = null;
 
                     this.errorModal = '';
+                    this.socioSeleccionado = null;
+                    this.busquedaSocio = '';
+                    this.resultadosSocios = [];
 
                     this.form = {
 
@@ -516,6 +611,9 @@
                         m.idMembresia;
 
                     this.errorModal = '';
+                    this.socioSeleccionado = m.socio ?? null;
+                    this.busquedaSocio = '';
+                    this.resultadosSocios = [];
 
                     this.form = {
 

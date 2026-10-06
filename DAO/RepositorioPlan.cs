@@ -16,9 +16,9 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
 
             var sql = @"
             INSERT INTO plan
-                (Nombre, UtilizacionesMensuales, Precio, Estado)
+                (Nombre, UtilizacionesMensuales, Precio, Estado,EsIlimitado)
             VALUES
-                (@Nombre, @UtilizacionesMensuales, @Precio, @Estado);
+                (@Nombre, @UtilizacionesMensuales, @Precio, @Estado,@EsIlimitado);
 
             SELECT LAST_INSERT_ID();";
 
@@ -43,7 +43,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             UPDATE plan
             SET Nombre = @Nombre,
                 UtilizacionesMensuales = @UtilizacionesMensuales,
-                Precio = @Precio
+                Precio = @Precio,
+                EsIlimitado=@EsIlimitado
             WHERE IdPlan = @IdPlan;";
 
             using var comand = new MySqlCommand(sql, conexion);
@@ -106,7 +107,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
                    Nombre,
                    UtilizacionesMensuales,
                    Precio,
-                   Estado
+                   Estado,
+                   EsIlimitado
             FROM plan
             WHERE IdPlan = @IdPlan;";
 
@@ -142,7 +144,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
                    Nombre,
                    UtilizacionesMensuales,
                    Precio,
-                   Estado
+                   Estado,
+                   EsIlimitado
             FROM plan
             WHERE Estado = 1
             ORDER BY Nombre, IdPlan
@@ -192,7 +195,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
                    Nombre,
                    UtilizacionesMensuales,
                    Precio,
-                   Estado
+                   Estado,
+                   EsIlimitado
             FROM plan
             WHERE Estado = 0
             ORDER BY Nombre, IdPlan
@@ -269,6 +273,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
                 "@Estado",
                 plan.Estado
             );
+            cmd.Parameters.AddWithValue("@EsIlimitado",plan.EsIlimitado);
         }
 
         private static Plan Mapear(MySqlDataReader r)
@@ -288,7 +293,9 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
 
                 Precio = r.GetDecimal("Precio"),
 
-                Estado = r.GetBoolean("Estado")
+                Estado = r.GetBoolean("Estado"),
+
+                EsIlimitado = r.GetBoolean("EsIlimitado")
             };
         }
     }
