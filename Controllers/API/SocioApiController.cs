@@ -1,10 +1,14 @@
 using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Gimnasio_Alcaraz_Ballerini_Delicia.Service;
 namespace Gimnasio_Alcaraz_Ballerini_Delicia.API{
 
 [ApiController]
 [Route("api/socios")]
+
+  [Authorize]
 public class SocioApiController : ControllerBase
 {
     private readonly SocioService _service;
@@ -14,6 +18,11 @@ public class SocioApiController : ControllerBase
         _service = service;
     }
 
+
+    
+     [Authorize( AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+        Roles = "Administrador,Empleado")]
+
     // GET api/socios/activos?pagina=1&tamPagina=10
     [HttpGet("activos")]
     public IActionResult ObtenerActivos([FromQuery] int pagina = 1, [FromQuery] int tamPagina = 10)
@@ -21,6 +30,11 @@ public class SocioApiController : ControllerBase
         return Ok(_service.ObtenerActivos(pagina, tamPagina));
     }
 
+
+
+     
+           [Authorize( AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+        Roles = "Administrador")]
     // GET api/socios/inactivos?pagina=1&tamPagina=10
     [HttpGet("inactivos")]
     public IActionResult ObtenerInactivos([FromQuery] int pagina = 1, [FromQuery] int tamPagina = 10)
@@ -37,6 +51,12 @@ public class SocioApiController : ControllerBase
         return Ok(socio);
     }
 
+
+
+     
+           [Authorize( AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+        Roles = "Administrador,Empleado")] 
+    
     // POST api/socios  (multipart/form-data)
     [HttpPost]
     public IActionResult Crear([FromForm] Socio socio)
@@ -54,6 +74,10 @@ public class SocioApiController : ControllerBase
         }
     }
 
+
+     
+           [Authorize( AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+        Roles = "Administrador,Empleado")]
     // PUT api/socios/5  (multipart/form-data)
     [HttpPut("{id:int}")]
     public IActionResult Modificar(int id, [FromForm] Socio socio)
@@ -72,6 +96,10 @@ public class SocioApiController : ControllerBase
         }
     }
 
+
+     
+           [Authorize( AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+        Roles = "Administrador")]
     // DELETE api/socios/5  (baja lógica)
     [HttpDelete("{id:int}")]
     public IActionResult DarDeBaja(int id)

@@ -70,6 +70,17 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             return _repo.ObtenerPorId(id);
         }
 
+        public Usuario? ObtenerPorEmail(string email)
+         
+         {
+         if (string.IsNullOrWhiteSpace(email))
+        return null;
+
+           return _repo.ObtenerPorEmail(email.Trim());
+           }
+
+
+
         public Usuario Crear(Usuario usuario)
         {
             usuario.Email =

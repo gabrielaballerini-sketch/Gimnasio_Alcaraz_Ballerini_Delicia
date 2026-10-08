@@ -1,11 +1,16 @@
 using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
 using Gimnasio_Alcaraz_Ballerini_Delicia.Service;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
 {
     [ApiController]
     [Route("api/profesores")]
+
+      [Authorize]
+    
     public class ProfesorApiController : ControllerBase
     {
         private readonly ProfesorService _service;
@@ -15,6 +20,11 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             _service = service;
         }
 
+        
+           [Authorize( AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+        Roles = "Administrador,Empleado")]
+
+         
         // GET api/profesores/activos?pagina=1&tamPagina=10
         [HttpGet("activos")]
         public IActionResult ObtenerActivos(
@@ -27,6 +37,10 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
                     tamPagina));
         }
 
+
+           [Authorize( AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+        Roles = "Administrador")]
+
         // GET api/profesores/inactivos?pagina=1&tamPagina=10
         [HttpGet("inactivos")]
         public IActionResult ObtenerInactivos(
@@ -38,6 +52,11 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
                     pagina,
                     tamPagina));
         }
+
+
+
+           [Authorize( AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+        Roles = "Administrador,Empleado")]
 
         // GET api/profesores/5
         [HttpGet("{id:int}")]
@@ -55,6 +74,9 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             return Ok(profesor);
         }
 
+        [Authorize( AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+        Roles = "Administrador,Empleado")]  
+          
         // GET api/profesores/dni/12345678
         [HttpGet("dni/{dni}")]
         public ActionResult<Profesor> ObtenerPorDni(string dni)
@@ -72,6 +94,11 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
         }
 
         // POST api/profesores
+
+
+          [Authorize( AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+        Roles = "Administrador,Empleado")]
+
         [HttpPost]
         public IActionResult Crear([FromForm] Profesor profesor)
         {
@@ -97,6 +124,10 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             }
         }
 
+
+
+            [Authorize( AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+        Roles = "Administrador,Empleado")]
         // PUT api/profesores/5
         [HttpPut("{id:int}")]
         public IActionResult Modificar(
@@ -130,6 +161,9 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             }
         }
 
+
+             [Authorize( AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+        Roles = "Administrador")]
         // DELETE api/profesores/5
         // Baja lógica
         [HttpDelete("{id:int}")]

@@ -1,11 +1,19 @@
 using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
 using Gimnasio_Alcaraz_Ballerini_Delicia.Service;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
 {
     [ApiController]
     [Route("api/usuarios")]
+
+    [Authorize]
+
+
+         [Authorize( AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+        Roles = "Administrador")]
     public class UsuarioApiController : ControllerBase
     {
         private readonly UsuarioService _service;

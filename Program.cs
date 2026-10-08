@@ -1,5 +1,8 @@
 using Gimnasio_Alcaraz_Ballerini_Delicia.Service;
 using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -9,6 +12,36 @@ builder.Services.AddControllersWithViews()
     {
         options.SuppressModelStateInvalidFilter = true;
     });
+
+// autorizacion x cookiess
+
+builder.Services.AddAuthentication(options =>
+{
+    // Opcional: Define un esquema por defecto si lo requieres
+})
+.AddCookie(options =>
+{
+    options.LoginPath = "/Cuenta/Login";
+    options.AccessDeniedPath = "/Cuenta/Denegado";
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"], // Asegúrate de tener esto en tu appsettings.json o pon el valor directo
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+    };
+});
+
+builder.Services.AddAuthorization();
+
+
+
 
 builder.Services.AddScoped<IRepositorioSocio, RepositorioSocio>();
 builder.Services.AddScoped<SocioService>();
@@ -25,6 +58,7 @@ builder.Services.AddScoped<ActividadService>();
 
 var app = builder.Build();
 
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -36,6 +70,8 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+
+app.UseAuthentication();
 
 app.UseAuthorization();
 

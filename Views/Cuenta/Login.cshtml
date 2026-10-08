@@ -1,0 +1,75 @@
+@{
+    ViewData["Title"] = "Iniciar sesión";
+}
+
+<div class="row justify-content-center mt-5">
+
+    <div class="col-md-5">
+
+        <div class="card shadow">
+
+            <div class="card-header text-center">
+
+                <h3>Gimnasio ABD</h3>
+
+                <p class="mb-0">
+                    Iniciar sesión
+                </p>
+
+            </div>
+
+            <div class="card-body">
+
+                @if (ViewBag.Mensaje != null)
+                {
+                    <div class="alert alert-danger">
+                        @ViewBag.Mensaje
+                    </div>
+                }
+
+                <form asp-controller="Cuenta"
+                      asp-action="Login"
+                      method="post">
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Email
+                        </label>
+
+                        <input type="email"
+                               name="email"
+                               class="form-control"
+                               required />
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Password
+                        </label>
+
+                        <input type="password"
+                               name="password"
+                               class="form-control"
+                               required />
+
+                    </div>
+
+                    <button type="submit"
+                            class="btn btn-primary w-100">
+
+                        Ingresar
+
+                    </button>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
