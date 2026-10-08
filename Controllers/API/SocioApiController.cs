@@ -37,13 +37,19 @@ public class SocioApiController : ControllerBase
         Roles = "Administrador")]
     // GET api/socios/inactivos?pagina=1&tamPagina=10
     [HttpGet("inactivos")]
-    public IActionResult ObtenerInactivos([FromQuery] int pagina = 1, [FromQuery] int tamPagina = 10)
-    {
-        return Ok(_service.ObtenerInactivos(pagina, tamPagina));
-    }
+        public IActionResult ObtenerInactivos([FromQuery] int pagina = 1, [FromQuery] int tamPagina = 10)
+        {
+            return Ok(_service.ObtenerInactivos(pagina, tamPagina));
+        }
+        // GET api/socios/buscar?texto=gom
+        [HttpGet("buscar")]
+        public IActionResult Buscar([FromQuery] string? texto)
+        {
+            return Ok(_service.Buscar(texto));
+        }
 
-    // GET api/socios/5
-    [HttpGet("{id:int}")]
+        // GET api/socios/5
+        [HttpGet("{id:int}")]
     public ActionResult<Socio> Obtener(int id)
     {
         var socio = _service.Obtener(id);

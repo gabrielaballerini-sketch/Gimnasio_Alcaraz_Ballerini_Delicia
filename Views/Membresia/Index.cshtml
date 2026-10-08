@@ -1,0 +1,883 @@
+@{
+    ViewData["Title"] = "Membresías";
+}
+
+<div class="container mt-4" id="app">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="mb-1">Membresías</h1>
+            <p class="text-muted mb-0">
+                Administración de las membresías de los socios.
+            </p>
+        </div>
+
+        <button class="btn btn-primary" @@click="abrirCrear">
+            <i class="bi bi-plus-circle me-1"></i>
+            Nueva membresía
+        </button>
+    </div>
+
+    <div v-if="mensaje" class="alert alert-success alert-dismissible fade show">
+        {{ mensaje }}
+        <button type="button" class="btn-close" @@click="mensaje = ''"></button>
+    </div>
+
+    <div v-if="error" class="alert alert-danger alert-dismissible fade show">
+        {{ error }}
+        <button type="button" class="btn-close" @@click="error = ''"></button>
+    </div>
+
+    <ul class="nav nav-tabs mb-3">
+
+        <li class="nav-item">
+            <button class="nav-link" :class="{ active: mostrarActivos }" @@click="cambiarPestania(true)">
+                Activas
+            </button>
+        </li>
+
+        <li class="nav-item">
+            <button class="nav-link" :class="{ active: !mostrarActivos }" @@click="cambiarPestania(false)">
+                Inactivas
+            </button>
+        </li>
+
+    </ul>
+
+    <div class="card shadow-sm border-0">
+
+        <div class="card-body">
+
+            <div v-if="cargando" class="text-center py-4">
+                <div class="spinner-border" role="status">
+                </div>
+
+                <p class="mt-2 mb-0">
+                    Cargando...
+                </p>
+            </div>
+
+            <div v-else-if="membresias.length === 0" class="text-center text-muted py-5">
+
+                <i class="bi bi-card-list fs-1"></i>
+
+                <p class="mt-3 mb-0">
+                    No hay membresías para mostrar.
+                </p>
+
+            </div>
+
+            <div v-else class="table-responsive">
+
+                <table class="table table-hover align-middle">
+
+                    <thead>
+                        <tr>
+                            <th>Socio</th>
+                            <th>DNI</th>
+                            <th>Plan</th>
+                            <th>Inicio</th>
+                            <th>Fin</th>
+                            <th>Precio</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        <tr v-for="m in membresias" :key="m.idMembresia">
+
+                            <td>
+                                <strong>
+                                    {{ m.socio?.nombre }}
+                                    {{ m.socio?.apellido }}
+                                </strong>
+                            </td>
+
+                            <td>
+                                {{ m.socio?.dni }}
+                            </td>
+
+                            <td>
+                                {{ m.plan?.nombre }}
+                            </td>
+
+                            <td>
+                                {{ formatearFecha(m.fechaInicio) }}
+                            </td>
+
+                            <td>
+                                {{ formatearFecha(m.fechaFin) }}
+                            </td>
+
+                            <td>
+                                $ {{ formatearPrecio(m.precioContratado) }}
+                            </td>
+
+                            <td class="text-end">
+
+                                <button v-if="mostrarActivos" class="btn btn-sm btn-outline-primary me-1"
+                                    @@click="editar(m)">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+
+                                <button v-if="mostrarActivos" class="btn btn-sm btn-outline-danger"
+                                    @@click="darDeBaja(m)">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+
+                                <button v-else class="btn btn-sm btn-outline-success" @@click="reactivar(m)">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </button>
+
+                            </td>
+
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            <div v-if="totalPaginas > 1" class="d-flex justify-content-center mt-3">
+
+                <nav>
+
+                    <ul class="pagination">
+
+                        <li class="page-item" :class="{ disabled: pagina === 1 }">
+
+                            <button class="page-link" @@click="cambiarPagina(pagina - 1)">
+                                Anterior
+                            </button>
+
+                        </li>
+
+                        <li v-for="n in totalPaginas" :key="n" class="page-item" :class="{ active: pagina === n }">
+
+                            <button class="page-link" @@click="cambiarPagina(n)">
+                                {{ n }}
+                            </button>
+
+                        </li>
+
+                        <li class="page-item" :class="{ disabled: pagina === totalPaginas }">
+
+                            <button class="page-link" @@click="cambiarPagina(pagina + 1)">
+                                Siguiente
+                            </button>
+
+                        </li>
+
+                    </ul>
+
+                </nav>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- MODAL CREAR / EDITAR -->
+
+    <div class="modal fade" id="modalMembresia" tabindex="-1">
+
+        <div class="modal-dialog">
+
+            <div class="modal-content">
+
+                <div class="modal-header">
+
+                    <h5 class="modal-title">
+                        {{ editando
+                        ? 'Modificar membresía'
+                        : 'Nueva membresía' }}
+                    </h5>
+
+                    <button type="button" class="btn-close" data-bs-dismiss="modal">
+                    </button>
+
+                </div>
+
+                <div class="modal-body">
+
+                    <div v-if="errorModal" class="alert alert-danger">
+                        {{ errorModal }}
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Socio
+                        </label>
+
+                        <div class="mb-3">
+
+                            <label class="form-label">
+                                Socio
+                            </label>
+
+                            <!-- Socio ya elegido -->
+                            <div v-if="socioSeleccionado"
+                                 class="d-flex align-items-center justify-content-between border rounded p-2">
+
+                                <div class="d-flex align-items-center">
+
+                                    <img v-if="socioSeleccionado.avatar" :src="socioSeleccionado.avatar"
+                                         class="rounded-circle me-2" style="width:36px;height:36px;object-fit:cover" />
+
+                                    <div>
+                                        <div class="fw-semibold">
+                                            {{ socioSeleccionado.apellido }}, {{ socioSeleccionado.nombre }}
+                                        </div>
+                                        <small class="text-muted">
+                                            DNI {{ socioSeleccionado.dni }}
+                                        </small>
+                                    </div>
+
+                                </div>
+
+                                <button type="button" class="btn btn-sm btn-outline-secondary" @@click="quitarSocio">
+                                    Cambiar
+                                </button>
+
+                            </div>
+
+                            <!-- Buscador -->
+                            <div v-else class="position-relative">
+
+                                <input type="text" class="form-control"
+                                       placeholder="Buscar por nombre, apellido..."
+                                       autocomplete="off" v-model="busquedaSocio" @@input="buscarSocios" />
+
+                                <div v-if="busquedaSocio.trim().length >= 2"
+                                     class="list-group position-absolute w-100 shadow-sm"
+                                     style="z-index:1056;max-height:240px;overflow-y:auto">
+
+                                    <div v-if="buscandoSocios" class="list-group-item text-muted">
+                                        Buscando...
+                                    </div>
+
+                                    <template v-else>
+
+                                        <button v-for="s in resultadosSocios" :key="s.idSocio" type="button"
+                                                class="list-group-item list-group-item-action" @@click="elegirSocio(s)">
+
+                                            <strong>{{ s.apellido }}, {{ s.nombre }}</strong>
+                                            <small class="text-muted ms-2">DNI {{ s.dni }}</small>
+
+                                        </button>
+
+                                        <div v-if="resultadosSocios.length === 0" class="list-group-item text-muted">
+                                            No se encontraron socios activos.
+                                        </div>
+
+                                    </template>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Plan
+                        </label>
+
+                        <select class="form-select" v-model="form.idPlan" @@change="actualizarPrecio">
+
+                            <option value="0">
+                                Seleccione un plan
+                            </option>
+
+                            <option v-for="p in planes" :key="p.idPlan" :value="p.idPlan">
+
+                                {{ p.nombre }}
+                                - ${{ formatearPrecio(p.precio) }}
+
+                            </option>
+
+                        </select>
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Fecha de inicio
+                        </label>
+
+                        <input type="date" class="form-control" v-model="form.fechaInicio" :min="fechaMinima" />
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Precio mensual contratado
+                        </label>
+
+                        <input type="text" class="form-control" :value="precioSeleccionadoTexto" readonly />
+
+                        <small class="text-muted">
+                            El precio queda guardado en la membresía
+                            aunque posteriormente cambie el precio del plan.
+                        </small>
+
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+
+                    <button type="button" class="btn btn-primary" @@click="guardar">
+                        Guardar
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+@section Scripts {
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+
+    <script>
+
+        const API = '/api/membresias';
+
+        const { createApp } = Vue;
+
+        createApp({
+
+            data() {
+
+                return {
+
+                    membresias: [],
+                    busquedaSocio: '',
+                    resultadosSocios: [],
+                    buscandoSocios: false,
+                    socioSeleccionado: null,
+                    temporizadorBusqueda: null,
+                    planes: [],
+                    pagina: 1,
+                    tamPagina: 10,
+                    total: 0,
+                    totalPaginas: 0,
+                    mostrarActivos: true,
+                    cargando: false,
+                    mensaje: '',
+                    error: '',
+                    errorModal: '',
+                    editando: false,
+                    idEditando: null,
+                    form: {
+                        idSocio: 0,
+                        idPlan: 0,
+                        fechaInicio: ''
+                    }
+                };
+            },
+            computed: {
+                fechaMinima() {
+                    return new Date()
+                        .toISOString()
+                        .split('T')[0];
+                },
+                precioSeleccionado() {
+                    const plan =
+                        this.planes.find(
+                            p => Number(p.idPlan) ===
+                                Number(this.form.idPlan)
+                        );
+                    return plan
+                        ? plan.precio
+                        : 0;
+                },
+                precioSeleccionadoTexto() {
+                    if (!this.precioSeleccionado)
+                        return '';
+
+                    return '$ ' +
+                        this.formatearPrecio(
+                            this.precioSeleccionado
+                        );
+                }
+            },
+            mounted() {
+                this.cargarDatos();
+            },
+            methods: {
+                async cargarDatos() {
+                    await Promise.all([
+                        this.cargarPlanes(),
+                        this.cargarMembresias()
+                    ]);
+
+                },
+
+                async cargarMembresias() {
+                    this.cargando = true;
+                    this.error = '';
+                    try {
+                        const endpoint =
+                            this.mostrarActivos
+                                ? `${API}/activos`
+                                : `${API}/inactivos`;
+
+                        const response =
+                            await fetch(
+                                `${endpoint}?pagina=${this.pagina}&tamPagina=${this.tamPagina}`
+                            );
+
+                        if (!response.ok)
+                            throw new Error(
+                                'No se pudieron cargar las membresías.'
+                            );
+
+                        const data =
+                            await response.json();
+
+                        this.membresias =
+                            data.items ?? [];
+
+                        this.total =
+                            data.total ?? 0;
+
+                        this.totalPaginas =
+                            Math.ceil(
+                                this.total /
+                                this.tamPagina
+                            );
+                    }
+                    catch (e) { this.error = e.message; }
+                    finally {
+
+                        this.cargando = false;
+                    }
+
+                },
+
+                buscarSocios() {
+
+                    clearTimeout(this.temporizadorBusqueda);
+
+                    const texto = this.busquedaSocio.trim();
+
+                    if (texto.length < 2) {
+                        this.resultadosSocios = [];
+                        this.buscandoSocios = false;
+                        return;
+                    }
+
+                    this.buscandoSocios = true;
+
+                    // Espera 300 ms sin tipear para no consultar en cada tecla
+                    this.temporizadorBusqueda = setTimeout(async () => {
+
+                        try {
+
+                            const response = await fetch(
+                                `/api/socios/buscar?texto=${encodeURIComponent(texto)}`
+                            );
+
+                            if (!response.ok)
+                                throw new Error('No se pudo buscar socios.');
+
+                            const datos = await response.json();
+
+                            // Si el usuario siguió escribiendo, esta respuesta quedó vieja
+                            if (texto !== this.busquedaSocio.trim())
+                                return;
+
+                            this.resultadosSocios = datos;
+                            this.buscandoSocios = false;
+
+                        }
+                        catch (e) {
+
+                            this.errorModal = e.message;
+                            this.buscandoSocios = false;
+
+                        }
+
+                    }, 300);
+
+                },
+
+                elegirSocio(socio) {
+
+                    this.socioSeleccionado = socio;
+                    this.form.idSocio = socio.idSocio;
+                    this.busquedaSocio = '';
+                    this.resultadosSocios = [];
+
+                },
+
+                quitarSocio() {
+
+                    this.socioSeleccionado = null;
+                    this.form.idSocio = 0;
+                    this.busquedaSocio = '';
+                    this.resultadosSocios = [];
+
+                },
+
+                async cargarPlanes() {
+
+                    try {
+
+                        const response =
+                            await fetch(
+                                '/api/planes/activos?pagina=1&tamPagina=1000'
+                            );
+
+                        if (!response.ok)
+                            throw new Error(
+                                'No se pudieron cargar los planes.'
+                            );
+
+                        const data =
+                            await response.json();
+
+                        this.planes =
+                            data.items ?? [];
+
+                    }
+                    catch (e) {
+
+                        this.error =
+                            e.message;
+
+                    }
+
+                },
+
+                abrirCrear() {
+
+                    this.editando = false;
+
+                    this.idEditando = null;
+
+                    this.errorModal = '';
+                    this.socioSeleccionado = null;
+                    this.busquedaSocio = '';
+                    this.resultadosSocios = [];
+
+                    this.form = {
+
+                        idSocio: 0,
+
+                        idPlan: 0,
+
+                        fechaInicio:
+                            this.fechaMinima
+
+                    };
+
+                    const modal =
+                        bootstrap.Modal.getOrCreateInstance(
+                            document.getElementById(
+                                'modalMembresia'
+                            )
+                        );
+
+                    modal.show();
+
+                },
+
+                editar(m) {
+
+                    this.editando = true;
+
+                    this.idEditando =
+                        m.idMembresia;
+
+                    this.errorModal = '';
+                    this.socioSeleccionado = m.socio ?? null;
+                    this.busquedaSocio = '';
+                    this.resultadosSocios = [];
+
+                    this.form = {
+
+                        idSocio:
+                            m.idSocio,
+
+                        idPlan:
+                            m.idPlan,
+
+                        fechaInicio:
+                            m.fechaInicio
+                                ? m.fechaInicio.substring(0, 10)
+                                : ''
+
+                    };
+
+                    const modal =
+                        bootstrap.Modal.getOrCreateInstance(
+                            document.getElementById(
+                                'modalMembresia'
+                            )
+                        );
+
+                    modal.show();
+
+                },
+
+                actualizarPrecio() {
+
+                    // El precio se obtiene automáticamente
+                    // desde el plan seleccionado.
+
+                },
+
+                async guardar() {
+
+                    this.errorModal = '';
+
+                    if (!this.form.idSocio ||
+                        Number(this.form.idSocio) <= 0) {
+
+                        this.errorModal =
+                            'Debe seleccionar un socio.';
+
+                        return;
+
+                    }
+
+                    if (!this.form.idPlan ||
+                        Number(this.form.idPlan) <= 0) {
+
+                        this.errorModal =
+                            'Debe seleccionar un plan.';
+
+                        return;
+
+                    }
+
+                    if (!this.form.fechaInicio) {
+
+                        this.errorModal =
+                            'Debe seleccionar una fecha de inicio.';
+
+                        return;
+
+                    }
+
+                    const formData =
+                        new FormData();
+
+                    formData.append(
+                        'IdSocio',
+                        this.form.idSocio
+                    );
+
+                    formData.append(
+                        'IdPlan',
+                        this.form.idPlan
+                    );
+
+                    formData.append(
+                        'FechaInicio',
+                        this.form.fechaInicio
+                    );
+
+                    formData.append(
+                        'FechaFin',
+                        this.form.fechaInicio
+                    );
+
+                    formData.append(
+                        'PrecioContratado',
+                        this.precioSeleccionado
+                    );
+
+                    let response;
+
+                    if (this.editando) {
+
+                        response =
+                            await fetch(
+                                `${API}/${this.idEditando}`,
+                                {
+                                    method: 'PUT',
+                                    body: formData
+                                }
+                            );
+
+                    }
+                    else {
+
+                        response =
+                            await fetch(
+                                API,
+                                {
+                                    method: 'POST',
+                                    body: formData
+                                }
+                            );
+
+                    }
+
+                    const data =
+                        await response.json()
+                            .catch(() => ({}));
+
+                    if (!response.ok) {
+
+                        this.errorModal =
+                            data.mensaje ||
+                            'No se pudo guardar la membresía.';
+
+                        return;
+
+                    }
+
+                    bootstrap.Modal
+                        .getInstance(
+                            document.getElementById(
+                                'modalMembresia'
+                            )
+                        )
+                        ?.hide();
+
+                    this.mensaje =
+                        this.editando
+                            ? 'Membresía modificada correctamente.'
+                            : 'Membresía creada correctamente.';
+
+                    await this.cargarMembresias();
+
+                },
+
+                async darDeBaja(m) {
+
+                    if (!confirm(
+                        `¿Está seguro de dar de baja la membresía de ${m.socio?.nombre} ${m.socio?.apellido}?`
+                    ))
+                        return;
+
+                    const response =
+                        await fetch(
+                            `${API}/${m.idMembresia}`,
+                            {
+                                method: 'DELETE'
+                            }
+                        );
+
+                    if (!response.ok) {
+
+                        this.error =
+                            'No se pudo dar de baja la membresía.';
+
+                        return;
+
+                    }
+
+                    this.mensaje =
+                        'Membresía dada de baja correctamente.';
+
+                    await this.cargarMembresias();
+
+                },
+
+                async reactivar(m) {
+
+                    if (!confirm(
+                        `¿Desea reactivar esta membresía?`
+                    ))
+                        return;
+
+                    const response =
+                        await fetch(
+                            `${API}/${m.idMembresia}/reactivar`,
+                            {
+                                method: 'PUT'
+                            }
+                        );
+
+                    if (!response.ok) {
+
+                        this.error =
+                            'No se pudo reactivar la membresía.';
+
+                        return;
+
+                    }
+
+                    this.mensaje =
+                        'Membresía reactivada correctamente.';
+
+                    await this.cargarMembresias();
+
+                },
+
+                cambiarPestania(activos) {
+
+                    this.mostrarActivos =
+                        activos;
+
+                    this.pagina = 1;
+
+                    this.cargarMembresias();
+
+                },
+
+                cambiarPagina(nuevaPagina) {
+
+                    if (nuevaPagina < 1 ||
+                        nuevaPagina > this.totalPaginas)
+                        return;
+
+                    this.pagina =
+                        nuevaPagina;
+
+                    this.cargarMembresias();
+
+                },
+
+                formatearFecha(fecha) {
+
+                    if (!fecha)
+                        return '';
+
+                    return new Date(fecha)
+                        .toLocaleDateString(
+                            'es-AR'
+                        );
+
+                },
+
+                formatearPrecio(precio) {
+
+                    return Number(precio || 0)
+                        .toLocaleString(
+                            'es-AR',
+                            {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            }
+                        );
+                }
+            }
+        }).mount('#app');
+
+    </script>
+}

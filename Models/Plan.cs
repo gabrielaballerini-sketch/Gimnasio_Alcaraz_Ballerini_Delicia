@@ -13,7 +13,8 @@ public class Plan
     
     public decimal Precio { get; set; }
     public bool Estado { get; set; } = true;
+    public bool EsIlimitado { get; set; }
 
     // Propiedad calculada útil para la lógica
-    public bool EsIlimitado => !UtilizacionesMensuales.HasValue;
+    
 }}

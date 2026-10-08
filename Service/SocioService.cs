@@ -1,4 +1,7 @@
 using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
+using Gimnasio_Alcaraz_Ballerini_Delicia.DAO;
+
+
 namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
 {
     public class SocioService
@@ -166,6 +169,17 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             // GetFileName evita que una ruta manipulada salga de la carpeta
             var archivo = Path.Combine(carpetaAvatars, Path.GetFileName(ruta));
             if (File.Exists(archivo)) File.Delete(archivo);
+        }
+        public IList<Socio> Buscar(string? texto, int limite = 10)
+        {
+            texto = texto?.Trim();
+
+            if (string.IsNullOrEmpty(texto) || texto.Length < 2)
+                return new List<Socio>();
+
+            if (limite < 1 || limite > 20) limite = 10;
+
+            return _repo.Buscar(texto, limite);
         }
     }
 }

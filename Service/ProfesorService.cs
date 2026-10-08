@@ -1,4 +1,5 @@
 using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
+using Gimnasio_Alcaraz_Ballerini_Delicia.DAO;
 
 namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
 {
