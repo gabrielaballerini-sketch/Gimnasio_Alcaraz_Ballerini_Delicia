@@ -1,0 +1,293 @@
+@{
+    ViewData["Title"] = "Editar perfil";
+}
+
+<div id="app" class="row justify-content-center mt-4">
+    <div class="col-md-7 col-lg-6">
+        <div class="card shadow">
+
+            <div class="card-header text-center">
+                <h4 class="mb-0">Editar perfil</h4>
+            </div>
+
+            <div class="card-body">
+
+                <!-- MENSAJES -->
+                <div v-if="mensaje"
+                     class="alert"
+                     v-bind:class="tipo === 'ok' ? 'alert-success' : 'alert-danger'">
+                    {{ mensaje }}
+                </div>
+
+                <!-- AVATAR -->
+                <div class="text-center mb-4">
+
+                    <img v-if="avatarPreview || avatar"
+                         v-bind:src="avatarPreview || avatar"
+                         alt="Avatar"
+                         class="rounded-circle border"
+                         style="width:120px;height:120px;object-fit:cover;" />
+
+                    <div v-else
+                         class="rounded-circle bg-secondary text-white d-inline-flex align-items-center justify-content-center"
+                         style="width:120px;height:120px;font-size:3rem;">
+                        {{ inicial }}
+                    </div>
+
+                    <div class="mt-3">
+                        <input type="file"
+                               ref="inputAvatar"
+                               class="form-control"
+                               accept=".jpg,.jpeg,.png,.webp"
+                               v-on:change="seleccionarAvatar" />
+                        <div class="form-text">JPG, PNG o WEBP. Máximo 5 MB.</div>
+                    </div>
+                </div>
+
+                <!-- DATOS -->
+                <div class="mb-3">
+                    <label class="form-label">Usuario</label>
+                    <input class="form-control" maxlength="50" v-model="nombreUsuario" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-control" v-model="email" />
+                </div>
+
+                <hr />
+
+                <!-- CONTRASEÑA -->
+                <h6>Cambiar contraseña</h6>
+                <p class="text-muted small">Dejá estos campos vacíos si no querés cambiarla.</p>
+
+                <div class="mb-3">
+                    <label class="form-label">Contraseña actual</label>
+                    <input type="password" class="form-control"
+                           autocomplete="current-password" v-model="passwordActual" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Nueva contraseña</label>
+                    <input type="password" class="form-control"
+                           autocomplete="new-password" v-model="nuevaPassword" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Repetir nueva contraseña</label>
+                    <input type="password" class="form-control"
+                           autocomplete="new-password" v-model="confirmarPassword" />
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary flex-fill"
+                            v-bind:disabled="guardando"
+                            v-on:click="guardar">
+                        {{ guardando ? 'Guardando...' : 'Guardar cambios' }}
+                    </button>
+
+                    <a href="/" class="btn btn-outline-secondary">Cancelar</a>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <script>
+        const API = '/api/perfil';
+
+        Vue.createApp({
+
+            data() {
+                return {
+                    token: '',
+                    email: '',
+                    nombreUsuario: '',
+                    avatar: '',
+                    passwordActual: '',
+                    nuevaPassword: '',
+                    confirmarPassword: '',
+                    avatarFile: null,
+                    avatarPreview: '',
+                    guardando: false,
+                    mensaje: '',
+                    tipo: 'ok'
+                };
+            },
+
+            computed: {
+                inicial() {
+                    return this.email ? this.email.charAt(0).toUpperCase() : '?';
+                }
+            },
+
+            methods: {
+
+                aviso(tipo, texto) {
+                    this.tipo = tipo;
+                    this.mensaje = texto;
+                },
+
+                // Pide el JWT de la sesión actual 
+                async obtenerToken() {
+                    const resp = await fetch('/Cuenta/Token', {
+                        credentials: 'same-origin'
+                    });
+
+                    if (!resp.ok) {
+                        throw new Error('No se pudo obtener el token.');
+                    }
+
+                    const datos = await resp.json();
+                    this.token = datos.token;
+                },
+
+                // Todas las llamadas a la API van con el JWT
+                peticionApi(url, opciones = {}) {
+                    const headers = new Headers(opciones.headers || {});
+                    headers.set('Authorization', `Bearer ${this.token}`);
+
+                    return fetch(url, {
+                        ...opciones,
+                        headers: headers,
+                        credentials: 'same-origin'
+                    });
+                },
+
+                async cargar() {
+                    try {
+                        if (!this.token) {
+                            await this.obtenerToken();
+                        }
+
+                        const resp = await this.peticionApi(API);
+
+                        if (!resp.ok) {
+                            this.aviso('error', 'No se pudieron cargar tus datos. Código: ' + resp.status);
+                            return;
+                        }
+
+                        const u = await resp.json();
+
+                        this.email = u.email || '';
+                        this.nombreUsuario = u.nombreUsuario || '';
+                        this.avatar = u.avatar || '';
+
+                    } catch (error) {
+                        console.error(error);
+                        this.aviso('error', 'No se pudo conectar con el servidor.');
+                    }
+                },
+
+                seleccionarAvatar(evento) {
+                    const archivo = evento.target.files[0];
+
+                    this.avatarFile = null;
+                    this.avatarPreview = '';
+
+                    if (!archivo) return;
+
+                    const tiposOk = ['image/jpeg', 'image/png', 'image/webp'];
+
+                    if (!tiposOk.includes(archivo.type)) {
+                        this.aviso('error', 'La imagen debe ser JPG, PNG o WEBP.');
+                        evento.target.value = '';
+                        return;
+                    }
+
+                    if (archivo.size > 5 * 1024 * 1024) {
+                        this.aviso('error', 'La imagen no puede superar los 5 MB.');
+                        evento.target.value = '';
+                        return;
+                    }
+
+                    this.avatarFile = archivo;
+                    this.avatarPreview = URL.createObjectURL(archivo);
+                },
+
+                async guardar() {
+                    this.mensaje = '';
+
+                    if (this.nuevaPassword && this.nuevaPassword !== this.confirmarPassword) {
+                        this.aviso('error', 'La confirmación de la contraseña no coincide.');
+                        return;
+                    }
+
+                    this.guardando = true;
+
+                    try {
+                        // 1) Datos (email, usuario, contraseña)
+                        const resp = await this.peticionApi(API, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                email: this.email,
+                                nombreUsuario: this.nombreUsuario,
+                                passwordActual: this.passwordActual,
+                                nuevaPassword: this.nuevaPassword,
+                                confirmarPassword: this.confirmarPassword
+                            })
+                        });
+
+                        if (!resp.ok) {
+                            let error = {};
+                            try { error = await resp.json(); } catch { }
+                            this.aviso('error', error.mensaje || 'No se pudo guardar el perfil.');
+                            return;
+                        }
+
+                        // 2) Avatar (si eligió uno)
+                        if (this.avatarFile) {
+                            const formData = new FormData();
+                            formData.append('avatarFile', this.avatarFile);
+
+                            const respAvatar = await this.peticionApi(API + '/avatar', {
+                                method: 'PUT',
+                                body: formData
+                            });
+
+                            if (!respAvatar.ok) {
+                                let error = {};
+                                try { error = await respAvatar.json(); } catch { }
+                                this.aviso('error',
+                                    error.mensaje || 'Se guardaron los datos, pero no se pudo actualizar el avatar.');
+                                return;
+                            }
+                        }
+
+                        // 3) Limpiar y volver a cargar los datos
+                        this.passwordActual = '';
+                        this.nuevaPassword = '';
+                        this.confirmarPassword = '';
+                        this.avatarFile = null;
+                        this.avatarPreview = '';
+
+                        if (this.$refs.inputAvatar) {
+                            this.$refs.inputAvatar.value = '';
+                        }
+
+                        await this.cargar();
+
+                        this.aviso('ok', 'Perfil actualizado correctamente.');
+
+                    } catch (error) {
+                        console.error(error);
+                        this.aviso('error', 'No se pudo conectar con el servidor.');
+                    } finally {
+                        this.guardando = false;
+                    }
+                }
+            },
+
+            mounted() {
+                this.cargar();
+            }
+
+        }).mount('#app');
+    </script>
+}

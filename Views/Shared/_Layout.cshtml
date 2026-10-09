@@ -179,36 +179,62 @@
                     {
 
                         <li class="nav-item">
-
-                            <span class="nav-link text-dark">
-
-                                @User.Identity.Name
-
-                            </span>
-
-                        </li>
-                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Membresia"
                                 asp-action="Index">Membresias</a>
                         </li>
 
+                        <li class="nav-item dropdown">
 
-                        <li class="nav-item">
+                            <a class="nav-link dropdown-toggle text-dark d-flex align-items-center"
+                               href="#"
+                               id="menuUsuario"
+                               role="button"
+                               data-bs-toggle="dropdown"
+                               aria-expanded="false">
 
-                            <form asp-controller="Cuenta"
-                                  asp-action="Logout"
-                                  method="post">
+                                <span class="rounded-circle bg-secondary text-white d-inline-flex align-items-center justify-content-center me-2"
+                                      style="width:28px;height:28px;font-size:.8rem;">
+                                    @(User.Identity.Name!.Substring(0, 1).ToUpper())
+                                </span>
 
-                                <button type="submit"
-                                        class="nav-link btn btn-link text-dark">
+                                @User.Identity.Name
 
-                                    Cerrar sesión
+                            </a>
 
-                                </button>
+                            <ul class="dropdown-menu dropdown-menu-end"
+                                aria-labelledby="menuUsuario">
 
-                            </form>
+                                <li>
+                                    <a class="dropdown-item"
+                                       asp-controller="Cuenta"
+                                       asp-action="EditarPerfil">
+
+                                        Editar perfil
+
+                                    </a>
+                                </li>
+
+                                <li><hr class="dropdown-divider" /></li>
+
+                                <li>
+                                    <form asp-controller="Cuenta"
+                                          asp-action="Logout"
+                                          method="post">
+
+                                        <button type="submit"
+                                                class="dropdown-item">
+
+                                            Cerrar sesión
+
+                                        </button>
+
+                                    </form>
+                                </li>
+
+                            </ul>
 
                         </li>
+                   
 
                     }
                     else
@@ -277,7 +303,7 @@
         asp-append-version="true"></script>
 
 @await RenderSectionAsync("Scripts", required: false)
-```
+
 
 </body>
 

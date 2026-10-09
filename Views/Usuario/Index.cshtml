@@ -1,24 +1,25 @@
+
 @{
     ViewData["Title"] = "Usuarios";
 }
 
-<div id="app" class="container mt-4">
+<div id="app" class="container mt-4 mb-5">
 
-    <h2>Usuarios</h2>
+    <h2 class="mb-4">Usuarios</h2>
 
+    <!-- MENSAJES -->
     <div v-if="mensaje"
          class="alert"
          :class="mensajeTipo === 'ok'
             ? 'alert-success'
             : 'alert-danger'">
-
         {{ mensaje }}
-
     </div>
 
-    <div class="card mb-4">
+    <!-- FORMULARIO -->
+    <div class="card shadow-sm mb-4">
 
-        <div class="card-header">
+        <div class="card-header bg-dark text-white">
             {{ form.idUsuario > 0
                 ? 'Modificar usuario'
                 : 'Nuevo usuario' }}
@@ -26,34 +27,38 @@
 
         <div class="card-body">
 
-            <form @@submit.prevent="guardar">
+            <form @@submit.prevent="guardar" autocomplete="off">
 
                 <div class="mb-3">
-
                     <label class="form-label">
                         Email
                     </label>
 
                     <input type="email"
                            class="form-control"
-                           v-model="form.email">
-
+                           v-model="form.email"
+                          autocomplete="new-password"
+                          required>
                 </div>
 
                 <div class="mb-3">
-
                     <label class="form-label">
                         Password
                     </label>
 
                     <input type="password"
                            class="form-control"
-                           v-model="form.password">
+                           v-model="form.password"
+                           required
+                           minlength="6"
+                           maxlength="20">
 
+                    <small class="text-muted">
+                        Ingresá la contraseña para crear o modificar el usuario.
+                    </small>
                 </div>
 
                 <div class="mb-3">
-
                     <label class="form-label">
                         Rol
                     </label>
@@ -61,34 +66,91 @@
                     <select class="form-select"
                             v-model.number="form.roles">
 
-                        <option :value="1">
-                            Socio
-                        </option>
-
-                        <option :value="2">
-                            Empleado
-                        </option>
-
-                        <option :value="3">
-                            Administrador
-                        </option>
+                        <option :value="1">Socio</option>
+                        <option :value="2">Empleado</option>
+                        <option :value="3">Administrador</option>
 
                     </select>
+                </div>
+
+                <!-- AVATAR ACTUAL -->
+                <div class="mb-3" v-if="form.idUsuario > 0">
+
+                    <label class="form-label d-block">
+                        Avatar actual
+                    </label>
+
+                    <img v-if="avatarActual"
+                         :src="avatarActual"
+                         alt="Avatar del usuario"
+                         class="rounded-circle border"
+                         style="width: 90px; height: 90px; object-fit: cover;">
+
+                    <div v-else
+                         class="rounded-circle border bg-light d-flex align-items-center justify-content-center"
+                         style="width: 90px; height: 90px;">
+
+                        <i class="bi bi-person text-secondary"
+                           style="font-size: 2.5rem;"></i>
+
+                    </div>
+
+                </div>
+
+                <!-- SELECCIONAR AVATAR -->
+                <div class="mb-3">
+
+                    <label class="form-label">
+                        <i class="bi bi-image"></i>
+                        {{ form.idUsuario > 0
+                            ? 'Cambiar avatar'
+                            : 'Avatar (opcional)' }}
+                    </label>
+
+                    <input type="file"
+                           class="form-control"
+                           accept=".jpg,.jpeg,.png,.webp"
+                           @@change="seleccionarAvatar">
+
+                    <small class="text-muted">
+                        Formatos permitidos: JPG, PNG y WEBP.
+                        Tamaño máximo: 5 MB.
+                    </small>
+
+                </div>
+
+                <!-- VISTA PREVIA -->
+                <div class="mb-3" v-if="avatarPreview">
+
+                    <label class="form-label">
+                        Vista previa
+                    </label>
+
+                    <div>
+                        <img :src="avatarPreview"
+                             alt="Vista previa del avatar"
+                             class="rounded-circle border"
+                             style="width: 100px; height: 100px; object-fit: cover;">
+                    </div>
 
                 </div>
 
                 <button type="submit"
-                        class="btn btn-primary">
+                        class="btn btn-primary"
+                        :disabled="guardando">
 
-                    {{ form.idUsuario > 0
-                        ? 'Modificar'
-                        : 'Guardar' }}
+                    {{ guardando
+                        ? 'Guardando...'
+                        : (form.idUsuario > 0
+                            ? 'Guardar cambios'
+                            : 'Crear usuario') }}
 
                 </button>
 
                 <button type="button"
                         class="btn btn-secondary ms-2"
-                        @@click="limpiar">
+                        @@click="limpiar"
+                        :disabled="guardando">
 
                     Cancelar
 
@@ -97,14 +159,12 @@
             </form>
 
         </div>
-
     </div>
 
-
-    <div class="d-flex justify-content-between mb-3">
+    <!-- PESTAÑAS Y PAGINACIÓN -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
 
         <div>
-
             <button class="btn"
                     :class="pestana === 'activos'
                         ? 'btn-primary'
@@ -112,7 +172,6 @@
                     @@click="cambiarPestana('activos')">
 
                 Activos
-
             </button>
 
             <button class="btn ms-2"
@@ -122,9 +181,7 @@
                     @@click="cambiarPestana('inactivos')">
 
                 Inactivos
-
             </button>
-
         </div>
 
         <select class="form-select"
@@ -140,104 +197,127 @@
 
     </div>
 
+    <!-- TABLA -->
+    <div class="table-responsive">
 
-    <table class="table table-striped">
+        <table class="table table-striped table-hover align-middle">
 
-        <thead>
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Avatar</th>
+                    <th>Email</th>
+                    <th>Rol</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
 
-            <tr>
+            <tbody>
 
-                <th>ID</th>
+                <tr v-for="usuario in usuarios"
+                    :key="usuario.idUsuario">
 
-                <th>Email</th>
+                    <td>
+                        {{ usuario.idUsuario }}
+                    </td>
 
-                <th>Rol</th>
+                    <!-- FOTO DEL USUARIO -->
+                    <td>
 
-                <th>Acciones</th>
+                        <img v-if="usuario.avatar"
+                             :src="usuario.avatar"
+                             alt="Avatar"
+                             class="rounded-circle border"
+                             style="width: 55px; height: 55px; object-fit: cover;">
 
-            </tr>
+                        <div v-else
+                             class="rounded-circle border bg-light d-flex align-items-center justify-content-center"
+                             style="width: 55px; height: 55px;">
 
-        </thead>
+                            <i class="bi bi-person text-secondary"
+                               style="font-size: 1.7rem;"></i>
 
-        <tbody>
+                        </div>
 
-            <tr v-for="usuario in usuarios"
-                :key="usuario.idUsuario">
+                    </td>
 
-                <td>
-                    {{ usuario.idUsuario }}
-                </td>
+                    <td>
+                        {{ usuario.email }}
+                    </td>
 
-                <td>
-                    {{ usuario.email }}
-                </td>
+                    <td>
 
-                <td>
+                        <span v-if="usuario.roles === 1"
+                              class="badge bg-primary">
+                            Socio
+                        </span>
 
-                    <span v-if="usuario.roles === 1">
-                        Socio
-                    </span>
+                        <span v-else-if="usuario.roles === 2"
+                              class="badge bg-info text-dark">
+                            Empleado
+                        </span>
 
-                    <span v-else-if="usuario.roles === 2">
-                        Empleado
-                    </span>
+                        <span v-else-if="usuario.roles === 3"
+                              class="badge bg-dark">
+                            Administrador
+                        </span>
 
-                    <span v-else-if="usuario.roles === 3">
-                        Administrador
-                    </span>
+                    </td>
 
-                </td>
+                    <td>
 
-                <td>
+                        <button v-if="pestana === 'activos'"
+                                class="btn btn-sm btn-warning"
+                                @@click="editar(usuario)">
 
-                    <button v-if="pestana === 'activos'"
-                            class="btn btn-sm btn-warning"
-                            @@click="editar(usuario)">
+                            Editar
+                        </button>
 
-                        Editar
+                        <button v-if="pestana === 'activos'"
+                                class="btn btn-sm btn-danger ms-1"
+                                @@click="darDeBaja(usuario)">
 
-                    </button>
+                            Baja
+                        </button>
 
-                    <button v-if="pestana === 'activos'"
-                            class="btn btn-sm btn-danger ms-1"
-                            @@click="darDeBaja(usuario)">
+                        <button v-if="pestana === 'inactivos'"
+                                class="btn btn-sm btn-success"
+                                @@click="reactivar(usuario)">
 
-                        Baja
+                            Reactivar
+                        </button>
 
-                    </button>
+                    </td>
 
-                    <button v-if="pestana === 'inactivos'"
-                            class="btn btn-sm btn-success"
-                            @@click="reactivar(usuario)">
+                </tr>
 
-                        Reactivar
+                <tr v-if="usuarios.length === 0">
+                    <td colspan="5"
+                        class="text-center text-muted py-4">
 
-                    </button>
+                        No hay usuarios para mostrar.
 
-                </td>
+                    </td>
+                </tr>
 
-            </tr>
+            </tbody>
 
-        </tbody>
+        </table>
 
-    </table>
+    </div>
 
-
-    <div class="d-flex justify-content-center">
+    <!-- NAVEGACIÓN DE PÁGINAS -->
+    <div class="d-flex justify-content-center align-items-center mt-4">
 
         <button class="btn btn-secondary"
                 :disabled="pagina <= 1"
                 @@click="irAPagina(pagina - 1)">
 
             Anterior
-
         </button>
 
-        <span class="mx-3 align-self-center">
-
-            Página {{ pagina }}
-            de {{ totalPaginas }}
-
+        <span class="mx-3">
+            Página {{ pagina }} de {{ totalPaginas }}
         </span>
 
         <button class="btn btn-secondary"
@@ -245,7 +325,6 @@
                 @@click="irAPagina(pagina + 1)">
 
             Siguiente
-
         </button>
 
     </div>
@@ -262,305 +341,509 @@
         const API = '/api/usuarios';
 
         function formVacio() {
-
             return {
                 idUsuario: 0,
                 email: '',
                 password: '',
                 roles: 1
             };
-
         }
 
         Vue.createApp({
 
             data() {
-
                 return {
-
                     usuarios: [],
-
                     pagina: 1,
-
                     tamPagina: 10,
-
                     total: 0,
-
                     totalPaginas: 1,
-
                     pestana: 'activos',
-
                     form: formVacio(),
-
+                    avatarActual: '',
+                    avatarFile: null,
+                    avatarPreview: '',
+                    guardando: false,
                     mensaje: '',
-
-                    mensajeTipo: 'ok'
-
+                    mensajeTipo: 'ok',
+                    token: ''
                 };
-
             },
 
-            mounted() {
-
-                this.cargar();
-
+            async mounted() {
+                await this.iniciar();
             },
 
             methods: {
 
-                async cargar() {
+                // OBTENER EL JWT DE LA SESIÓN ACTUAL
+               
+                async iniciar() {
+                    try {
+                        const respuesta = await fetch('/Cuenta/Token', {
+                            method: 'GET',
+                            credentials: 'same-origin'
+                        });
 
-                    const resp =
-                        await fetch(
+                        if (!respuesta.ok) {
+                            this.mostrarAviso(
+                                'error',
+                                'No se pudo obtener el token. Verificá que hayas iniciado sesión nuevamente.'
+                            );
+                            return;
+                        }
+
+                        const datos = await respuesta.json();
+
+                        if (!datos.token) {
+                            this.mostrarAviso(
+                                'error',
+                                'El servidor no devolvió un token JWT.'
+                            );
+                            return;
+                        }
+
+                        this.token = datos.token;
+
+                        await this.cargar();
+
+                    } catch (error) {
+                        console.error('Error al obtener el token:', error);
+
+                        this.mostrarAviso(
+                            'error',
+                            'No se pudo conectar con el servidor para obtener el token.'
+                        );
+                    }
+                },
+
+          
+                // FUNCIÓN CENTRAL PARA LLAMAR A LA API
+                // TODAS LAS PETICIONES ENVIAN EL JWT
+                
+                async peticionApi(url, opciones = {}) {
+
+                    if (!this.token) {
+                        throw new Error(
+                            'No hay un token JWT disponible.'
+                        );
+                    }
+
+                    const headers = new Headers(
+                        opciones.headers || {}
+                    );
+
+                    headers.set(
+                        'Authorization',
+                        `Bearer ${this.token}`
+                    );
+
+                    return fetch(url, {
+                        ...opciones,
+                        headers: headers,
+                        credentials: 'same-origin'
+                    });
+                },
+
+                // ==========================================
+                // LISTAR USUARIOS CON PAGINACIÓN
+                // ==========================================
+                async cargar() {
+                    try {
+                        const resp = await this.peticionApi(
                             `${API}/${this.pestana}?pagina=${this.pagina}&tamPagina=${this.tamPagina}`
                         );
 
-                    if (!resp.ok) {
+                        if (!resp.ok) {
+                            if (resp.status === 401) {
+                                this.mostrarAviso(
+                                    'error',
+                                    'La sesión o el token no son válidos. Volvé a iniciar sesión.'
+                                );
+                                return;
+                            }
+
+                            if (resp.status === 403) {
+                                this.mostrarAviso(
+                                    'error',
+                                    'No tenés permisos de administrador para gestionar usuarios.'
+                                );
+                                return;
+                            }
+
+                            this.mostrarAviso(
+                                'error',
+                                'No se pudieron cargar los usuarios. Código HTTP: ' + resp.status
+                            );
+                            return;
+                        }
+
+                        const datos = await resp.json();
+
+                        this.usuarios = datos.items || [];
+                        this.total = datos.total || 0;
+
+                        this.totalPaginas = Math.max(
+                            1,
+                            Math.ceil(this.total / this.tamPagina)
+                        );
+
+                        if (this.pagina > this.totalPaginas) {
+                            this.pagina = this.totalPaginas;
+                            await this.cargar();
+                        }
+
+                    } catch (error) {
+                        console.error('Error al cargar usuarios:', error);
 
                         this.mostrarAviso(
                             'error',
-                            'No se pudieron cargar los usuarios.'
+                            'No se pudo conectar con el servidor al cargar los usuarios.'
                         );
-
-                        return;
-
                     }
-
-                    const datos =
-                        await resp.json();
-
-                    this.usuarios =
-                        datos.items;
-
-                    this.total =
-                        datos.total;
-
-                    this.totalPaginas =
-                        datos.totalPaginas;
-
                 },
 
-                async guardar() {
+                // ==========================================
+                // SELECCIONAR Y VALIDAR AVATAR
+                // ==========================================
+                seleccionarAvatar(evento) {
+                    const archivo = evento.target.files[0];
 
+                    this.avatarFile = null;
+                    this.avatarPreview = '';
+
+                    if (!archivo)
+                        return;
+
+                    const tiposPermitidos = [
+                        'image/jpeg',
+                        'image/png',
+                        'image/webp'
+                    ];
+
+                    if (!tiposPermitidos.includes(archivo.type)) {
+                        this.mostrarAviso(
+                            'error',
+                            'Seleccioná una imagen JPG, PNG o WEBP.'
+                        );
+
+                        evento.target.value = '';
+                        return;
+                    }
+
+                    if (archivo.size > 5 * 1024 * 1024) {
+                        this.mostrarAviso(
+                            'error',
+                            'La imagen no puede superar los 5 MB.'
+                        );
+
+                        evento.target.value = '';
+                        return;
+                    }
+
+                    this.avatarFile = archivo;
+                    this.avatarPreview = URL.createObjectURL(archivo);
+                },
+
+                // ==========================================
+                // CREAR O MODIFICAR USUARIO
+                // ==========================================
+                async guardar() {
+                    if (this.guardando)
+                        return;
+
+                    this.guardando = true;
                     this.mensaje = '';
 
-                    const editando =
-                        this.form.idUsuario > 0;
+                    try {
+                        const editando = this.form.idUsuario > 0;
 
-                    const datos = {
+                        const datos = {
+                            email: this.form.email,
+                            password: this.form.password,
+                            roles: this.form.roles
+                        };
 
-                        email:
-                            this.form.email,
-
-                        password:
-                            this.form.password,
-
-                        roles:
-                            this.form.roles
-
-                    };
-
-                    const resp =
-                        await fetch(
-
+                        const resp = await this.peticionApi(
                             editando
                                 ? `${API}/${this.form.idUsuario}`
                                 : API,
-
                             {
-
-                                method:
-                                    editando
-                                        ? 'PUT'
-                                        : 'POST',
-
+                                method: editando ? 'PUT' : 'POST',
                                 headers: {
-                                    'Content-Type':
-                                        'application/json'
+                                    'Content-Type': 'application/json'
                                 },
-
-                                body:
-                                    JSON.stringify(datos)
-
+                                body: JSON.stringify(datos)
                             }
-
                         );
 
-                    if (!resp.ok) {
+                        if (!resp.ok) {
+                            let error = {};
 
-                        const error =
-                            await resp.json();
+                            try {
+                                error = await resp.json();
+                            } catch {
+                                // La respuesta podría no ser JSON.
+                            }
+
+                            this.mostrarAviso(
+                                'error',
+                                error.mensaje ||
+                                'No se pudo guardar el usuario. Código HTTP: ' + resp.status
+                            );
+
+                            return;
+                        }
+
+                        const usuarioGuardado = await resp.json();
+
+                        const idUsuario = editando
+                            ? this.form.idUsuario
+                            : usuarioGuardado.idUsuario;
+
+                        // Subir el avatar si se seleccionó uno.
+                        if (this.avatarFile) {
+                            const formData = new FormData();
+
+                            formData.append(
+                                'avatarFile',
+                                this.avatarFile
+                            );
+
+                            const respAvatar = await this.peticionApi(
+                                `${API}/${idUsuario}/avatar`,
+                                {
+                                    method: 'PUT',
+                                    body: formData
+                                }
+                            );
+
+                            if (!respAvatar.ok) {
+                                let errorAvatar = {};
+
+                                try {
+                                    errorAvatar = await respAvatar.json();
+                                } catch {
+                                    // Puede no haber contenido JSON.
+                                }
+
+                                this.mostrarAviso(
+                                    'error',
+                                    errorAvatar.mensaje ||
+                                    'El usuario se guardó, pero no se pudo actualizar el avatar.'
+                                );
+
+                                await this.cargar();
+                                return;
+                            }
+                        }
+
+                        const habiaAvatar = this.avatarFile !== null;
+
+                        this.limpiar();
+
+                        this.mostrarAviso(
+                            'ok',
+                            habiaAvatar
+                                ? 'Usuario y avatar guardados correctamente.'
+                                : (editando
+                                    ? 'Usuario actualizado correctamente.'
+                                    : 'Usuario creado correctamente.')
+                        );
+
+                        await this.cargar();
+
+                    } catch (error) {
+                        console.error('Error al guardar:', error);
 
                         this.mostrarAviso(
                             'error',
-                            error.mensaje ||
-                            'Ocurrió un error.'
+                            'Ocurrió un error al conectar con el servidor.'
                         );
-
-                        return;
-
+                    } finally {
+                        this.guardando = false;
                     }
-
-                    this.limpiar();
-
-                    this.mostrarAviso(
-                        'ok',
-                        editando
-                            ? 'Usuario actualizado correctamente.'
-                            : 'Usuario creado correctamente.'
-                    );
-
-                    this.cargar();
-
                 },
 
+                // ==========================================
+                // CARGAR USUARIO EN EL FORMULARIO
+                // ==========================================
                 editar(usuario) {
-
                     this.form = {
-
-                        ...usuario,
-
-                        password:
-                            usuario.password
-
+                        idUsuario: usuario.idUsuario,
+                        email: usuario.email,
+                        password: usuario.password || '',
+                        roles: usuario.roles
                     };
+
+                    this.avatarActual = usuario.avatar || '';
+                    this.avatarFile = null;
+                    this.avatarPreview = '';
 
                     window.scrollTo({
                         top: 0,
                         behavior: 'smooth'
                     });
-
                 },
 
+                // ==========================================
+                // LIMPIAR FORMULARIO
+                // ==========================================
                 limpiar() {
-
-                    this.form =
-                        formVacio();
-
+                    this.form = formVacio();
+                    this.avatarActual = '';
+                    this.avatarFile = null;
+                    this.avatarPreview = '';
                     this.mensaje = '';
 
+                    const inputArchivo =
+                        document.querySelector('input[type="file"]');
+
+                    if (inputArchivo)
+                        inputArchivo.value = '';
                 },
 
+                // ==========================================
+                // DAR DE BAJA A UN USUARIO
+                // ==========================================
                 async darDeBaja(usuario) {
-
-                    const confirmar =
-                        confirm(
-                            `¿Dar de baja al usuario ${usuario.email}?`
-                        );
+                    const confirmar = confirm(
+                        `¿Dar de baja al usuario ${usuario.email}?`
+                    );
 
                     if (!confirmar)
                         return;
 
-                    const resp =
-                        await fetch(
+                    try {
+                        const resp = await this.peticionApi(
                             `${API}/${usuario.idUsuario}`,
                             {
                                 method: 'DELETE'
                             }
                         );
 
-                    if (!resp.ok) {
+                        if (!resp.ok) {
+                            let error = {};
 
-                        const error =
-                            await resp.json();
+                            try {
+                                error = await resp.json();
+                            } catch {
+                                // Puede no haber contenido JSON.
+                            }
+
+                            this.mostrarAviso(
+                                'error',
+                                error.mensaje ||
+                                'No se pudo dar de baja. Código HTTP: ' + resp.status
+                            );
+
+                            return;
+                        }
+
+                        this.mostrarAviso(
+                            'ok',
+                            'Usuario dado de baja correctamente.'
+                        );
+
+                        await this.cargar();
+
+                    } catch (error) {
+                        console.error('Error al dar de baja:', error);
 
                         this.mostrarAviso(
                             'error',
-                            error.mensaje ||
-                            'No se pudo dar de baja.'
+                            'No se pudo conectar con el servidor.'
                         );
-
-                        return;
-
                     }
-
-                    this.mostrarAviso(
-                        'ok',
-                        'Usuario dado de baja correctamente.'
-                    );
-
-                    this.cargar();
-
                 },
 
+                // ==========================================
+                // REACTIVAR USUARIO
+                // ==========================================
                 async reactivar(usuario) {
-
-                    const resp =
-                        await fetch(
+                    try {
+                        const resp = await this.peticionApi(
                             `${API}/${usuario.idUsuario}/reactivar`,
                             {
                                 method: 'PUT'
                             }
                         );
 
-                    if (!resp.ok) {
+                        if (!resp.ok) {
+                            let error = {};
 
-                        const error =
-                            await resp.json();
+                            try {
+                                error = await resp.json();
+                            } catch {
+                                // Puede no haber contenido JSON.
+                            }
+
+                            this.mostrarAviso(
+                                'error',
+                                error.mensaje ||
+                                'No se pudo reactivar. Código HTTP: ' + resp.status
+                            );
+
+                            return;
+                        }
+
+                        this.mostrarAviso(
+                            'ok',
+                            'Usuario reactivado correctamente.'
+                        );
+
+                        await this.cargar();
+
+                    } catch (error) {
+                        console.error('Error al reactivar:', error);
 
                         this.mostrarAviso(
                             'error',
-                            error.mensaje ||
-                            'No se pudo reactivar.'
+                            'No se pudo conectar con el servidor.'
                         );
-
-                        return;
-
                     }
-
-                    this.mostrarAviso(
-                        'ok',
-                        'Usuario reactivado correctamente.'
-                    );
-
-                    this.cargar();
-
                 },
 
-                cambiarPestana(nombre) {
-
-                    this.pestana =
-                        nombre;
-
+                // ==========================================
+                // CAMBIAR ENTRE ACTIVOS E INACTIVOS
+                // ==========================================
+                async cambiarPestana(nombre) {
+                    this.pestana = nombre;
                     this.pagina = 1;
 
-                    this.cargar();
-
+                    await this.cargar();
                 },
 
-                cambiarTamano() {
-
+                // ==========================================
+                // CAMBIAR TAMAÑO DE PÁGINA
+                // ==========================================
+                async cambiarTamano() {
                     this.pagina = 1;
 
-                    this.cargar();
-
+                    await this.cargar();
                 },
 
-                irAPagina(numero) {
-
-                    if (
-                        numero < 1 ||
-                        numero > this.totalPaginas
-                    )
+                // ==========================================
+                // NAVEGAR ENTRE PÁGINAS
+                // ==========================================
+                async irAPagina(numero) {
+                    if (numero < 1 || numero > this.totalPaginas)
                         return;
 
-                    this.pagina =
-                        numero;
+                    this.pagina = numero;
 
-                    this.cargar();
-
+                    await this.cargar();
                 },
 
+                // ==========================================
+                // MOSTRAR MENSAJES EN LA VISTA
+                // ==========================================
                 mostrarAviso(tipo, mensaje) {
+                    this.mensajeTipo = tipo === 'ok'
+                        ? 'ok'
+                        : 'error';
 
-                    this.mensajeTipo =
-                        tipo === 'ok'
-                            ? 'ok'
-                            : 'error';
-
-                    this.mensaje =
-                        mensaje;
-
+                    this.mensaje = mensaje;
                 }
 
             }

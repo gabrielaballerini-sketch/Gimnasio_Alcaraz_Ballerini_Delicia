@@ -4,9 +4,11 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Gimnasio_Alcaraz_Ballerini_Delicia.DAO;
+using Microsoft.AspNetCore.Authentication.Cookies;
+
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 
 builder.Services.AddControllersWithViews()
     .ConfigureApiBehaviorOptions(options =>
@@ -14,11 +16,17 @@ builder.Services.AddControllersWithViews()
         options.SuppressModelStateInvalidFilter = true;
     });
 
-// autorizacion x cookiess
+// 1. Validar y obtener la clave JWT desde appsettings.json ANTES de registrar la autenticación
+var jwtKey = builder.Configuration["Jwt:Key"] 
+    ?? throw new InvalidOperationException("Falta configurar 'Jwt:Key' en appsettings.json");
 
+// 2. Configurar Autenticación (Cookies + JWT)
 builder.Services.AddAuthentication(options =>
 {
-    // Opcional: Define un esquema por defecto si lo requieres
+    // Esquema por defecto para MVC (Cookies)
+    options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
 })
 .AddCookie(options =>
 {
@@ -26,22 +34,24 @@ builder.Services.AddAuthentication(options =>
     options.AccessDeniedPath = "/Cuenta/Denegado";
 })
 .AddJwtBearer(options =>
+
+   options.TokenValidationParameters = new TokenValidationParameters
 {
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"], // Asegúrate de tener esto en tu appsettings.json o pon el valor directo
-        ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
-    };
+    ValidateIssuer = true,
+    ValidateAudience = true,
+    ValidateLifetime = true,
+    ValidateIssuerSigningKey = true,
+
+    ValidIssuer = builder.Configuration["Jwt:Issuer"],
+    ValidAudience = builder.Configuration["Jwt:Audience"],
+
+    IssuerSigningKey = new SymmetricSecurityKey(
+        Encoding.UTF8.GetBytes(jwtKey)
+    ),
+
+    RoleClaimType = System.Security.Claims.ClaimTypes.Role
 });
-
 builder.Services.AddAuthorization();
-
-
 
 
 builder.Services.AddScoped<IRepositorioSocio, RepositorioSocio>();
@@ -57,16 +67,12 @@ builder.Services.AddScoped<ActividadService>();
 builder.Services.AddScoped<IRepositorioMembresia, RepositorioMembresia>();
 builder.Services.AddScoped<MembresiaService>();
 
-
-
 var app = builder.Build();
 
-
-// Configure the HTTP request pipeline.
+// Configure  pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
@@ -75,7 +81,6 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.UseAuthentication();
-
 app.UseAuthorization();
 
 app.MapStaticAssets();
@@ -84,6 +89,5 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}")
     .WithStaticAssets();
-
 
 app.Run();

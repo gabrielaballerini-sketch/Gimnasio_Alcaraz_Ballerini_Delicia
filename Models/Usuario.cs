@@ -8,7 +8,11 @@ public class Usuario
     [RegularExpression(@"^[^@\s]+@[^@\s]+\.[^@\s]+$",
     ErrorMessage = " (ejemplo: usuario@dominio.com)")]
     public string? Email { get; set; } 
-    
+
+    [StringLength(50, ErrorMessage = "El nombre de usuario no puede superar los 50 caracteres")]
+     public string? NombreUsuario { get; set; }
+
+   
     [Required(ErrorMessage ="Debe ingresar un password")]
     [RegularExpression(@"^[a-zA-ZñÑ\d\s]{6,20}$",
     ErrorMessage = "El password debe contener minimo 6 caracteres ")]
@@ -17,6 +21,11 @@ public class Usuario
     public Roles Roles { get; set; }
 
     public bool Estado { get; set; } = true;
+    public string? Avatar { get; set; } 
+
+    public IFormFile? avatarFile {get;set;}
+
+
 
 }
 
