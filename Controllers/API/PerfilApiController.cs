@@ -30,6 +30,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
         }
 
         // GET api/perfil  mis datos
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
         [HttpGet]
         public IActionResult Obtener()
         {
@@ -44,6 +45,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
         }
 
         // PUT api/perfil  email, nombre de usuario y contraseña
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
         [HttpPut]
         public IActionResult Modificar([FromBody] PerfilRequest datos)
         {
@@ -72,6 +74,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
         }
 
         // PUT api/perfil/avatar  imagen
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
         [HttpPut("avatar")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> ActualizarAvatar(

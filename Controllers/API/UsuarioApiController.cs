@@ -9,10 +9,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
 {
     [ApiController]
     [Route("api/usuarios")]
-    [Authorize(
-        AuthenticationSchemes =
-            JwtBearerDefaults.AuthenticationScheme,
-        Roles = "Administrador")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+    Roles = "Administrador")]
     public class UsuarioApiController : ControllerBase
     {
         private readonly UsuarioService _service;

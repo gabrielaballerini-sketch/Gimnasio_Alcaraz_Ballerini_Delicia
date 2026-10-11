@@ -23,17 +23,16 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Controllers
             _usuarioService = usuarioService;
             _configuration = configuration;
         }
-
+        [AllowAnonymous]
         [HttpGet]
         public IActionResult Login()
         {
             return View();
         }
 
+        [AllowAnonymous]
         [HttpPost]
-        public async Task<IActionResult> Login(
-            string email,
-            string password)
+        public async Task<IActionResult> Login(string email, string password)
         {
             if (string.IsNullOrWhiteSpace(email) ||
                 string.IsNullOrWhiteSpace(password))
@@ -44,12 +43,11 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Controllers
                 return View();
             }
 
-            var usuario =
-                _usuarioService.ObtenerPorEmail(email);
+            var usuario = _usuarioService.ObtenerPorEmail(email.Trim());
 
             if (usuario == null ||
                 !usuario.Estado ||
-                usuario.Password != password)
+                !_usuarioService.VerificarPassword(usuario, password))
             {
                 ViewBag.Mensaje =
                     "Email o password incorrectos.";

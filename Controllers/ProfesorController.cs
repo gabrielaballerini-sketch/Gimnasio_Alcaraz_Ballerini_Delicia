@@ -4,9 +4,10 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Controllers
 {
 
 
-[Authorize]
+    [Authorize]
     public class ProfesorController : Controller
     {
+        [Authorize(Roles = "Administrador, Empleado")]
         [HttpGet]
         public IActionResult Index()
         {

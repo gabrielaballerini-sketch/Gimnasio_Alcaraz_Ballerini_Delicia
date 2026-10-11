@@ -5,7 +5,7 @@ using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
 
 namespace Gimnasio_Alcaraz_Ballerini_Delicia.Controllers;
 
-[Authorize]
+
 public class HomeController : Controller
 {
     public IActionResult Index()

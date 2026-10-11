@@ -3,9 +3,10 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Gimnasio_Alcaraz_Ballerini_Delicia.Controllers
 {
-    [Authorize]
+
     public class ActividadController : Controller
     {
+        [Authorize(Roles = "Administrador, Empleado")]
         [HttpGet]
         public IActionResult Index()
         {

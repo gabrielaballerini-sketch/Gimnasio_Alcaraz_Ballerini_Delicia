@@ -1,5 +1,7 @@
 using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
 using Gimnasio_Alcaraz_Ballerini_Delicia.DAO;
+using Microsoft.AspNetCore.Cryptography.KeyDerivation;
+using System.Text;
 
 namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
 {
@@ -7,13 +9,14 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
     {
         private readonly IRepositorioUsuario _repo;
         private readonly IWebHostEnvironment _environment;
+        private readonly IConfiguration _configuration;
 
-        public UsuarioService(
-            IRepositorioUsuario repo,
-            IWebHostEnvironment environment)
+
+        public UsuarioService(IRepositorioUsuario repo, IWebHostEnvironment environment, IConfiguration configuration)
         {
             _repo = repo;
             _environment = environment;
+            _configuration = configuration;
         }
 
         public ResultadoPaginado<Usuario> ObtenerActivos(
@@ -70,14 +73,10 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
         public Usuario Crear(Usuario usuario)
         {
             usuario.Email = usuario.Email?.Trim();
-
             Validar(usuario, null);
-
+            usuario.Password = HashearPassword(usuario.Password!);
             usuario.Estado = true;
-
-          
             usuario.Avatar = null;
-
             _repo.Alta(usuario);
 
             return usuario;
@@ -91,18 +90,22 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
                 return null;
 
             usuario.Email = usuario.Email?.Trim();
+            if (string.IsNullOrWhiteSpace(usuario.Password) ||
+            usuario.Password == existente.Password)
+            {
+                usuario.Password = existente.Password;
+            }
+            else
+            {
+                usuario.Password = HashearPassword(usuario.Password);
+            }
 
             Validar(usuario, id);
 
             usuario.IdUsuario = id;
             usuario.Estado = existente.Estado;
-
-           
             usuario.Avatar = existente.Avatar;
-
-            
             usuario.NombreUsuario ??= existente.NombreUsuario;
-
 
             _repo.Modificacion(usuario);
 
@@ -125,7 +128,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
                 );
             }
 
-  
+
             if (archivo.Length > 5 * 1024 * 1024)
             {
                 throw new ReglaNegocioException(
@@ -173,7 +176,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
 
             Directory.CreateDirectory(carpeta);
 
-           
+
             var nombreArchivo =
                 $"{Guid.NewGuid()}{extension}";
 
@@ -206,7 +209,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
                 throw;
             }
 
-           
+
             EliminarArchivoAvatarAnterior(rutaAnterior);
 
             return usuario;
@@ -214,12 +217,12 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
 
 
         public Usuario? ActualizarPerfil(
-            int id,
-            string? emailNuevo,
-            string? nombreUsuarioNuevo,
-            string? passwordActual,
-            string? nuevaPassword,
-            string? confirmarPassword)
+    int id,
+    string? emailNuevo,
+    string? nombreUsuarioNuevo,
+    string? passwordActual,
+    string? nuevaPassword,
+    string? confirmarPassword)
         {
             var existente = _repo.ObtenerPorId(id);
 
@@ -227,37 +230,48 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
                 return null;
 
             var email = emailNuevo?.Trim();
-            var nombreUsuario = string.IsNullOrWhiteSpace(nombreUsuarioNuevo)
-                ? null
-                : nombreUsuarioNuevo.Trim();
+
+            var nombreUsuario =
+                string.IsNullOrWhiteSpace(nombreUsuarioNuevo)
+                    ? null
+                    : nombreUsuarioNuevo.Trim();
 
             if (string.IsNullOrWhiteSpace(email))
-                throw new ReglaNegocioException("El email es obligatorio.");
+                throw new ReglaNegocioException(
+                    "El email es obligatorio.");
 
             if (_repo.ExisteEmail(email, id))
-                throw new ReglaNegocioException("Ya existe un usuario con ese email.");
+                throw new ReglaNegocioException(
+                    "Ya existe un usuario con ese email.");
 
             if (nombreUsuario != null && nombreUsuario.Length > 50)
-                throw new ReglaNegocioException("El nombre de usuario no puede superar los 50 caracteres.");
-
+                throw new ReglaNegocioException(
+                    "El nombre de usuario no puede superar los 50 caracteres.");
 
             if (!string.IsNullOrWhiteSpace(nuevaPassword))
             {
-                if (passwordActual != existente.Password)
-                    throw new ReglaNegocioException("La contraseña actual no es correcta.");
+                if (string.IsNullOrWhiteSpace(passwordActual) ||
+                    !VerificarPassword(existente, passwordActual))
+                {
+                    throw new ReglaNegocioException(
+                        "La contraseña actual no es correcta.");
+                }
 
                 if (nuevaPassword != confirmarPassword)
-                    throw new ReglaNegocioException("La confirmación de la contraseña no coincide.");
+                    throw new ReglaNegocioException(
+                        "La confirmación de la contraseña no coincide.");
 
                 if (!System.Text.RegularExpressions.Regex.IsMatch(
-                        nuevaPassword, @"^[a-zA-ZñÑ\d\s]{6,20}$"))
+                    nuevaPassword,
+                    @"^[a-zA-ZñÑ\d\s]{6,20}$"))
+                {
                     throw new ReglaNegocioException(
                         "La contraseña debe tener entre 6 y 20 caracteres (letras y números).");
+                }
 
-                existente.Password = nuevaPassword;
+                existente.Password = HashearPassword(nuevaPassword);
             }
 
-    
             existente.Email = email;
             existente.NombreUsuario = nombreUsuario;
 
@@ -265,7 +279,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
 
             return existente;
         }
-   
+
         public bool DarDeBaja(int id)
         {
             return _repo.Baja(id) > 0;
@@ -283,7 +297,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
 
             const string prefijo = "/imagenes/avatares/";
 
-           
+
             if (!ruta.StartsWith(
                 prefijo,
                 StringComparison.OrdinalIgnoreCase))
@@ -331,5 +345,56 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
                 );
             }
         }
+
+
+        private string HashearPassword(string password)
+        {
+            var salt = _configuration["Salt"];
+
+            if (string.IsNullOrWhiteSpace(salt))
+                throw new InvalidOperationException(
+                    "Falta configurar Salt en appsettings.json.");
+
+            return Convert.ToBase64String(
+                KeyDerivation.Pbkdf2(
+                    password: password,
+                    salt: Encoding.ASCII.GetBytes(salt),
+                    prf: KeyDerivationPrf.HMACSHA1,
+                    iterationCount: 1000,
+                    numBytesRequested: 256 / 8
+                )
+            );
+        }
+
+        public bool VerificarPassword(Usuario usuario, string passwordIngresada)
+        {
+            if (string.IsNullOrWhiteSpace(passwordIngresada) ||
+                string.IsNullOrEmpty(usuario.Password))
+            {
+                return false;
+            }
+
+            // Compatibilidad con usuarios antiguos en texto plano.
+            if (string.Equals(
+                usuario.Password,
+                passwordIngresada,
+                StringComparison.Ordinal))
+            {
+                usuario.Password = HashearPassword(passwordIngresada);
+
+                _repo.Modificacion(usuario);
+
+                return true;
+            }
+
+            // Verificar usuarios que ya tienen hash.
+            var hashIngresado = HashearPassword(passwordIngresada);
+
+            return string.Equals(
+                usuario.Password,
+                hashIngresado,
+                StringComparison.Ordinal);
+        }
+
     }
 }

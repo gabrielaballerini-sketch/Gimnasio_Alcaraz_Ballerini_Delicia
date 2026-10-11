@@ -1,16 +1,17 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-namespace Gimnasio_Alcaraz_Ballerini_Delicia.Controllers{
- 
- 
- [Authorize]
-public class SocioController : Controller
+namespace Gimnasio_Alcaraz_Ballerini_Delicia.Controllers
 {
-    [HttpGet]
-    
-   
-    public IActionResult Index()
+
+
+    [Authorize]
+    public class SocioController : Controller
     {
-        return View();
+        [Authorize(Roles = "Administrador, Empleado")]
+        [HttpGet]
+        public IActionResult Index()
+        {
+            return View();
+        }
     }
-}}
+}

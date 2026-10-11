@@ -10,7 +10,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
     [Route("api/actividades")]
 
 
-      
+
     public class ActividadApiController : ControllerBase
     {
         private readonly ActividadService _service;
@@ -22,7 +22,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             _service = service;
         }
 
-
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
         [HttpGet("activos")]
         public IActionResult ObtenerActivos(
             [FromQuery] int pagina = 1,
@@ -36,15 +36,15 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             );
         }
 
-        
-         [Authorize( AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-        Roles = "Administrador")]
-        
+
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+       Roles = "Administrador")]
+
 
         [HttpGet("inactivos")]
         public IActionResult ObtenerInactivos(
-            [FromQuery] int pagina = 1,
-            [FromQuery] int tamPagina = 10)
+           [FromQuery] int pagina = 1,
+           [FromQuery] int tamPagina = 10)
         {
             return Ok(
                 _service.ObtenerInactivos(
@@ -55,14 +55,14 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
         }
 
 
-    
-            [Authorize( AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-        Roles = "Administrador,Empleado")]
- 
+
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+    Roles = "Administrador,Empleado")]
+
 
         [HttpGet("{id:int}")]
         public ActionResult<Actividad> Obtener(
-            int id)
+        int id)
         {
             var actividad =
                 _service.Obtener(id);
@@ -81,13 +81,13 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             return Ok(actividad);
         }
 
-            [Authorize( AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-        Roles = "Administrador,Empleado")]
-          
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+    Roles = "Administrador,Empleado")]
+
 
         [HttpPost]
         public IActionResult Crear(
-            [FromForm] Actividad actividad)
+        [FromForm] Actividad actividad)
         {
             if (!ModelState.IsValid)
                 return ErroresDeModelo();
@@ -118,16 +118,16 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
         }
 
 
-     
-            [Authorize( AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-        Roles = "Administrador,Empleado")]
+
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+    Roles = "Administrador,Empleado")]
 
 
-       
+
         [HttpPut("{id:int}")]
         public IActionResult Modificar(
-            int id,
-            [FromForm] Actividad actividad)
+        int id,
+        [FromForm] Actividad actividad)
         {
             if (!ModelState.IsValid)
                 return ErroresDeModelo();
@@ -165,16 +165,12 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
         }
 
 
-     
-            [Authorize( AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-        Roles = "Administrador")]
 
-
-       
-
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+    Roles = "Administrador")]
         [HttpDelete("{id:int}")]
         public IActionResult DarDeBaja(
-            int id)
+        int id)
         {
             if (!_service.DarDeBaja(id))
             {
@@ -192,14 +188,12 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
 
 
 
-     
-            [Authorize( AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-        Roles = "Administrador")]
-       
 
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+    Roles = "Administrador")]
         [HttpPut("{id:int}/reactivar")]
         public IActionResult Reactivar(
-            int id)
+        int id)
         {
             if (!_service.Reactivar(id))
             {
