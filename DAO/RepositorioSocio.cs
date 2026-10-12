@@ -13,8 +13,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             int res = -1;
             using var conexion = CrearConexion();
 
-            var sql = @"INSERT INTO socio (Nombre, Apellido, Dni, Telefono, Domicilio, Estado)
-                    VALUES (@Nombre, @Apellido, @Dni, @Telefono, @Domicilio, @Estado);
+            var sql = @"INSERT INTO socio (Nombre, Apellido, Dni, Telefono, Domicilio, Estado,IdUsuario)
+                    VALUES (@Nombre, @Apellido, @Dni, @Telefono, @Domicilio, @Estado,@IdUsuario);
                     SELECT LAST_INSERT_ID();";
             using var comand = new MySqlCommand(sql, conexion);
 
@@ -295,6 +295,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             cmd.Parameters.AddWithValue("@Telefono", s.Telefono ?? string.Empty);
             cmd.Parameters.AddWithValue("@Domicilio", s.Domicilio ?? string.Empty);
             cmd.Parameters.AddWithValue("@Estado", s.Estado);
+            cmd.Parameters.AddWithValue("@IdUsuario",(Object?)s.IdUsuario ?? DBNull.Value);
         }
 
         private static Socio Mapear(MySqlDataReader r) => new Socio
