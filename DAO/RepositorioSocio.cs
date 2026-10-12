@@ -13,8 +13,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             int res = -1;
             using var conexion = CrearConexion();
 
-            var sql = @"INSERT INTO socio (Nombre, Apellido, Dni, Telefono, Domicilio, Avatar, Estado)
-                    VALUES (@Nombre, @Apellido, @Dni, @Telefono, @Domicilio, @Avatar, @Estado);
+            var sql = @"INSERT INTO socio (Nombre, Apellido, Dni, Telefono, Domicilio, Estado)
+                    VALUES (@Nombre, @Apellido, @Dni, @Telefono, @Domicilio, @Estado);
                     SELECT LAST_INSERT_ID();";
             using var comand = new MySqlCommand(sql, conexion);
 
@@ -33,7 +33,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             using var conexion = CrearConexion();
 
             var sql = @"UPDATE socio SET Nombre=@Nombre, Apellido=@Apellido, Dni=@Dni, Telefono=@Telefono,
-                           Domicilio=@Domicilio, Avatar=@Avatar
+                           Domicilio=@Domicilio
                     WHERE IdSocio=@IdSocio";
             using var comand = new MySqlCommand(sql, conexion);
 
@@ -89,7 +89,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             Socio? socio = null;
             using var conexion = CrearConexion();
 
-            string sql = @"SELECT IdSocio, Nombre, Apellido, Dni, Telefono, Domicilio, Avatar, Estado FROM socio WHERE IdSocio=@IdSocio";
+            string sql = @"SELECT IdSocio, Nombre, Apellido, Dni, Telefono, Domicilio, Estado,IdUsuario FROM socio WHERE IdSocio=@IdSocio";
 
             using var comand = new MySqlCommand(sql, conexion);
 
@@ -109,7 +109,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             Socio? socio = null;
             using var conexion = CrearConexion();
 
-            string sql = @"SELECT IdSocio, Nombre, Apellido, Dni, Telefono, Domicilio, Avatar, Estado FROM socio WHERE Dni=@dni";
+            string sql = @"SELECT IdSocio, Nombre, Apellido, Dni, Telefono, Domicilio, Estado,IdUsuario FROM socio WHERE Dni=@dni";
             using var comand = new MySqlCommand(sql, conexion);
             comand.Parameters.AddWithValue("@dni", dni);
             conexion.Open();
@@ -147,7 +147,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             using (var conexion = CrearConexion())
             {
                 string sql = @"
-            SELECT IdSocio, Nombre, Apellido, Dni, Telefono, Domicilio, Avatar, Estado
+            SELECT IdSocio, Nombre, Apellido, Dni, Telefono, Domicilio, Estado,IdUsuario
             FROM socio
             WHERE Estado = 1
             ORDER BY Apellido, Nombre, IdSocio
@@ -182,7 +182,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             using (var conexion = CrearConexion())
             {
                 string sql = @"
-            SELECT IdSocio, Nombre, Apellido, Dni, Telefono, Domicilio, Avatar, Estado
+            SELECT IdSocio, Nombre, Apellido, Dni, Telefono, Domicilio,Estado,IdUsuario
             FROM socio
             WHERE Estado = 0
             ORDER BY Apellido, Nombre, IdSocio
@@ -240,9 +240,9 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             using (var conexion = CrearConexion())
             {
                 string sql = @"
-            SELECT IdSocio, Nombre, Apellido, Dni, Telefono, Domicilio, Avatar, Estado
+            SELECT IdSocio, Nombre, Apellido, Dni, Telefono, Domicilio,Estado,IdUsuario
             FROM socio
-            WHERE Estado = 1
+            WHERE Estado = 1            
               AND (Nombre LIKE @patron
                    OR Apellido LIKE @patron
                    OR CONCAT(Apellido, ' ', Nombre) LIKE @patron
@@ -268,6 +268,23 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
 
             return lista;
         }
+        public Socio? ObtenerPorIdUsuario(int idUsuario)
+        {
+            using var conexion = CrearConexion();
+
+            string sql = @"
+        SELECT IdSocio, Nombre, Apellido, Dni, Telefono, Domicilio, Avatar, Estado, IdUsuario
+        FROM socio
+        WHERE IdUsuario = @idUsuario;";
+
+            using var comand = new MySqlCommand(sql, conexion);
+            comand.Parameters.AddWithValue("@idUsuario", idUsuario);
+            conexion.Open();
+
+            using var read = comand.ExecuteReader();
+
+            return read.Read() ? Mapear(read) : null;
+        }
 
 
         private static void CargarParametros(MySqlCommand cmd, Socio s)
@@ -277,7 +294,6 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             cmd.Parameters.AddWithValue("@Dni", s.Dni ?? string.Empty);
             cmd.Parameters.AddWithValue("@Telefono", s.Telefono ?? string.Empty);
             cmd.Parameters.AddWithValue("@Domicilio", s.Domicilio ?? string.Empty);
-            cmd.Parameters.AddWithValue("@Avatar", s.Avatar ?? string.Empty);
             cmd.Parameters.AddWithValue("@Estado", s.Estado);
         }
 
@@ -289,8 +305,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             Dni = r.GetString("Dni"),
             Telefono = r.GetString("Telefono"),
             Domicilio = r.GetString("Domicilio"),
-            Avatar = r.GetString("Avatar"),
-            Estado = r.GetBoolean("Estado")
+             Estado = r.GetBoolean("Estado"),
+              IdUsuario = r.IsDBNull(r.GetOrdinal("IdUsuario")) ? null: r.GetInt32("IdUsuario")
         };
     }
 }

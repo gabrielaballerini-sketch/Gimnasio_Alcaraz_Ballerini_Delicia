@@ -7,6 +7,5 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
         bool ExisteDni(string dni, int? excluirId = null);
         Socio? ObtenerPorDni(string dni);
         IList<Socio> Buscar(string texto, int limite = 10);
-
-    }
-}
+         Socio? ObtenerPorIdUsuario(int idUsuario);
+}}

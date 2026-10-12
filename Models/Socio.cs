@@ -29,9 +29,10 @@ public class Socio
     ErrorMessage = "El domicilio puede tener letras y numeros ")]
     public string? Domicilio { get; set; } 
     
-    public string? Avatar { get; set; } 
-
-    public IFormFile? avatarFile {get;set;}
     public bool Estado { get; set; } = true;
+    
+    public int? IdUsuario {get;set;} 
+    public Usuario Usuario {get;set;}= new Usuario();
+  
 
 }}
