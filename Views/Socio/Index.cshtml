@@ -3,7 +3,11 @@
 }
 
 <div id="app" class="mt-4">
-    <h2>Socios</h2>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Socios</h2>
+        <button class="btn btn-primary" @@click="abrirCrear">Nuevo socio</button>
+    </div>
 
     <!-- Aviso (toast) -->
     <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1100">
@@ -17,7 +21,7 @@
         </div>
     </div>
 
-    <!-- Modal de confirmación -->
+    <!-- Modal de confirmación (baja / reactivar) -->
     <div class="modal fade" tabindex="-1" ref="modalConfirmar">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow">
@@ -31,13 +35,10 @@
                     <h5 class="mb-2">{{ confirmacion.titulo }}</h5>
                     <p class="text-muted mb-3">{{ confirmacion.mensaje }}</p>
 
-                    <div v-if="confirmacion.socio" class="d-flex align-items-center justify-content-center bg-light rounded p-2 mb-3">
-                        <img v-if="confirmacion.socio.avatar" v-bind:src="confirmacion.socio.avatar"
-                             class="rounded-circle me-2" style="width:40px;height:40px;object-fit:cover">
-                        <div class="text-start">
-                            <div class="fw-semibold">{{ confirmacion.socio.apellido }}, {{ confirmacion.socio.nombre }}</div>
-                            <small class="text-muted">DNI {{ confirmacion.socio.dni }}</small>
+                    <div v-if="confirmacion.socio" class="bg-light rounded p-2 mb-3">
+                        <div class="fw-semibold">{{ confirmacion.socio.apellido }}, {{ confirmacion.socio.nombre }}
                         </div>
+                        <small class="text-muted">DNI {{ confirmacion.socio.dni }}</small>
                     </div>
 
                     <div class="d-flex gap-2 justify-content-center">
@@ -51,55 +52,97 @@
         </div>
     </div>
 
-    <!-- Formulario -->
-    <div class="card mb-4">
-        <div class="card-header">{{ form.idSocio ? 'Editar socio' : 'Nuevo socio' }}</div>
-        <div class="card-body">
-            <div v-if="mensaje" class="alert alert-danger">
-                <div>{{ mensaje }}</div>
-                <ul class="mb-0" v-if="errores.length">
-                    <li v-for="e in errores" v-bind:key="e">{{ e }}</li>
-                </ul>
-            </div>
+    <!-- Modal crear / modificar socio -->
+    <div class="modal fade" tabindex="-1" ref="modalSocio" data-bs-backdrop="static">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
 
-            <div class="row g-2">
-                <div class="col-md-3">
-                    <label class="form-label">Nombre</label>
-                    <input class="form-control" v-model="form.nombre">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Apellido</label>
-                    <input class="form-control" v-model="form.apellido">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">DNI</label>
-                    <input class="form-control" v-model="form.dni">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Teléfono</label>
-                    <input class="form-control" v-model="form.telefono">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Domicilio</label>
-                    <input class="form-control" v-model="form.domicilio">
-                </div>
-                <div class="col-md-8">
-                    <label class="form-label">Foto de perfil (JPG, PNG o WEBP, máx. 2 MB)</label>
-                    <input type="file" class="form-control" accept=".jpg,.jpeg,.png,.webp"
-                           ref="inputArchivo" v-on:change="elegirArchivo">
-                </div>
-                <div class="col-md-4 d-flex align-items-end" v-if="form.idSocio && form.avatar">
-                    <img v-bind:src="form.avatar" class="rounded-circle me-2"
-                         style="width:48px;height:48px;object-fit:cover">
-                    <small class="text-muted">Foto actual (se mantiene si no elegís otra)</small>
-                </div>
-            </div>
+                <form @@submit.prevent="guardar" autocomplete="off" novalidate>
 
-            <div class="mt-3">
-                <button class="btn btn-primary me-2" v-on:click="guardar">
-                    {{ form.idSocio ? 'Guardar cambios' : 'Crear socio' }}
-                </button>
-                <button class="btn btn-secondary" v-on:click="limpiar">Cancelar</button>
+                    <div class="modal-header">
+                        <h5 class="modal-title">{{ editando ? 'Modificar socio' : 'Nuevo socio' }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+
+                    <div class="modal-body">
+
+                        <div v-if="errorModal" class="alert alert-danger">
+                            <div>{{ errorModal }}</div>
+                            <ul class="mb-0" v-if="erroresModal.length">
+                                <li v-for="e in erroresModal" v-bind:key="e">{{ e }}</li>
+                            </ul>
+                        </div>
+
+                        <h6 class="text-uppercase text-muted small mb-3">Datos del socio</h6>
+
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label class="form-label">Nombre</label>
+                                <input class="form-control" v-model="form.nombre">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Apellido</label>
+                                <input class="form-control" v-model="form.apellido">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">DNI</label>
+                                <input class="form-control" v-model="form.dni">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Teléfono</label>
+                                <input class="form-control" v-model="form.telefono">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Domicilio</label>
+                                <input class="form-control" v-model="form.domicilio">
+                            </div>
+                        </div>
+
+                        <!-- Cuenta de acceso: solo al crear -->
+                        <template v-if="!editando">
+
+                            <hr class="my-4">
+
+                            <h6 class="text-uppercase text-muted small mb-1">Cuenta de acceso</h6>
+                            <p class="text-muted small mb-3">
+                                Son obligatorios: el socio no se crea sin su usuario.
+                            </p>
+
+                            <div class="row g-2">
+                                <div class="col-12">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" class="form-control" v-model="cuenta.email"
+                                           autocomplete="new-password">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Contraseña</label>
+                                    <input type="password" class="form-control" v-model="cuenta.password"
+                                           autocomplete="new-password">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Confirmar contraseña</label>
+                                    <input type="password" class="form-control" v-model="cuenta.confirmarPassword"
+                                           autocomplete="new-password">
+                                </div>
+                            </div>
+
+                        </template>
+
+                        <div v-else class="alert alert-light border small mt-4 mb-0">
+                            El usuario de este socio se administra desde la pantalla de Usuarios.
+                        </div>
+
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" v-bind:disabled="guardando || !puedeGuardar">
+                            {{ guardando ? 'Guardando...' : (editando ? 'Guardar cambios' : 'Crear socio y usuario') }}
+                        </button>
+                    </div>
+
+                </form>
+
             </div>
         </div>
     </div>
@@ -120,24 +163,25 @@
     <table class="table table-striped align-middle">
         <thead>
             <tr>
-                <th></th>
                 <th>Apellido y nombre</th>
                 <th>DNI</th>
                 <th>Teléfono</th>
                 <th>Domicilio</th>
+                <th>Cuenta</th>
                 <th></th>
             </tr>
         </thead>
         <tbody>
             <tr v-for="s in socios" v-bind:key="s.idSocio">
-                <td style="width:60px">
-                    <img v-if="s.avatar" v-bind:src="s.avatar" class="rounded-circle"
-                         style="width:40px;height:40px;object-fit:cover">
-                </td>
                 <td>{{ s.apellido }}, {{ s.nombre }}</td>
                 <td>{{ s.dni }}</td>
                 <td>{{ s.telefono }}</td>
                 <td>{{ s.domicilio }}</td>
+                <td>
+                    <span class="badge" v-bind:class="s.idUsuario ? 'bg-success' : 'bg-warning text-dark'">
+                        {{ s.idUsuario ? 'Con usuario' : 'Sin usuario' }}
+                    </span>
+                </td>
                 <td class="text-end">
                     <button class="btn btn-sm btn-outline-primary me-1" v-on:click="editar(s)">Editar</button>
                     <button class="btn btn-sm btn-outline-danger" v-if="pestana === 'activos'"
@@ -179,8 +223,11 @@
         const API = '/api/socios';
 
         const formVacio = () => ({
-            idSocio: 0, nombre: '', apellido: '', dni: '',
-            telefono: '', domicilio: '', avatar: null
+            idSocio: 0, nombre: '', apellido: '', dni: '', telefono: '', domicilio: ''
+        });
+
+        const cuentaVacia = () => ({
+            email: '', password: '', confirmarPassword: ''
         });
 
         const confirmacionVacia = () => ({
@@ -191,26 +238,69 @@
             data() {
                 return {
                     socios: [],
-                    pestana: 'activos',   // 'activos' | 'inactivos'
+                    pestana: 'activos',
                     pagina: 1,
                     tamPagina: 10,
                     total: 0,
                     totalPaginas: 1,
+                    token: '',
+                    editando: false,
                     form: formVacio(),
-                    archivo: null,
-                    mensaje: '',
-                    errores: [],
+                    cuenta: cuentaVacia(),
+                    guardando: false,
+                    errorModal: '',
+                    erroresModal: [],
                     aviso: { tipo: 'ok', texto: '' },
                     temporizadorAviso: null,
                     confirmacion: confirmacionVacia(),
-                    modal: null
+                    modalConfirmar: null,
+                    modalSocio: null
                 };
             },
-            mounted() {
-                this.modal = new bootstrap.Modal(this.$refs.modalConfirmar);
-                this.cargar();
+            computed: {
+                // Al crear, el socio no se puede guardar sin los datos de la cuenta
+                puedeGuardar() {
+                    if (this.editando) return true;
+                    return this.cuenta.email.trim() !== ''
+                        && this.cuenta.password !== ''
+                        && this.cuenta.confirmarPassword !== '';
+                }
+            },
+            async mounted() {
+                this.modalConfirmar = new bootstrap.Modal(this.$refs.modalConfirmar);
+                this.modalSocio = new bootstrap.Modal(this.$refs.modalSocio);
+                await this.iniciar();
             },
             methods: {
+
+                // ---------- Token JWT ----------
+                async iniciar() {
+                    try {
+                        const resp = await fetch('/Cuenta/Token', { credentials: 'same-origin' });
+
+                        if (!resp.ok) {
+                            this.mostrarAviso('error', 'No se pudo obtener el token. Volvé a iniciar sesión.');
+                            return;
+                        }
+
+                        const datos = await resp.json();
+                        this.token = datos.token;
+
+                        await this.cargar();
+                    }
+                    catch (e) {
+                        this.mostrarAviso('error', 'No se pudo conectar con el servidor.');
+                    }
+                },
+
+                // Todas las llamadas a la API llevan el JWT
+                async peticionApi(url, opciones = {}) {
+                    const headers = new Headers(opciones.headers || {});
+                    headers.set('Authorization', `Bearer ${this.token}`);
+
+                    return fetch(url, { ...opciones, headers, credentials: 'same-origin' });
+                },
+
                 // ---------- Avisos ----------
                 mostrarAviso(tipo, texto) {
                     this.aviso = { tipo, texto };
@@ -220,8 +310,17 @@
 
                 // ---------- Listado ----------
                 async cargar() {
-                    const url = `${API}/${this.pestana}?pagina=${this.pagina}&tamPagina=${this.tamPagina}`;
-                    const resp = await fetch(url);
+                    const resp = await this.peticionApi(
+                        `${API}/${this.pestana}?pagina=${this.pagina}&tamPagina=${this.tamPagina}`);
+
+                    if (!resp.ok) {
+                        this.socios = [];
+                        this.mostrarAviso('error', resp.status === 403
+                            ? 'No tenés permisos para ver esta lista.'
+                            : 'No se pudieron cargar los socios.');
+                        return;
+                    }
+
                     const datos = await resp.json();
 
                     // Si quedó una página que ya no existe (por ejemplo, al dar de baja al último de la página), retrocede
@@ -250,54 +349,81 @@
                     this.cargar();
                 },
 
-                // ---------- Formulario ----------
-                elegirArchivo(evento) {
-                    this.archivo = evento.target.files[0] || null;
+                // ---------- Alta / modificación ----------
+                abrirCrear() {
+                    this.editando = false;
+                    this.form = formVacio();
+                    this.cuenta = cuentaVacia();
+                    this.errorModal = '';
+                    this.erroresModal = [];
+                    this.modalSocio.show();
+                },
+                editar(socio) {
+                    this.editando = true;
+                    this.form = {
+                        idSocio: socio.idSocio,
+                        nombre: socio.nombre,
+                        apellido: socio.apellido,
+                        dni: socio.dni,
+                        telefono: socio.telefono,
+                        domicilio: socio.domicilio
+                    };
+                    this.errorModal = '';
+                    this.erroresModal = [];
+                    this.modalSocio.show();
                 },
                 async guardar() {
-                    this.mensaje = '';
-                    this.errores = [];
+                    if (this.guardando) return;
 
-                    const editando = this.form.idSocio > 0;
-                    const datos = new FormData();
-                    datos.append('nombre', this.form.nombre ?? '');
-                    datos.append('apellido', this.form.apellido ?? '');
-                    datos.append('dni', this.form.dni ?? '');
-                    datos.append('telefono', this.form.telefono ?? '');
-                    datos.append('domicilio', this.form.domicilio ?? '');
-                    if (this.archivo) datos.append('avatarFile', this.archivo);
+                    this.errorModal = '';
+                    this.erroresModal = [];
 
-                    // Con FormData no se define Content-Type: el navegador lo arma solo
-                    const resp = await fetch(editando ? `${API}/${this.form.idSocio}` : API, {
-                        method: editando ? 'PUT' : 'POST',
-                        body: datos
-                    });
-
-                    if (!resp.ok) {
-                        const error = await resp.json();
-                        this.mensaje = error.mensaje || 'Ocurrió un error.';
-                        this.errores = error.errores || [];
+                    if (!this.editando && this.cuenta.password !== this.cuenta.confirmarPassword) {
+                        this.errorModal = 'Las contraseñas no coinciden.';
                         return;
                     }
 
-                    this.limpiar();
-                    this.mostrarAviso('ok', editando ? 'Socio actualizado correctamente.' : 'Socio creado correctamente.');
-                    this.cargar();
-                },
-                editar(socio) {
-                    this.mensaje = '';
-                    this.errores = [];
-                    this.archivo = null;
-                    this.$refs.inputArchivo.value = '';
-                    this.form = { ...socio };
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                },
-                limpiar() {
-                    this.form = formVacio();
-                    this.archivo = null;
-                    this.$refs.inputArchivo.value = '';
-                    this.mensaje = '';
-                    this.errores = [];
+                    this.guardando = true;
+
+                    try {
+                        // Al crear: los datos del socio + su usuario (email y contraseña)
+                        const cuerpo = this.editando
+                            ? this.form
+                            : {
+                                ...this.form,
+                                usuario: {
+                                    email: this.cuenta.email,
+                                    password: this.cuenta.password
+                                }
+                            };
+
+                        const resp = await this.peticionApi(
+                            this.editando ? `${API}/${this.form.idSocio}` : API,
+                            {
+                                method: this.editando ? 'PUT' : 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(cuerpo)
+                            });
+
+                        if (!resp.ok) {
+                            const error = await resp.json().catch(() => ({}));
+                            this.errorModal = error.mensaje || 'No se pudo guardar el socio.';
+                            this.erroresModal = error.errores || [];
+                            return;
+                        }
+
+                        this.modalSocio.hide();
+                        this.mostrarAviso('ok', this.editando
+                            ? 'Socio actualizado correctamente.'
+                            : 'Socio y usuario creados correctamente.');
+                        await this.cargar();
+                    }
+                    catch (e) {
+                        this.errorModal = 'No se pudo conectar con el servidor.';
+                    }
+                    finally {
+                        this.guardando = false;
+                    }
                 },
 
                 // ---------- Confirmaciones ----------
@@ -310,7 +436,7 @@
                         socio,
                         accion: () => this.ejecutarBaja(socio)
                     };
-                    this.modal.show();
+                    this.modalConfirmar.show();
                 },
                 pedirReactivar(socio) {
                     this.confirmacion = {
@@ -321,30 +447,34 @@
                         socio,
                         accion: () => this.ejecutarReactivar(socio)
                     };
-                    this.modal.show();
+                    this.modalConfirmar.show();
                 },
                 async confirmar() {
                     const accion = this.confirmacion.accion;
-                    this.modal.hide();
+                    this.modalConfirmar.hide();
                     if (accion) await accion();
                 },
                 async ejecutarBaja(socio) {
-                    const resp = await fetch(`${API}/${socio.idSocio}`, { method: 'DELETE' });
+                    const resp = await this.peticionApi(`${API}/${socio.idSocio}`, { method: 'DELETE' });
+
                     if (!resp.ok) {
-                        const error = await resp.json();
+                        const error = await resp.json().catch(() => ({}));
                         this.mostrarAviso('error', error.mensaje || 'No se pudo dar de baja.');
                         return;
                     }
+
                     this.mostrarAviso('ok', `${socio.apellido}, ${socio.nombre} fue dado de baja.`);
                     this.cargar();
                 },
                 async ejecutarReactivar(socio) {
-                    const resp = await fetch(`${API}/${socio.idSocio}/reactivar`, { method: 'PUT' });
+                    const resp = await this.peticionApi(`${API}/${socio.idSocio}/reactivar`, { method: 'PUT' });
+
                     if (!resp.ok) {
-                        const error = await resp.json();
+                        const error = await resp.json().catch(() => ({}));
                         this.mostrarAviso('error', error.mensaje || 'No se pudo reactivar.');
                         return;
                     }
+
                     this.mostrarAviso('ok', `${socio.apellido}, ${socio.nombre} fue reactivado.`);
                     this.cargar();
                 }

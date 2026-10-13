@@ -3,13 +3,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Gimnasio_Alcaraz_Ballerini_Delicia.Service;
+
 namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
 {
-
     [ApiController]
     [Route("api/socios")]
-
-
     public class SocioApiController : ControllerBase
     {
         private readonly SocioService _service;
@@ -19,39 +17,36 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             _service = service;
         }
 
-
-
-        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-       Roles = "Administrador,Empleado")]
-
         // GET api/socios/activos?pagina=1&tamPagina=10
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+            Roles = "Administrador,Empleado")]
         [HttpGet("activos")]
         public IActionResult ObtenerActivos([FromQuery] int pagina = 1, [FromQuery] int tamPagina = 10)
         {
             return Ok(_service.ObtenerActivos(pagina, tamPagina));
         }
 
-
-
-
-        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-        Roles = "Administrador")]
         // GET api/socios/inactivos?pagina=1&tamPagina=10
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+            Roles = "Administrador")]
         [HttpGet("inactivos")]
         public IActionResult ObtenerInactivos([FromQuery] int pagina = 1, [FromQuery] int tamPagina = 10)
         {
             return Ok(_service.ObtenerInactivos(pagina, tamPagina));
         }
-        // GET api/socios/buscar?texto=gom
+
+        // GET api/socios/buscar?texto=gom&sinUsuario=true
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+            Roles = "Administrador,Empleado")]
         [HttpGet("buscar")]
-        public IActionResult Buscar([FromQuery] string? texto)
+        public IActionResult Buscar([FromQuery] string? texto, [FromQuery] bool sinUsuario = false)
         {
-            return Ok(_service.Buscar(texto));
+            return Ok(_service.Buscar(texto, 10, sinUsuario));
         }
 
         // GET api/socios/5
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-        Roles = "Administrador, Empleado")]
+            Roles = "Administrador,Empleado")]
         [HttpGet("{id:int}")]
         public ActionResult<Socio> Obtener(int id)
         {
@@ -60,36 +55,34 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             return Ok(socio);
         }
 
-
-
-
+        // POST api/socios  (JSON: { socio: {...}, cuenta: { email, password, confirmarPassword } })
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-        Roles = "Administrador,Empleado")]
-
-        // POST api/socios  (multipart/form-data)
+            Roles = "Administrador,Empleado")]
         [HttpPost]
-        public IActionResult Crear([FromForm] Socio socio)
-        {
-            if (!ModelState.IsValid) return ErroresDeModelo();
+       // POST api/socios  (JSON: datos del socio + usuario: { email, password })
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+    Roles = "Administrador,Empleado")]
+[HttpPost]
+public IActionResult Crear([FromBody] Socio socio)
+{
+    if (!ModelState.IsValid) return ErroresDeModelo();
 
-            try
-            {
-                var creado = _service.Crear(socio);
-                return CreatedAtAction(nameof(Obtener), new { id = creado.IdSocio }, creado);
-            }
-            catch (ReglaNegocioException ex)
-            {
-                return BadRequest(new { mensaje = ex.Message });
-            }
-        }
+    try
+    {
+        var creado = _service.CrearConUsuario(socio);
+        return CreatedAtAction(nameof(Obtener), new { id = creado.IdSocio }, creado);
+    }
+    catch (ReglaNegocioException ex)
+    {
+        return BadRequest(new { mensaje = ex.Message });
+    }
+}
 
-
-
+        // PUT api/socios/5  (JSON)
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-        Roles = "Administrador,Empleado")]
-        // PUT api/socios/5  (multipart/form-data)
+            Roles = "Administrador,Empleado")]
         [HttpPut("{id:int}")]
-        public IActionResult Modificar(int id, [FromForm] Socio socio)
+        public IActionResult Modificar(int id, [FromBody] Socio socio)
         {
             if (!ModelState.IsValid) return ErroresDeModelo();
 
@@ -105,11 +98,9 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             }
         }
 
-
-
-        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-        Roles = "Administrador")]
         // DELETE api/socios/5  (baja lógica)
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+            Roles = "Administrador")]
         [HttpDelete("{id:int}")]
         public IActionResult DarDeBaja(int id)
         {
@@ -120,7 +111,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
 
         // PUT api/socios/5/reactivar
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-        Roles = "Administrador, Empleado")]
+            Roles = "Administrador,Empleado")]
         [HttpPut("{id:int}/reactivar")]
         public IActionResult Reactivar(int id)
         {

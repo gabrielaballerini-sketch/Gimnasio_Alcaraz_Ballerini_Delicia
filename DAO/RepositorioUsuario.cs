@@ -1,17 +1,21 @@
-
 using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
 using MySql.Data.MySqlClient;
 
 namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
 {
-    public class RepositorioUsuario
-        : RepositorioBase, IRepositorioUsuario
+    public class RepositorioUsuario : RepositorioBase, IRepositorioUsuario
     {
-        public RepositorioUsuario(
-            IConfiguration configuration)
-            : base(configuration)
+        public RepositorioUsuario(IConfiguration configuration) : base(configuration)
         {
         }
+
+        // Consulta base: el usuario y, si es un usuario Socio, los datos de su ficha
+        private const string SelectUsuario = @"
+            SELECT u.IdUsuario, u.Email, u.NombreUsuario, u.Password, u.Roles,
+                   u.Estado, u.Avatar,
+                   s.IdSocio, s.Nombre AS SocioNombre, s.Apellido AS SocioApellido, s.Dni AS SocioDni
+            FROM usuario u
+            LEFT JOIN socio s ON s.IdUsuario = u.IdUsuario";
 
         public int Alta(Usuario usuario)
         {
@@ -19,9 +23,9 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
 
             var sql = @"
                 INSERT INTO usuario
-                    (Email,NombreUsuario, Password, Roles, Estado, Avatar)
+                    (Email, NombreUsuario, Password, Roles, Estado, Avatar)
                 VALUES
-                    (@Email,@NombreUsuario, @Password, @Roles, @Estado, @Avatar);
+                    (@Email, @NombreUsuario, @Password, @Roles, @Estado, @Avatar);
 
                 SELECT LAST_INSERT_ID();";
 
@@ -31,9 +35,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
 
             conexion.Open();
 
-            int id = Convert.ToInt32(
-                comando.ExecuteScalar()
-            );
+            int id = Convert.ToInt32(comando.ExecuteScalar());
 
             usuario.IdUsuario = id;
 
@@ -47,7 +49,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             var sql = @"
                 UPDATE usuario
                 SET Email = @Email,
-                    NombreUsuario=@NombreUsuario,
+                    NombreUsuario = @NombreUsuario,
                     Password = @Password,
                     Roles = @Roles,
                     Estado = @Estado,
@@ -58,10 +60,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
 
             CargarParametros(comando, usuario);
 
-            comando.Parameters.AddWithValue(
-                "@IdUsuario",
-                usuario.IdUsuario
-            );
+            comando.Parameters.AddWithValue("@IdUsuario", usuario.IdUsuario);
 
             conexion.Open();
 
@@ -72,12 +71,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
         {
             using var conexion = CrearConexion();
 
-            var sql = @"
-                UPDATE usuario
-                SET Estado = 0
-                WHERE IdUsuario = @id;";
-
-            using var comando = new MySqlCommand(sql, conexion);
+            using var comando = new MySqlCommand(
+                "UPDATE usuario SET Estado = 0 WHERE IdUsuario = @id;", conexion);
 
             comando.Parameters.AddWithValue("@id", id);
 
@@ -90,13 +85,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
         {
             using var conexion = CrearConexion();
 
-            var sql = @"
-                UPDATE usuario
-                SET Estado = 1
-                WHERE IdUsuario = @id
-                  AND Estado = 0;";
-
-            using var comando = new MySqlCommand(sql, conexion);
+            using var comando = new MySqlCommand(
+                "UPDATE usuario SET Estado = 1 WHERE IdUsuario = @id AND Estado = 0;", conexion);
 
             comando.Parameters.AddWithValue("@id", id);
 
@@ -109,13 +99,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
         {
             using var conexion = CrearConexion();
 
-            var sql = @"
-                SELECT IdUsuario, Email, NombreUsuario, Password, Roles,
-                       Estado, Avatar
-                FROM usuario
-                WHERE IdUsuario = @IdUsuario;";
-
-            using var comando = new MySqlCommand(sql, conexion);
+            using var comando = new MySqlCommand(
+                SelectUsuario + " WHERE u.IdUsuario = @IdUsuario;", conexion);
 
             comando.Parameters.AddWithValue("@IdUsuario", id);
 
@@ -130,13 +115,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
         {
             using var conexion = CrearConexion();
 
-            var sql = @"
-                SELECT IdUsuario, Email, NombreUsuario, Password, Roles,
-                       Estado, Avatar
-                FROM usuario
-                WHERE Email = @Email;";
-
-            using var comando = new MySqlCommand(sql, conexion);
+            using var comando = new MySqlCommand(
+                SelectUsuario + " WHERE u.Email = @Email;", conexion);
 
             comando.Parameters.AddWithValue("@Email", email);
 
@@ -147,9 +127,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             return reader.Read() ? Mapear(reader) : null;
         }
 
-        public bool ExisteEmail(
-            string email,
-            int? excluirId = null)
+        public bool ExisteEmail(string email, int? excluirId = null)
         {
             using var conexion = CrearConexion();
 
@@ -157,43 +135,29 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
                 SELECT COUNT(*)
                 FROM usuario
                 WHERE Email = @Email
-                  AND (@ExcluirId IS NULL
-                       OR IdUsuario <> @ExcluirId);";
+                  AND (@ExcluirId IS NULL OR IdUsuario <> @ExcluirId);";
 
             using var comando = new MySqlCommand(sql, conexion);
 
             comando.Parameters.AddWithValue("@Email", email);
-
-            comando.Parameters.AddWithValue(
-                "@ExcluirId",
-                ValorODbNull(excluirId)
-            );
+            comando.Parameters.AddWithValue("@ExcluirId", ValorODbNull(excluirId));
 
             conexion.Open();
 
-            return Convert.ToInt32(
-                comando.ExecuteScalar()
-            ) > 0;
+            return Convert.ToInt32(comando.ExecuteScalar()) > 0;
         }
 
-        public IList<Usuario> ObtenerActivos(
-            int pagina = 1,
-            int tamPagina = 10)
+        public IList<Usuario> ObtenerActivos(int pagina = 1, int tamPagina = 10)
         {
             return ObtenerPorEstado(true, pagina, tamPagina);
         }
 
-        public IList<Usuario> ObtenerInactivos(
-            int pagina = 1,
-            int tamPagina = 10)
+        public IList<Usuario> ObtenerInactivos(int pagina = 1, int tamPagina = 10)
         {
             return ObtenerPorEstado(false, pagina, tamPagina);
         }
 
-        private IList<Usuario> ObtenerPorEstado(
-            bool estado,
-            int pagina,
-            int tamPagina)
+        private IList<Usuario> ObtenerPorEstado(bool estado, int pagina, int tamPagina)
         {
             if (pagina < 1)
                 pagina = 1;
@@ -205,12 +169,9 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
 
             using var conexion = CrearConexion();
 
-            var sql = @"
-                SELECT IdUsuario, Email,NombreUsuario, Password, Roles,
-                       Estado, Avatar
-                FROM usuario
-                WHERE Estado = @Estado
-                ORDER BY Email, IdUsuario
+            var sql = SelectUsuario + @"
+                WHERE u.Estado = @Estado
+                ORDER BY u.Email, u.IdUsuario
                 LIMIT @TamPagina
                 OFFSET @Desplazamiento;";
 
@@ -218,10 +179,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
 
             comando.Parameters.AddWithValue("@Estado", estado);
             comando.Parameters.AddWithValue("@TamPagina", tamPagina);
-            comando.Parameters.AddWithValue(
-                "@Desplazamiento",
-                (pagina - 1) * tamPagina
-            );
+            comando.Parameters.AddWithValue("@Desplazamiento", (pagina - 1) * tamPagina);
 
             conexion.Open();
 
@@ -246,67 +204,55 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
 
             using var comando = new MySqlCommand(sql, conexion);
 
-            comando.Parameters.AddWithValue(
-                "@Estado",
-                ValorODbNull(soloActivos)
-            );
+            comando.Parameters.AddWithValue("@Estado", ValorODbNull(soloActivos));
 
             conexion.Open();
 
             return Convert.ToInt32(comando.ExecuteScalar());
         }
 
-        private static void CargarParametros(
-            MySqlCommand comando,
-            Usuario usuario)
+        private static void CargarParametros(MySqlCommand comando, Usuario usuario)
         {
-            comando.Parameters.AddWithValue(
-                "@Email",
-                usuario.Email ?? string.Empty
-            );
-            
-             comando.Parameters.AddWithValue(
-                "@NombreUsuario",
-                ValorODbNull(usuario.NombreUsuario) 
-              );   
-
-            comando.Parameters.AddWithValue(
-                "@Password",
-                usuario.Password ?? string.Empty
-            );
-
-            comando.Parameters.AddWithValue(
-                "@Roles",
-                (int)usuario.Roles
-            );
-
-            comando.Parameters.AddWithValue(
-                "@Estado",
-                usuario.Estado
-            );
-
-            comando.Parameters.AddWithValue(
-                "@Avatar",
-                ValorODbNull(usuario.Avatar)
-            );
+            comando.Parameters.AddWithValue("@Email", usuario.Email ?? string.Empty);
+            comando.Parameters.AddWithValue("@NombreUsuario", ValorODbNull(usuario.NombreUsuario));
+            comando.Parameters.AddWithValue("@Password", usuario.Password ?? string.Empty);
+            comando.Parameters.AddWithValue("@Roles", (int)usuario.Roles);
+            comando.Parameters.AddWithValue("@Estado", usuario.Estado);
+            comando.Parameters.AddWithValue("@Avatar", ValorODbNull(usuario.Avatar));
         }
 
         private static Usuario Mapear(MySqlDataReader reader)
         {
-            return new Usuario
+            var usuario = new Usuario
             {
                 IdUsuario = reader.GetInt32("IdUsuario"),
                 Email = reader.GetString("Email"),
-                NombreUsuario = reader.IsDBNull(reader.GetOrdinal("NombreUsuario"))? null
+                NombreUsuario = reader.IsDBNull(reader.GetOrdinal("NombreUsuario"))
+                    ? null
                     : reader.GetString("NombreUsuario"),
                 Password = reader.GetString("Password"),
                 Roles = (Roles)reader.GetInt32("Roles"),
                 Estado = reader.GetBoolean("Estado"),
-                Avatar = reader.IsDBNull(
-                    reader.GetOrdinal("Avatar"))
+                Avatar = reader.IsDBNull(reader.GetOrdinal("Avatar"))
                     ? null
-                    : reader.GetString("Avatar")
+                    : reader.GetString("Avatar"),
+                IdSocio = reader.IsDBNull(reader.GetOrdinal("IdSocio"))
+                    ? null
+                    : reader.GetInt32("IdSocio")
             };
+
+            if (usuario.IdSocio.HasValue)
+            {
+                usuario.Socio = new Socio
+                {
+                    IdSocio = usuario.IdSocio.Value,
+                    Nombre = reader.GetString("SocioNombre"),
+                    Apellido = reader.GetString("SocioApellido"),
+                    Dni = reader.GetString("SocioDni")
+                };
+            }
+
+            return usuario;
         }
     }
 }

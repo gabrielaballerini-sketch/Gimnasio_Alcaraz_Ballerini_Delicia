@@ -70,6 +70,10 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Controllers
                     usuario.Roles.ToString()
                 )
             };
+            if (usuario.IdSocio.HasValue)
+            {
+                claims.Add(new Claim("IdSocio", usuario.IdSocio.Value.ToString()));
+            }
 
             var identidad = new ClaimsIdentity(
                 claims,
@@ -124,13 +128,20 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Controllers
                 });
             }
 
-            var claims = new[]
+            var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, id),
                 new Claim(ClaimTypes.Name, email),
                 new Claim(ClaimTypes.Role, rol)
             };
 
+            var idSocio = User.FindFirstValue("IdSocio");
+
+            if (!string.IsNullOrWhiteSpace(idSocio))
+            {
+                claims.Add(new Claim("IdSocio", idSocio));
+            }
+            
             var signingKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(key));
 

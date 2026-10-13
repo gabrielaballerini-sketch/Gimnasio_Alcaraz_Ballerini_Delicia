@@ -8,13 +8,18 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
     public class UsuarioService
     {
         private readonly IRepositorioUsuario _repo;
+        private readonly IRepositorioSocio _repoSocio;
         private readonly IWebHostEnvironment _environment;
         private readonly IConfiguration _configuration;
 
-
-        public UsuarioService(IRepositorioUsuario repo, IWebHostEnvironment environment, IConfiguration configuration)
+        public UsuarioService(
+            IRepositorioUsuario repo,
+            IRepositorioSocio repoSocio,
+            IWebHostEnvironment environment,
+            IConfiguration configuration)
         {
             _repo = repo;
+            _repoSocio = repoSocio;
             _environment = environment;
             _configuration = configuration;
         }
@@ -74,10 +79,12 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
         {
             usuario.Email = usuario.Email?.Trim();
             Validar(usuario, null);
+            ValidarVinculoSocio(usuario, null, null);
             usuario.Password = HashearPassword(usuario.Password!);
             usuario.Estado = true;
             usuario.Avatar = null;
             _repo.Alta(usuario);
+            GuardarVinculoSocio(usuario);
 
             return usuario;
         }
@@ -101,6 +108,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             }
 
             Validar(usuario, id);
+            ValidarVinculoSocio(usuario, id, existente.IdSocio);
 
             usuario.IdUsuario = id;
             usuario.Estado = existente.Estado;
@@ -108,10 +116,10 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             usuario.NombreUsuario ??= existente.NombreUsuario;
 
             _repo.Modificacion(usuario);
+            GuardarVinculoSocio(usuario);
 
             return usuario;
         }
-
         public async Task<Usuario?> ActualizarAvatar(
             int id,
             IFormFile archivo)
@@ -394,6 +402,63 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
                 usuario.Password,
                 hashIngresado,
                 StringComparison.Ordinal);
+        }
+        // Valida y arma la cuenta de un socio nuevo: rol Socio, activa y con la contraseña hasheada
+        public Usuario PrepararCuentaSocio(string email, string password)
+        {
+            var usuario = new Usuario
+            {
+                Email = email?.Trim(),
+                Password = password,
+                Roles = Roles.Socio,
+                Estado = true
+            };
+
+            Validar(usuario, null);   // email obligatorio y único, contraseña obligatoria
+
+            usuario.Password = HashearPassword(usuario.Password!);
+
+            return usuario;
+        }
+
+        // Solo el rol Socio se vincula con una ficha, y cada socio tiene como máximo un usuario
+        private void ValidarVinculoSocio(Usuario usuario, int? idUsuarioExistente, int? idSocioActual)
+        {
+            if (usuario.Roles != Roles.Socio)
+            {
+                usuario.IdSocio = null;
+                return;
+            }
+
+            if (!usuario.IdSocio.HasValue)
+                throw new ReglaNegocioException(
+                    "Debe seleccionar el socio al que pertenece este usuario.");
+
+            var socio = _repoSocio.ObtenerPorId(usuario.IdSocio.Value);
+
+            if (socio == null)
+                throw new ReglaNegocioException("El socio seleccionado no existe.");
+
+            // Un socio dado de baja no se puede vincular, salvo que ya estuviera vinculado a este usuario
+            if (!socio.Estado && usuario.IdSocio != idSocioActual)
+                throw new ReglaNegocioException("El socio seleccionado está dado de baja.");
+
+            // El socio ya tiene otro usuario
+            if (socio.IdUsuario.HasValue && socio.IdUsuario != idUsuarioExistente)
+                throw new ReglaNegocioException("Ese socio ya tiene un usuario asignado.");
+        }
+
+        // Guarda el vínculo en socio.IdUsuario (y lo libera si el usuario cambió de socio o de rol)
+        private void GuardarVinculoSocio(Usuario usuario)
+        {
+            _repoSocio.DesvincularUsuario(usuario.IdUsuario);
+
+            if (usuario.Roles == Roles.Socio &&
+                usuario.IdSocio.HasValue &&
+                _repoSocio.VincularUsuario(usuario.IdSocio.Value, usuario.IdUsuario) == 0)
+            {
+                throw new ReglaNegocioException("Ese socio ya tiene un usuario asignado.");
+            }
         }
 
     }

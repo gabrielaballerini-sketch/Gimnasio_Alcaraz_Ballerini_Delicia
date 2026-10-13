@@ -101,6 +101,12 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             int id,
             [FromBody] Usuario usuario)
         {
+            // En edición la contraseña es opcional: si viene vacía se conserva la actual
+            if (string.IsNullOrWhiteSpace(usuario.Password))
+                ModelState.Remove(nameof(Usuario.Password));
+
+          
+
             if (!ModelState.IsValid)
                 return ErroresDeModelo();
 
@@ -196,15 +202,25 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
         }
 
         // Evita devolver la contraseña en las respuestas de la API.
+        // Evita devolver la contraseña en las respuestas de la API.
         private static object RespuestaUsuario(Usuario usuario)
         {
             return new
             {
                 usuario.IdUsuario,
                 usuario.Email,
+                usuario.NombreUsuario,
                 usuario.Roles,
                 usuario.Estado,
-                usuario.Avatar
+                usuario.Avatar,
+                usuario.IdSocio,
+                Socio = usuario.Socio == null ? null : new
+                {
+                    usuario.Socio.IdSocio,
+                    usuario.Socio.Nombre,
+                    usuario.Socio.Apellido,
+                    usuario.Socio.Dni
+                }
             };
         }
 

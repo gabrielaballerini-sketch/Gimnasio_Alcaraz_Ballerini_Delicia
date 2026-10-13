@@ -26,6 +26,13 @@ public class Usuario
     public IFormFile? avatarFile {get;set;}
 
 
+    // No se guardan en la tabla usuario: el vínculo vive en socio.IdUsuario
+    // y estos datos se obtienen con un JOIN
+    public int? IdSocio { get; set; }
+
+    public Socio? Socio { get; set; }
+
+
 
 }
 

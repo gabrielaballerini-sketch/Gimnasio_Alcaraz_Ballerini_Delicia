@@ -46,15 +46,11 @@
                         Password
                     </label>
 
-                    <input type="password"
-                           class="form-control"
-                           v-model="form.password"
-                           required
-                           minlength="6"
-                           maxlength="20">
+                    <input type="password" class="form-control" v-model="form.password" :required="form.idUsuario === 0"
+                           minlength="6" maxlength="20">
 
                     <small class="text-muted">
-                        Ingresá la contraseña para crear o modificar el usuario.
+                        Al crear es obligatoria. Al editar, dejala vacía para no cambiarla.
                     </small>
                 </div>
 
@@ -71,6 +67,62 @@
                         <option :value="3">Administrador</option>
 
                     </select>
+                </div>
+                <!-- SOCIO (solo para el rol Socio) -->
+                <div class="mb-3" v-if="form.roles === 1">
+
+                    <label class="form-label">Socio</label>
+
+                    <div v-if="socioSeleccionado"
+                         class="d-flex align-items-center justify-content-between border rounded p-2">
+
+                        <div>
+                            <div class="fw-semibold">
+                                {{ socioSeleccionado.apellido }}, {{ socioSeleccionado.nombre }}
+                            </div>
+                            <small class="text-muted">DNI {{ socioSeleccionado.dni }}</small>
+                        </div>
+
+                        <button type="button" class="btn btn-sm btn-outline-secondary" @@click="quitarSocio">
+                            Cambiar
+                        </button>
+
+                    </div>
+
+                    <div v-else class="position-relative">
+
+                        <input type="text" class="form-control"
+                               placeholder="Buscar socio sin usuario (mínimo 2 caracteres)" autocomplete="off"
+                               v-model="busquedaSocio" @@input="buscarSocios" @@keydown.enter.prevent>
+
+                        <div v-if="busquedaSocio.trim().length >= 2"
+                             class="list-group position-absolute w-100 shadow-sm"
+                             style="z-index:1056;max-height:240px;overflow-y:auto">
+
+                            <div v-if="buscandoSocios" class="list-group-item text-muted">
+                                Buscando...
+                            </div>
+
+                            <template v-else>
+
+                                <button v-for="s in resultadosSocios" :key="s.idSocio" type="button"
+                                        class="list-group-item list-group-item-action" @@click="elegirSocio(s)">
+
+                                    <strong>{{ s.apellido }}, {{ s.nombre }}</strong>
+                                    <small class="text-muted ms-2">DNI {{ s.dni }}</small>
+
+                                </button>
+
+                                <div v-if="resultadosSocios.length === 0" class="list-group-item text-muted">
+                                    No se encontraron socios activos sin usuario.
+                                </div>
+
+                            </template>
+
+                        </div>
+
+                    </div>
+
                 </div>
 
                 <!-- AVATAR ACTUAL -->
@@ -208,6 +260,7 @@
                     <th>Avatar</th>
                     <th>Email</th>
                     <th>Rol</th>
+                    <th>Socio</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -263,6 +316,15 @@
                         </span>
 
                     </td>
+                    <td>
+                        <span v-if="usuario.socio">
+                            {{ usuario.socio.apellido }}, {{ usuario.socio.nombre }}
+                        </span>
+                        <span v-else-if="usuario.roles === 1" class="badge bg-warning text-dark">
+                            Sin socio asignado
+                        </span>
+                        <span v-else class="text-muted">—</span>
+                    </td>
 
                     <td>
 
@@ -292,7 +354,7 @@
                 </tr>
 
                 <tr v-if="usuarios.length === 0">
-                    <td colspan="5"
+                    <td colspan="6"
                         class="text-center text-muted py-4">
 
                         No hay usuarios para mostrar.
@@ -345,7 +407,8 @@
                 idUsuario: 0,
                 email: '',
                 password: '',
-                roles: 1
+                roles: 1,
+                idSocio: null
             };
         }
 
@@ -366,7 +429,12 @@
                     guardando: false,
                     mensaje: '',
                     mensajeTipo: 'ok',
-                    token: ''
+                    token: '',
+                    socioSeleccionado: null,
+                    busquedaSocio: '',
+                    resultadosSocios: [],
+                    buscandoSocios: false,
+                    temporizadorBusqueda: null,
                 };
             },
 
@@ -561,7 +629,8 @@
                         const datos = {
                             email: this.form.email,
                             password: this.form.password,
-                            roles: this.form.roles
+                            roles: this.form.roles,
+                            idSocio: this.form.roles === 1 ? this.form.idSocio : null
                         };
 
                         const resp = await this.peticionApi(
@@ -672,9 +741,14 @@
                     this.form = {
                         idUsuario: usuario.idUsuario,
                         email: usuario.email,
-                        password: usuario.password || '',
-                        roles: usuario.roles
+                        password: '',
+                        roles: usuario.roles,
+                        idSocio: usuario.idSocio ?? null
                     };
+
+                    this.socioSeleccionado = usuario.socio ?? null;
+                    this.busquedaSocio = '';
+                    this.resultadosSocios = [];
 
                     this.avatarActual = usuario.avatar || '';
                     this.avatarFile = null;
@@ -685,7 +759,6 @@
                         behavior: 'smooth'
                     });
                 },
-
                 // ==========================================
                 // LIMPIAR FORMULARIO
                 // ==========================================
@@ -695,12 +768,79 @@
                     this.avatarFile = null;
                     this.avatarPreview = '';
                     this.mensaje = '';
+                    this.socioSeleccionado = null;
+                    this.busquedaSocio = '';
+                    this.resultadosSocios = [];
 
                     const inputArchivo =
                         document.querySelector('input[type="file"]');
 
                     if (inputArchivo)
                         inputArchivo.value = '';
+                },
+                buscarSocios() {
+
+                    clearTimeout(this.temporizadorBusqueda);
+
+                    const texto = this.busquedaSocio.trim();
+
+                    if (texto.length < 2) {
+                        this.resultadosSocios = [];
+                        this.buscandoSocios = false;
+                        return;
+                    }
+
+                    this.buscandoSocios = true;
+
+                    // Espera 300 ms sin tipear para no consultar en cada tecla
+                    this.temporizadorBusqueda = setTimeout(async () => {
+
+                        try {
+
+                            const resp = await this.peticionApi(
+                                `/api/socios/buscar?texto=${encodeURIComponent(texto)}&sinUsuario=true`
+                            );
+
+                            if (!resp.ok)
+                                throw new Error('No se pudo buscar socios.');
+
+                            const datos = await resp.json();
+
+                            // Si el usuario siguió escribiendo, esta respuesta quedó vieja
+                            if (texto !== this.busquedaSocio.trim())
+                                return;
+
+                            this.resultadosSocios = datos;
+                            this.buscandoSocios = false;
+
+                        }
+                        catch (e) {
+
+                            this.mostrarAviso('error', e.message);
+                            this.buscandoSocios = false;
+
+                        }
+
+                    }, 300);
+
+                },
+
+                elegirSocio(socio) {
+
+                    this.socioSeleccionado = socio;
+                    this.form.idSocio = socio.idSocio;
+                    this.busquedaSocio = '';
+                    this.resultadosSocios = [];
+
+                },
+
+                quitarSocio() {
+
+                    this.socioSeleccionado = null;
+                    this.form.idSocio = null;
+                    this.busquedaSocio = '';
+                    this.resultadosSocios = [];
+
                 },
 
                 // ==========================================
