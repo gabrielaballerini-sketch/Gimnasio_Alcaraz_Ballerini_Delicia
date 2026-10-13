@@ -55,28 +55,25 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             return Ok(socio);
         }
 
-        // POST api/socios  (JSON: { socio: {...}, cuenta: { email, password, confirmarPassword } })
+
+        // POST api/socios  (JSON: datos del socio + usuario: { email, password })
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
             Roles = "Administrador,Empleado")]
         [HttpPost]
-       // POST api/socios  (JSON: datos del socio + usuario: { email, password })
-[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-    Roles = "Administrador,Empleado")]
-[HttpPost]
-public IActionResult Crear([FromBody] Socio socio)
-{
-    if (!ModelState.IsValid) return ErroresDeModelo();
+        public IActionResult Crear([FromBody] Socio socio)
+        {
+            if (!ModelState.IsValid) return ErroresDeModelo();
 
-    try
-    {
-        var creado = _service.CrearConUsuario(socio);
-        return CreatedAtAction(nameof(Obtener), new { id = creado.IdSocio }, creado);
-    }
-    catch (ReglaNegocioException ex)
-    {
-        return BadRequest(new { mensaje = ex.Message });
-    }
-}
+            try
+            {
+                var creado = _service.CrearConUsuario(socio);
+                return CreatedAtAction(nameof(Obtener), new { id = creado.IdSocio }, creado);
+            }
+            catch (ReglaNegocioException ex)
+            {
+                return BadRequest(new { mensaje = ex.Message });
+            }
+        }
 
         // PUT api/socios/5  (JSON)
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,

@@ -225,13 +225,13 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
 
 
         public Usuario? ActualizarPerfil(
-    int id,
-    string? emailNuevo,
-    string? nombreUsuarioNuevo,
-    string? passwordActual,
-    string? nuevaPassword,
-    string? confirmarPassword)
-        {
+            int id,
+            string? emailNuevo,
+            string? nombreUsuarioNuevo,
+            string? passwordActual,
+            string? nuevaPassword,
+            string? confirmarPassword)
+                {
             var existente = _repo.ObtenerPorId(id);
 
             if (existente == null)
