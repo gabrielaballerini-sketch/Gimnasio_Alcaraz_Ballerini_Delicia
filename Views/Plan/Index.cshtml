@@ -492,6 +492,8 @@
 
                 return {
 
+                    token: '',
+
                     planes: [],
 
                     pestana: 'activos',
@@ -526,19 +528,64 @@
             },
 
 
-            mounted() {
+            async mounted() {
 
                 this.modal =
                     new bootstrap.Modal(
                         this.$refs.modalConfirmar
                     );
 
-                this.cargar();
+                await this.iniciar();
 
             },
 
 
             methods: {
+
+                // ---------- Token JWT ----------
+                async iniciar() {
+
+                    try {
+
+                        const resp = await fetch(
+                            '/Cuenta/Token',
+                            { credentials: 'same-origin' }
+                        );
+
+                        if (!resp.ok) {
+                            this.mostrarAviso('error', 'No se pudo obtener el token. Volvé a iniciar sesión.');
+                            return;
+                        }
+
+                        const datos = await resp.json();
+
+                        this.token = datos.token;
+
+                        await this.cargar();
+
+                    }
+                    catch (e) {
+                        this.mostrarAviso('error', 'No se pudo conectar con el servidor.');
+                    }
+
+                },
+
+
+                // Todas las llamadas a la API llevan el JWT
+                async peticionApi(url, opciones = {}) {
+
+                    const headers = new Headers(opciones.headers || {});
+
+                    headers.set('Authorization', `Bearer ${this.token}`);
+
+                    return fetch(url, {
+                        ...opciones,
+                        headers,
+                        credentials: 'same-origin'
+                    });
+
+                },
+
 
                 mostrarAviso(tipo, texto) {
 
@@ -567,7 +614,15 @@
                         `${API}/${this.pestana}?pagina=${this.pagina}&tamPagina=${this.tamPagina}`;
 
                     const resp =
-                        await fetch(url);
+                        await this.peticionApi(url);
+
+                    if (!resp.ok) {
+
+                        this.mostrarAviso('error', resp.status === 403 ? 'No tenés permisos para ver esta lista.' : 'No se pudo cargar el listado.');
+
+                        return;
+
+                    }
 
                     const datos =
                         await resp.json();
@@ -681,7 +736,7 @@
 
 
                     const resp =
-                        await fetch(
+                        await this.peticionApi(
                             editando
                                 ? `${API}/${this.form.idPlan}`
                                 : API,
@@ -847,7 +902,7 @@
                 async ejecutarBaja(plan) {
 
                     const resp =
-                        await fetch(
+                        await this.peticionApi(
                             `${API}/${plan.idPlan}`,
                             {
                                 method: 'DELETE'
@@ -885,7 +940,7 @@
                 async ejecutarReactivar(plan) {
 
                     const resp =
-                        await fetch(
+                        await this.peticionApi(
                             `${API}/${plan.idPlan}/reactivar`,
                             {
                                 method: 'PUT'

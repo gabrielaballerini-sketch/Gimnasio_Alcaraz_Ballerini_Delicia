@@ -92,6 +92,10 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
 
             BorrarEspacios(plan);
 
+            // Determinamos el tipo de plan según las utilizaciones.
+            // Si es null, el plan es ilimitado.
+             plan.EsIlimitado = !plan.UtilizacionesMensuales.HasValue;
+
             Validar(plan);
 
             plan.IdPlan = id;
@@ -137,12 +141,12 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             {
                 // Es ilimitado.
                 // UtilizacionesMensuales debe ser null.
-                return;
-            }
-
+      
+          
+                
             // Si llegó acá, NO es ilimitado.
             // Por lo tanto tiene que tener un número válido.
-            if (!plan.UtilizacionesMensuales.HasValue ||
+            }  else if (!plan.UtilizacionesMensuales.HasValue ||
                 plan.UtilizacionesMensuales.Value <= 0)
             {
                 throw new ReglaNegocioException(

@@ -238,5 +238,36 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
                 errores
             });
         }
+
+
+[HttpPut("{id:int}/convertir-a-socio")]
+public IActionResult ConvertirASocio(
+    int id,
+    [FromBody] Socio datos)
+{
+    if (!ModelState.IsValid)
+        return ErroresDeModelo();
+
+    try
+    {
+        var usuario = _service.ConvertirASocio(id, datos);
+
+        if (usuario == null)
+        {
+            return NotFound(new
+            {
+                mensaje = "Usuario no encontrado."
+            });
+        }
+
+        return Ok(RespuestaUsuario(usuario));
+    }
+    catch (ReglaNegocioException ex)
+    {
+        return BadRequest(new { mensaje = ex.Message });
+    }
+}
+
+
     }
 }

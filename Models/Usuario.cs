@@ -4,7 +4,7 @@ public class Usuario
 {
     public int IdUsuario { get; set; }
     [Required(ErrorMessage ="Debe ingresar un Email")]
-    [EmailAddress]
+   
     [RegularExpression(@"^[^@\s]+@[^@\s]+\.[^@\s]+$",
     ErrorMessage = " (ejemplo: usuario@dominio.com)")]
     public string? Email { get; set; } 

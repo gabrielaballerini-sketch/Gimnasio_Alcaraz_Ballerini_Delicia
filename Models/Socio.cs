@@ -32,7 +32,7 @@ public class Socio
     public bool Estado { get; set; } = true;
     
     public int? IdUsuario {get;set;} 
-    public Usuario Usuario {get;set;}= new Usuario();
+    public Usuario ? Usuario  {get;set;}
   
 
 }}

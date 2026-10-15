@@ -127,6 +127,178 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             return comand.ExecuteNonQuery();
         }
 
+
+public Socio ConvertirUsuarioEnSocio(int idUsuario, Socio datos)
+{
+    using var conexion = CrearConexion();
+    conexion.Open();
+
+
+
+// es para agrupar varias operaciones de la bd  y hacer q se guarden todsa juntas
+// o no se guarden
+
+    using var transaccion = conexion.BeginTransaction();
+
+    try
+    {
+        // Verificar que el usuario exista y esté activo.
+        using (var cmdUsuario = new MySqlCommand(@"
+            SELECT Roles, Estado
+            FROM usuario
+            WHERE IdUsuario = @idUsuario
+            FOR UPDATE;", conexion, transaccion))
+        {
+            cmdUsuario.Parameters.AddWithValue("@idUsuario", idUsuario);
+
+            using var reader = cmdUsuario.ExecuteReader();
+
+            if (!reader.Read())
+                throw new InvalidOperationException(
+                    "El usuario no existe.");
+
+            if (!reader.GetBoolean("Estado"))
+                throw new InvalidOperationException(
+                    "No se puede convertir un usuario inactivo.");
+        }
+
+        Socio? socio = null;
+
+        // Primero buscamos una ficha que conserve el vínculo.
+        using (var cmdBuscar = new MySqlCommand(@"
+            SELECT IdSocio, Nombre, Apellido, Dni,
+                   Telefono, Domicilio, Estado, IdUsuario
+            FROM socio
+            WHERE IdUsuario = @idUsuario
+            LIMIT 1
+            FOR UPDATE;", conexion, transaccion))
+        {
+            cmdBuscar.Parameters.AddWithValue("@idUsuario", idUsuario);
+
+            using var reader = cmdBuscar.ExecuteReader();
+
+            if (reader.Read())
+            {
+                socio = new Socio
+                {
+                    IdSocio = reader.GetInt32("IdSocio"),
+                    Nombre = reader.GetString("Nombre"),
+                    Apellido = reader.GetString("Apellido"),
+                    Dni = reader.GetString("Dni"),
+                    Telefono = reader.GetString("Telefono"),
+                    Domicilio = reader.GetString("Domicilio"),
+                    Estado = reader.GetBoolean("Estado"),
+                    IdUsuario = idUsuario
+                };
+            }
+        }
+
+        // Si nunca tuvo ficha, se crea con los datos recibidos.
+        if (socio == null)
+        {
+            if (string.IsNullOrWhiteSpace(datos.Nombre) ||
+                string.IsNullOrWhiteSpace(datos.Apellido) ||
+                string.IsNullOrWhiteSpace(datos.Dni) ||
+                string.IsNullOrWhiteSpace(datos.Telefono) ||
+                string.IsNullOrWhiteSpace(datos.Domicilio))
+            {
+                throw new InvalidOperationException(
+                    "Debe completar los datos personales del socio.");
+            }
+
+            using var cmdDni = new MySqlCommand(@"
+                SELECT COUNT(*)
+                FROM socio
+                WHERE Dni = @dni;", conexion, transaccion);
+
+            cmdDni.Parameters.AddWithValue("@dni", datos.Dni);
+
+            if (Convert.ToInt32(cmdDni.ExecuteScalar()) > 0)
+                throw new InvalidOperationException(
+                    "Ya existe una ficha de socio con ese DNI. " +
+                    "Verifique si pertenece a esta persona.");
+
+            using var cmdInsertar = new MySqlCommand(@"
+                INSERT INTO socio
+                    (Nombre, Apellido, Dni, Telefono,
+                     Domicilio, Estado, IdUsuario)
+                VALUES
+                    (@Nombre, @Apellido, @Dni, @Telefono,
+                     @Domicilio, 1, @IdUsuario);
+
+                SELECT LAST_INSERT_ID();",
+                conexion, transaccion);
+
+            cmdInsertar.Parameters.AddWithValue("@Nombre", datos.Nombre);
+            cmdInsertar.Parameters.AddWithValue("@Apellido", datos.Apellido);
+            cmdInsertar.Parameters.AddWithValue("@Dni", datos.Dni);
+            cmdInsertar.Parameters.AddWithValue("@Telefono", datos.Telefono);
+            cmdInsertar.Parameters.AddWithValue("@Domicilio", datos.Domicilio);
+            cmdInsertar.Parameters.AddWithValue("@IdUsuario", idUsuario);
+
+            socio = new Socio
+            {
+                IdSocio = Convert.ToInt32(cmdInsertar.ExecuteScalar()),
+                Nombre = datos.Nombre,
+                Apellido = datos.Apellido,
+                Dni = datos.Dni,
+                Telefono = datos.Telefono,
+                Domicilio = datos.Domicilio,
+                Estado = true,
+                IdUsuario = idUsuario
+            };
+        }
+        else
+        {
+            // Recuperamos la ficha histórica.
+            using var cmdReactivar = new MySqlCommand(@"
+                UPDATE socio
+                SET Estado = 1
+                WHERE IdSocio = @idSocio;", conexion, transaccion);
+
+            cmdReactivar.Parameters.AddWithValue("@idSocio", socio.IdSocio);
+            cmdReactivar.ExecuteNonQuery();
+
+            socio.Estado = true;
+        }
+
+        // Cambiamos el rol dentro de la misma transacción.
+        using (var cmdRol = new MySqlCommand(@"
+            UPDATE usuario
+            SET Roles = @rolSocio
+            WHERE IdUsuario = @idUsuario
+              AND Estado = 1;", conexion, transaccion))
+        {
+            cmdRol.Parameters.AddWithValue("@rolSocio", (int)Roles.Socio);
+            cmdRol.Parameters.AddWithValue("@idUsuario", idUsuario);
+
+            if (cmdRol.ExecuteNonQuery() != 1)
+                throw new InvalidOperationException(
+                    "No se pudo actualizar el rol del usuario.");
+        }
+
+        transaccion.Commit();
+
+        return socio;
+    }
+    catch
+    {
+        transaccion.Rollback();
+        throw;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
         public Socio? ObtenerPorId(int idSocio)
         {
             using var conexion = CrearConexion();
@@ -280,7 +452,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             return cantidad;
         }
 
-        public IList<Socio> Buscar(string texto, int limite = 10, bool soloSinUsuario = false)
+        public IList<Socio> Buscar(string texto, int limite = 10)
         {
             IList<Socio> lista = new List<Socio>();
 
@@ -301,14 +473,13 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
                            OR Dni LIKE @patron
                            OR CONCAT(Apellido, ' ', Nombre) LIKE @patron
                            OR CONCAT(Nombre, ' ', Apellido) LIKE @patron)
-                      AND (@soloSinUsuario = 0 OR IdUsuario IS NULL)
+
                     ORDER BY Apellido, Nombre, IdSocio
                     LIMIT @limite;";
 
                 using (var comand = new MySqlCommand(sql, conexion))
                 {
                     comand.Parameters.AddWithValue("@patron", patron);
-                    comand.Parameters.AddWithValue("@soloSinUsuario", soloSinUsuario);
                     comand.Parameters.AddWithValue("@limite", limite);
                     conexion.Open();
 
@@ -325,39 +496,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             return lista;
         }
 
-        // Devuelve 0 si el socio ya tiene OTRO usuario (nunca pisa un vínculo ajeno)
-        public int VincularUsuario(int idSocio, int idUsuario)
-        {
-            using var conexion = CrearConexion();
-
-            string sql = @"
-                UPDATE socio
-                SET IdUsuario = @idUsuario
-                WHERE IdSocio = @idSocio
-                  AND (IdUsuario IS NULL OR IdUsuario = @idUsuario);";
-
-            using var comand = new MySqlCommand(sql, conexion);
-
-            comand.Parameters.AddWithValue("@idUsuario", idUsuario);
-            comand.Parameters.AddWithValue("@idSocio", idSocio);
-            conexion.Open();
-
-            return comand.ExecuteNonQuery();
-        }
-
-        // Libera el socio que tuviera ese usuario
-        public int DesvincularUsuario(int idUsuario)
-        {
-            using var conexion = CrearConexion();
-
-            using var comand = new MySqlCommand(
-                "UPDATE socio SET IdUsuario = NULL WHERE IdUsuario = @idUsuario;", conexion);
-
-            comand.Parameters.AddWithValue("@idUsuario", idUsuario);
-            conexion.Open();
-
-            return comand.ExecuteNonQuery();
-        }
+        
 
         private static void CargarParametros(MySqlCommand cmd, Socio s)
         {

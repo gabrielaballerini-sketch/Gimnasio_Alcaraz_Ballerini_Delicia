@@ -449,26 +449,84 @@
 
                     confirmacion: confirmacionVacia(),
 
-                    modal: null
+                    modal: null,
+
+                    token: ''
 
                 };
 
             },
 
 
-            mounted() {
+            async mounted() {
 
                 this.modal =
                     new bootstrap.Modal(
                         this.$refs.modalConfirmar
                     );
 
-                this.cargar();
+                await this.iniciar();
 
             },
 
 
             methods: {
+
+                // ---------- Token JWT ----------
+
+                async iniciar() {
+
+                    try {
+
+                        const resp = await fetch(
+                            '/Cuenta/Token',
+                            { credentials: 'same-origin' }
+                        );
+
+                        if (!resp.ok) {
+
+                            this.mostrarAviso(
+                                'error',
+                                'No se pudo obtener el token. Volvé a iniciar sesión.'
+                            );
+
+                            return;
+                        }
+
+                        const datos = await resp.json();
+
+                        this.token = datos.token;
+
+                        await this.cargar();
+
+                    }
+                    catch (e) {
+
+                        this.mostrarAviso(
+                            'error',
+                            'No se pudo conectar con el servidor.'
+                        );
+
+                    }
+
+                },
+
+
+                // Todas las llamadas a la API llevan el JWT
+                async peticionApi(url, opciones = {}) {
+
+                    const headers = new Headers(opciones.headers || {});
+
+                    headers.set('Authorization', `Bearer ${this.token}`);
+
+                    return fetch(url, {
+                        ...opciones,
+                        headers,
+                        credentials: 'same-origin'
+                    });
+
+                },
+
 
                 // ---------- Avisos ----------
 
@@ -501,7 +559,22 @@
                         `${API}/${this.pestana}?pagina=${this.pagina}&tamPagina=${this.tamPagina}`;
 
                     const resp =
-                        await fetch(url);
+                        await this.peticionApi(url);
+
+
+                    if (!resp.ok) {
+
+                        this.profesores = [];
+
+                        this.mostrarAviso(
+                            'error',
+                            resp.status === 403
+                                ? 'No tenés permisos para ver esta lista.'
+                                : 'No se pudieron cargar los profesores.'
+                        );
+
+                        return;
+                    }
 
 
                     const datos =
@@ -568,7 +641,7 @@
                 },
 
 
-                // ---------- Formulario ----------
+                // Formulario 
 
                 async guardar() {
 
@@ -577,18 +650,14 @@
                     this.errores = [];
 
 
-                    const editando =
-                        this.form.idProfesor > 0;
+                    const editando =this.form.idProfesor > 0;
 
 
                     const datos =
                         new FormData();
 
 
-                    datos.append(
-                        'nombre',
-                        this.form.nombre ?? ''
-                    );
+                    datos.append( 'nombre', this.form.nombre ?? '' );
 
                     datos.append(
                         'apellido',
@@ -612,7 +681,7 @@
 
 
                     const resp =
-                        await fetch(
+                        await this.peticionApi(
                             editando
                                 ? `${API}/${this.form.idProfesor}`
                                 : API,
@@ -772,7 +841,7 @@
                 async ejecutarBaja(profesor) {
 
                     const resp =
-                        await fetch(
+                        await this.peticionApi(
                             `${API}/${profesor.idProfesor}`,
                             {
                                 method: 'DELETE'
@@ -804,7 +873,7 @@
                 async ejecutarReactivar(profesor) {
 
                     const resp =
-                        await fetch(
+                        await this.peticionApi(
                             `${API}/${profesor.idProfesor}/reactivar`,
                             {
                                 method: 'PUT'

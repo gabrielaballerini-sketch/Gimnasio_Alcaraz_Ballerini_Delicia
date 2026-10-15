@@ -39,9 +39,9 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
             Roles = "Administrador,Empleado")]
         [HttpGet("buscar")]
-        public IActionResult Buscar([FromQuery] string? texto, [FromQuery] bool sinUsuario = false)
+        public IActionResult Buscar([FromQuery] string? texto)
         {
-            return Ok(_service.Buscar(texto, 10, sinUsuario));
+            return Ok(_service.Buscar(texto, 10));
         }
 
         // GET api/socios/5

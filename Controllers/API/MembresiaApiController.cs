@@ -141,6 +141,23 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
         public IActionResult Modificar(
             int id,
             [FromForm] Membresia membresia)
+
+    {
+        // Las propiedades de navegación no vienen del formulario.
+    // Solo recibimos los identificadores del socio y del plan.
+    foreach (var key in ModelState.Keys
+        .Where(k =>
+            k.StartsWith("Socio") ||
+            k.StartsWith("Plan") ||
+            k.StartsWith("Usuario"))
+        .ToList())
+    {
+        ModelState.Remove(key);
+    }
+
+
+
+
         {
             if (!ModelState.IsValid)
                 return ErroresDeModelo();
@@ -176,6 +193,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
                 );
             }
         }
+    }
 
 
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,

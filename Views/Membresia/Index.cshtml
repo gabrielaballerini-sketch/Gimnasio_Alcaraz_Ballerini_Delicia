@@ -209,10 +209,7 @@
 
                     <div class="mb-3">
 
-                        <label class="form-label">
-                            Socio
-                        </label>
-
+                      
                         <div class="mb-3">
 
                             <label class="form-label">
@@ -370,6 +367,8 @@
 
                 return {
 
+                    token: '',
+
                     membresias: [],
                     busquedaSocio: '',
                     resultadosSocios: [],
@@ -421,10 +420,55 @@
                         );
                 }
             },
-            mounted() {
-                this.cargarDatos();
+            async mounted() {
+                await this.iniciar();
             },
             methods: {
+
+                // ---------- Token JWT ----------
+                async iniciar() {
+
+                    try {
+
+                        const resp = await fetch(
+                            '/Cuenta/Token',
+                            { credentials: 'same-origin' }
+                        );
+
+                        if (!resp.ok) {
+                            this.error = 'No se pudo obtener el token. Volvé a iniciar sesión.';
+                            return;
+                        }
+
+                        const datos = await resp.json();
+
+                        this.token = datos.token;
+
+                        await this.cargarDatos();
+
+                    }
+                    catch (e) {
+                        this.error = 'No se pudo conectar con el servidor.';
+                    }
+
+                },
+
+
+                // Todas las llamadas a la API llevan el JWT
+                async peticionApi(url, opciones = {}) {
+
+                    const headers = new Headers(opciones.headers || {});
+
+                    headers.set('Authorization', `Bearer ${this.token}`);
+
+                    return fetch(url, {
+                        ...opciones,
+                        headers,
+                        credentials: 'same-origin'
+                    });
+
+                },
+
                 async cargarDatos() {
                     await Promise.all([
                         this.cargarPlanes(),
@@ -443,7 +487,7 @@
                                 : `${API}/inactivos`;
 
                         const response =
-                            await fetch(
+                            await this.peticionApi(
                                 `${endpoint}?pagina=${this.pagina}&tamPagina=${this.tamPagina}`
                             );
 
@@ -494,7 +538,7 @@
 
                         try {
 
-                            const response = await fetch(
+                            const response = await this.peticionApi(
                                 `/api/socios/buscar?texto=${encodeURIComponent(texto)}`
                             );
 
@@ -545,7 +589,7 @@
                     try {
 
                         const response =
-                            await fetch(
+                            await this.peticionApi(
                                 '/api/planes/activos?pagina=1&tamPagina=1000'
                             );
 
@@ -714,7 +758,7 @@
                     if (this.editando) {
 
                         response =
-                            await fetch(
+                            await this.peticionApi(
                                 `${API}/${this.idEditando}`,
                                 {
                                     method: 'PUT',
@@ -726,7 +770,7 @@
                     else {
 
                         response =
-                            await fetch(
+                            await this.peticionApi(
                                 API,
                                 {
                                     method: 'POST',
@@ -775,7 +819,7 @@
                         return;
 
                     const response =
-                        await fetch(
+                        await this.peticionApi(
                             `${API}/${m.idMembresia}`,
                             {
                                 method: 'DELETE'
@@ -806,7 +850,7 @@
                         return;
 
                     const response =
-                        await fetch(
+                        await this.peticionApi(
                             `${API}/${m.idMembresia}/reactivar`,
                             {
                                 method: 'PUT'

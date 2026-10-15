@@ -99,7 +99,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             return _repo.Reactivar(id) > 0;
         }
 
-        public IList<Socio> Buscar(string? texto, int limite = 10, bool soloSinUsuario = false)
+        public IList<Socio> Buscar(string? texto, int limite = 10)
         {
             texto = texto?.Trim();
 
@@ -108,7 +108,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
 
             if (limite < 1 || limite > 20) limite = 10;
 
-            return _repo.Buscar(texto, limite, soloSinUsuario);
+            return _repo.Buscar(texto, limite);
         }
 
         private static void BorrarEspacios(Socio s)

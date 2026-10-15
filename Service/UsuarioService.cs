@@ -74,20 +74,22 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
 
             return _repo.ObtenerPorEmail(email.Trim());
         }
+public Usuario Crear(Usuario usuario)
+{
+    usuario.Email = usuario.Email?.Trim();
+    Validar(usuario, null);
 
-        public Usuario Crear(Usuario usuario)
-        {
-            usuario.Email = usuario.Email?.Trim();
-            Validar(usuario, null);
-            ValidarVinculoSocio(usuario, null, null);
-            usuario.Password = HashearPassword(usuario.Password!);
-            usuario.Estado = true;
-            usuario.Avatar = null;
-            _repo.Alta(usuario);
-            GuardarVinculoSocio(usuario);
 
-            return usuario;
-        }
+    if (usuario.Roles == Roles.Socio)
+        throw new ReglaNegocioException("Los socios se crean desde la pantalla de Socios.");
+
+    usuario.Password = HashearPassword(usuario.Password!);
+    usuario.Estado = true;
+    usuario.Avatar = null;
+    _repo.Alta(usuario);
+  
+    return usuario;
+}
 
         public Usuario? Modificar(int id, Usuario usuario)
         {
@@ -108,18 +110,40 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             }
 
             Validar(usuario, id);
-            ValidarVinculoSocio(usuario, id, existente.IdSocio);
 
-            usuario.IdUsuario = id;
+            // El cambio de rol solo modifica los permisos de la cuenta.
+            // No se da de baja al socio, no se reactiva y no se desvincula.
+            // Así se conservan Socio ,  Membresía ,  Pago y sus IDs históricos.
+            usuario.IdUsuario = existente.IdUsuario;
             usuario.Estado = existente.Estado;
             usuario.Avatar = existente.Avatar;
             usuario.NombreUsuario ??= existente.NombreUsuario;
 
-            _repo.Modificacion(usuario);
-            GuardarVinculoSocio(usuario);
+            // IdSocio/Socio se recuperan desde el JOIN del repositorio.
+            // El formulario puede enviar IdSocio = null al elegir Empleado;
+            // no usamos ese valor para borrar la relación existente.
+            usuario.IdSocio = existente.IdSocio;
+            usuario.Socio = existente.Socio;
 
-            return usuario;
+            // Para asignar el rol Socio, debe existir una ficha de socio.
+            // Si nunca tuvo una, usar la acción "Convertir en socio".
+            if (usuario.Roles == Roles.Socio && !existente.IdSocio.HasValue)
+            {
+                throw new ReglaNegocioException(
+                    "Este usuario todavía no tiene ficha de socio. Utilizá el botón 'Convertir en socio'.");
+            }
+
+            // Guardamos únicamente usuario/rol. No tocar la tabla socio.
+
+
+            _repo.Modificacion(usuario);
+
+ return usuario;
         }
+
+   
+          
+  
         public async Task<Usuario?> ActualizarAvatar(
             int id,
             IFormFile archivo)
@@ -422,44 +446,74 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
         }
 
         // Solo el rol Socio se vincula con una ficha, y cada socio tiene como máximo un usuario
-        private void ValidarVinculoSocio(Usuario usuario, int? idUsuarioExistente, int? idSocioActual)
+      
+
+public Usuario? ConvertirASocio(int idUsuario, Socio datos)
+{
+    var usuario = _repo.ObtenerPorId(idUsuario);
+
+    if (usuario == null)
+        return null;
+
+    if (!usuario.Estado)
+        throw new ReglaNegocioException(
+            "No se puede convertir un usuario inactivo.");
+
+    if (usuario.Roles == Roles.Socio)
+        throw new ReglaNegocioException(
+            "El usuario ya tiene el rol de socio.");
+
+    datos.Nombre = datos.Nombre?.Trim();
+    datos.Apellido = datos.Apellido?.Trim();
+    datos.Dni = datos.Dni?.Trim();
+    datos.Telefono = datos.Telefono?.Trim();
+    datos.Domicilio = datos.Domicilio?.Trim();
+
+    // Si tiene una ficha histórica vinculada, se conservan sus datos.
+    var fichaAnterior = _repoSocio.ObtenerPorIdUsuario(idUsuario);
+
+    if (fichaAnterior == null)
+    {
+        if (string.IsNullOrWhiteSpace(datos.Nombre) ||
+            string.IsNullOrWhiteSpace(datos.Apellido) ||
+            string.IsNullOrWhiteSpace(datos.Dni) ||
+            string.IsNullOrWhiteSpace(datos.Telefono) ||
+            string.IsNullOrWhiteSpace(datos.Domicilio))
         {
-            if (usuario.Roles != Roles.Socio)
-            {
-                usuario.IdSocio = null;
-                return;
-            }
-
-            if (!usuario.IdSocio.HasValue)
-                throw new ReglaNegocioException(
-                    "Debe seleccionar el socio al que pertenece este usuario.");
-
-            var socio = _repoSocio.ObtenerPorId(usuario.IdSocio.Value);
-
-            if (socio == null)
-                throw new ReglaNegocioException("El socio seleccionado no existe.");
-
-            // Un socio dado de baja no se puede vincular, salvo que ya estuviera vinculado a este usuario
-            if (!socio.Estado && usuario.IdSocio != idSocioActual)
-                throw new ReglaNegocioException("El socio seleccionado está dado de baja.");
-
-            // El socio ya tiene otro usuario
-            if (socio.IdUsuario.HasValue && socio.IdUsuario != idUsuarioExistente)
-                throw new ReglaNegocioException("Ese socio ya tiene un usuario asignado.");
+            throw new ReglaNegocioException(
+                "Debe completar los datos personales para crear la ficha.");
         }
 
-        // Guarda el vínculo en socio.IdUsuario (y lo libera si el usuario cambió de socio o de rol)
-        private void GuardarVinculoSocio(Usuario usuario)
+        if (!System.Text.RegularExpressions.Regex.IsMatch(
+                datos.Nombre, @"^[a-zA-ZñÑ\s]{3,20}$") ||
+            !System.Text.RegularExpressions.Regex.IsMatch(
+                datos.Apellido, @"^[a-zA-ZñÑ\s]{3,20}$") ||
+            !System.Text.RegularExpressions.Regex.IsMatch(
+                datos.Dni, @"^\d{7,10}$") ||
+            !System.Text.RegularExpressions.Regex.IsMatch(
+                datos.Telefono, @"^\d{10,15}$") ||
+            !System.Text.RegularExpressions.Regex.IsMatch(
+                datos.Domicilio, @"^[a-zA-ZñÑ\d\s]{5,20}$"))
         {
-            _repoSocio.DesvincularUsuario(usuario.IdUsuario);
-
-            if (usuario.Roles == Roles.Socio &&
-                usuario.IdSocio.HasValue &&
-                _repoSocio.VincularUsuario(usuario.IdSocio.Value, usuario.IdUsuario) == 0)
-            {
-                throw new ReglaNegocioException("Ese socio ya tiene un usuario asignado.");
-            }
+            throw new ReglaNegocioException(
+                "Revise los datos personales ingresados.");
         }
+    }
+
+    try
+    {
+        _repoSocio.ConvertirUsuarioEnSocio(idUsuario, datos);
+    }
+    catch (InvalidOperationException ex)
+    {
+        throw new ReglaNegocioException(ex.Message);
+    }
+
+    return _repo.ObtenerPorId(idUsuario);
+
+
+
 
     }
+}
 }
