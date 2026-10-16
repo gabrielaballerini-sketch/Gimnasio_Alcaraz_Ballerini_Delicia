@@ -12,10 +12,7 @@
             </p>
         </div>
 
-        <button type="button" class="btn btn-primary" @@click="limpiar">
-            <i class="bi bi-plus-circle me-1"></i>
-            Nuevo usuario
-        </button>
+ 
     </div>
 
     <div v-if="mensaje" class="alert alert-dismissible fade show"
@@ -24,7 +21,67 @@
         <button type="button" class="btn-close" @@click="mensaje = ''" aria-label="Cerrar"></button>
     </div>
 
-    <!-- FORMULARIO: se mantienen las clases y componentes Bootstrap del proyecto -->
+    <!-- Modal: convertir en socio (solo si nunca tuvo ficha) -->
+    <div class="modal fade" tabindex="-1" ref="modalSocio" data-bs-backdrop="static">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <form @@submit.prevent="confirmarConversion" autocomplete="off" novalidate>
+
+                    <div class="modal-header">
+                        <h5 class="modal-title">Convertir en socio</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <p class="text-muted small mb-3" v-if="usuarioAConvertir">
+                            Se conserva la cuenta <strong>{{ usuarioAConvertir.email }}</strong>.
+                            Completá los datos personales del socio.
+                        </p>
+
+                        <div v-if="errorModal" class="alert alert-danger">
+                            <div>{{ errorModal }}</div>
+                            <ul class="mb-0" v-if="erroresModal.length">
+                                <li v-for="e in erroresModal" :key="e">{{ e }}</li>
+                            </ul>
+                        </div>
+
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label class="form-label">Nombre</label>
+                                <input class="form-control" v-model="socioForm.nombre">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Apellido</label>
+                                <input class="form-control" v-model="socioForm.apellido">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">DNI</label>
+                                <input class="form-control" v-model="socioForm.dni">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Teléfono</label>
+                                <input class="form-control" v-model="socioForm.telefono">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Domicilio</label>
+                                <input class="form-control" v-model="socioForm.domicilio">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" :disabled="convirtiendo">
+                            {{ convirtiendo ? 'Guardando...' : 'Convertir en socio' }}
+                        </button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- FORMULARIO: se mantienen las clases  -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-body">
             <h5 class="card-title mb-3">
@@ -54,7 +111,7 @@
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Rol</label>
                         <select class="form-select" v-model.number="form.roles">
-                            <option :value="1" disabled>Socio</option>
+                   
                             <option :value="2">Empleado</option>
                             <option :value="3">Administrador</option>
                         </select>
@@ -233,6 +290,10 @@
                     };
                 }
 
+                function socioVacio() {
+                    return { nombre: '', apellido: '', dni: '', telefono: '', domicilio: '' };
+                }
+
                 Vue.createApp({
 
                     data() {
@@ -251,10 +312,17 @@
                             mensaje: '',
                             mensajeTipo: 'ok',
                             token: '',
+                            modalSocio: null,
+                            usuarioAConvertir: null,
+                            socioForm: socioVacio(),
+                            errorModal: '',
+                            erroresModal: [],
+                            convirtiendo: false,
                         };
                     },
 
                     async mounted() {
+                        this.modalSocio = new bootstrap.Modal(this.$refs.modalSocio);
                         await this.iniciar();
                     },
 
@@ -714,83 +782,107 @@
 
 
 
-                                    async convertirEnSocio(usuario) {
-                            const confirmar = confirm(
-                                `¿Convertir a ${usuario.email} en socio? ` +
-                                'Se conservará su cuenta actual.'
-                            );
+                        // CONVERTIR EN SOCIO
 
-                            if (!confirmar)
-                                return;
-
-                            let datosSocio = {};
-
-                            // Si ya tiene ficha histórica, no pedimos nuevamente los datos.
+                        convertirEnSocio(usuario) {
+                            // Si ya tuvo ficha, se recupera sin pedir datos.
                             if (usuario.socio) {
-                                datosSocio = {
-                                    nombre: usuario.socio.nombre,
-                                    apellido: usuario.socio.apellido,
-                                    dni: usuario.socio.dni,
-                                    telefono: '',
-                                    domicilio: ''
-                                };
-                            } else {
-                                const nombre = prompt('Ingrese el nombre:');
-                                if (nombre === null) return;
+                                const ok = confirm(
+                                    `¿Convertir a ${usuario.email} en socio? ` +
+                                    `Se recupera su ficha anterior (${usuario.socio.apellido}, ${usuario.socio.nombre}).`
+                                );
 
-                                const apellido = prompt('Ingrese el apellido:');
-                                if (apellido === null) return;
+                                if (ok)
+                                    this.enviarConversion(usuario, {}, false);
 
-                                const dni = prompt('Ingrese el DNI:');
-                                if (dni === null) return;
-
-                                const telefono = prompt('Ingrese el teléfono:');
-                                if (telefono === null) return;
-
-                                const domicilio = prompt('Ingrese el domicilio:');
-                                if (domicilio === null) return;
-
-                                datosSocio = {
-                                    nombre,
-                                    apellido,
-                                    dni,
-                                    telefono,
-                                    domicilio
-                                };
+                                return;
                             }
 
+                            // Si nunca fue socio, se abre el formulario con los datos.
+                            this.usuarioAConvertir = usuario;
+                            this.socioForm = socioVacio();
+                            this.errorModal = '';
+                            this.erroresModal = [];
+                            this.modalSocio.show();
+                        },
+
+                        // Mismas reglas que el alta de socio (Models/Socio.cs)
+                        validarSocio() {
+                            const f = this.socioForm;
+                            const errores = [];
+
+                            if (!/^[a-zA-ZñÑ\s]{3,20}$/.test(f.nombre.trim()))
+                                errores.push('El nombre debe tener entre 3 y 20 letras y espacios.');
+                            if (!/^[a-zA-ZñÑ\s]{3,20}$/.test(f.apellido.trim()))
+                                errores.push('El apellido debe tener entre 3 y 20 letras y espacios.');
+                            if (!/^\d{7,10}$/.test(f.dni.trim()))
+                                errores.push('El DNI debe tener entre 7 y 10 dígitos.');
+                            if (!/^\d{10,15}$/.test(f.telefono.trim()))
+                                errores.push('El teléfono debe tener entre 10 y 15 dígitos.');
+                            if (!/^[a-zA-ZñÑ\d\s]{5,20}$/.test(f.domicilio.trim()))
+                                errores.push('El domicilio debe tener entre 5 y 20 letras, números y espacios.');
+
+                            return errores;
+                        },
+
+                        async confirmarConversion() {
+                            if (this.convirtiendo)
+                                return;
+
+                            const errores = this.validarSocio();
+
+                            if (errores.length > 0) {
+                                this.errorModal = 'Revisá los datos del socio.';
+                                this.erroresModal = errores;
+                                return;
+                            }
+
+                            await this.enviarConversion(this.usuarioAConvertir, this.socioForm, true);
+                        },
+
+                        async enviarConversion(usuario, datos, enModal) {
+                            this.convirtiendo = true;
+                            this.errorModal = '';
+                            this.erroresModal = [];
+
                             try {
-                                const respuesta = await this.peticionApi(
+                                const resp = await this.peticionApi(
                                     `${API}/${usuario.idUsuario}/convertir-a-socio`,
                                     {
                                         method: 'PUT',
-                                        headers: {
-                                            'Content-Type': 'application/json'
-                                        },
-                                        body: JSON.stringify(datosSocio)
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify(datos)
                                     }
                                 );
 
-                                const resultado = await respuesta.json();
+                                if (!resp.ok) {
+                                    const error = await resp.json().catch(() => ({}));
+                                    const texto = error.mensaje || 'No se pudo convertir el usuario.';
 
-                                if (!respuesta.ok) {
-                                    this.mostrarAviso(
-                                        'error',
-                                        resultado.mensaje || 'No se pudo convertir el usuario.'
-                                    );
+                                    if (enModal) {
+                                        this.errorModal = texto;
+                                        this.erroresModal = error.errores || [];
+                                    } else {
+                                        this.mostrarAviso('error', texto);
+                                    }
+
                                     return;
                                 }
 
-                                this.mostrarAviso(
-                                    'ok',
-                                    'El usuario ahora es socio.'
-                                );
+                                if (enModal)
+                                    this.modalSocio.hide();
 
+                                this.mostrarAviso('ok', 'El usuario ahora es socio.');
                                 await this.cargar();
                             } catch (error) {
                                 console.error(error);
-                                this.mostrarAviso( 'error', 'No se pudo conectar con el servidor.'
-                                );
+
+                                if (enModal)
+                                    this.errorModal = 'No se pudo conectar con el servidor.';
+                                else
+                                    this.mostrarAviso('error', 'No se pudo conectar con el servidor.');
+                            } finally {
+                                this.convirtiendo = false;
                             }
                         }
 

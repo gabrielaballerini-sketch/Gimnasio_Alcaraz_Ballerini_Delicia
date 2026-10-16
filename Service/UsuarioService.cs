@@ -463,6 +463,8 @@ public Usuario? ConvertirASocio(int idUsuario, Socio datos)
         throw new ReglaNegocioException(
             "El usuario ya tiene el rol de socio.");
 
+    datos ??= new Socio();
+
     datos.Nombre = datos.Nombre?.Trim();
     datos.Apellido = datos.Apellido?.Trim();
     datos.Dni = datos.Dni?.Trim();
@@ -472,31 +474,25 @@ public Usuario? ConvertirASocio(int idUsuario, Socio datos)
     // Si tiene una ficha histórica vinculada, se conservan sus datos.
     var fichaAnterior = _repoSocio.ObtenerPorIdUsuario(idUsuario);
 
+    // Solo si nunca tuvo ficha se validan los datos (mismas reglas que el alta de socio).
     if (fichaAnterior == null)
     {
-        if (string.IsNullOrWhiteSpace(datos.Nombre) ||
-            string.IsNullOrWhiteSpace(datos.Apellido) ||
-            string.IsNullOrWhiteSpace(datos.Dni) ||
-            string.IsNullOrWhiteSpace(datos.Telefono) ||
-            string.IsNullOrWhiteSpace(datos.Domicilio))
-        {
-            throw new ReglaNegocioException(
-                "Debe completar los datos personales para crear la ficha.");
-        }
+        var resultados = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
 
-        if (!System.Text.RegularExpressions.Regex.IsMatch(
-                datos.Nombre, @"^[a-zA-ZñÑ\s]{3,20}$") ||
-            !System.Text.RegularExpressions.Regex.IsMatch(
-                datos.Apellido, @"^[a-zA-ZñÑ\s]{3,20}$") ||
-            !System.Text.RegularExpressions.Regex.IsMatch(
-                datos.Dni, @"^\d{7,10}$") ||
-            !System.Text.RegularExpressions.Regex.IsMatch(
-                datos.Telefono, @"^\d{10,15}$") ||
-            !System.Text.RegularExpressions.Regex.IsMatch(
-                datos.Domicilio, @"^[a-zA-ZñÑ\d\s]{5,20}$"))
+        System.ComponentModel.DataAnnotations.Validator.TryValidateObject(
+            datos,
+            new System.ComponentModel.DataAnnotations.ValidationContext(datos),
+            resultados,
+            true);
+
+        if (resultados.Count > 0)
         {
             throw new ReglaNegocioException(
-                "Revise los datos personales ingresados.");
+                "Revisá los datos del socio.",
+                resultados
+                    .Select(r => r.ErrorMessage ?? "Dato inválido")
+                    .Distinct()
+                    .ToList());
         }
     }
 

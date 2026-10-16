@@ -243,14 +243,13 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
 [HttpPut("{id:int}/convertir-a-socio")]
 public IActionResult ConvertirASocio(
     int id,
-    [FromBody] Socio datos)
+    [FromBody] Socio? datos)
 {
-    if (!ModelState.IsValid)
-        return ErroresDeModelo();
-
+    // Sin ModelState: si el usuario ya tuvo ficha no hace falta enviar datos.
+    // El servicio valida los datos solo cuando hay que crear la ficha.
     try
     {
-        var usuario = _service.ConvertirASocio(id, datos);
+        var usuario = _service.ConvertirASocio(id, datos ?? new Socio());
 
         if (usuario == null)
         {
@@ -264,10 +263,11 @@ public IActionResult ConvertirASocio(
     }
     catch (ReglaNegocioException ex)
     {
-        return BadRequest(new { mensaje = ex.Message });
+        return BadRequest(new { mensaje = ex.Message, errores = ex.Message });
+    }
+}
+
     }
 }
 
 
-    }
-}

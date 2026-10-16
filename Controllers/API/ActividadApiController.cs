@@ -166,6 +166,67 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
 
 
 
+        // SUBIR O REEMPLAZAR IMAGEN / VIDEO
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+    Roles = "Administrador,Empleado")]
+        [HttpPut("{id:int}/archivo")]
+        [Consumes("multipart/form-data")]
+        [RequestSizeLimit(25 * 1024 * 1024)]
+        public async Task<IActionResult> SubirArchivo(
+            int id,
+            [FromForm] IFormFile? archivo)
+        {
+            if (archivo == null)
+            {
+                return BadRequest(new
+                {
+                    mensaje = "Debe seleccionar una imagen o un video."
+                });
+            }
+
+            try
+            {
+                var actividad = await _service.SubirArchivo(id, archivo);
+
+                if (actividad == null)
+                {
+                    return NotFound(new
+                    {
+                        mensaje = "Actividad no encontrada."
+                    });
+                }
+
+                return Ok(actividad);
+            }
+            catch (ReglaNegocioException ex)
+            {
+                return BadRequest(new { mensaje = ex.Message });
+            }
+        }
+
+
+
+        // QUITAR IMAGEN / VIDEO
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+    Roles = "Administrador,Empleado")]
+        [HttpDelete("{id:int}/archivo")]
+        public IActionResult QuitarArchivo(int id)
+        {
+            var actividad = _service.QuitarArchivo(id);
+
+            if (actividad == null)
+            {
+                return NotFound(new
+                {
+                    mensaje = "Actividad no encontrada."
+                });
+            }
+
+            return Ok(actividad);
+        }
+
+
+
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
     Roles = "Administrador")]
         [HttpDelete("{id:int}")]

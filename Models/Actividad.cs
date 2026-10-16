@@ -1,3 +1,4 @@
+
 using System.ComponentModel.DataAnnotations;
 namespace Gimnasio_Alcaraz_Ballerini_Delicia.Models{
 
@@ -10,5 +11,7 @@ public class Actividad
     public string Nombre { get; set; } = string.Empty;
     
     public bool Estado { get; set; } = true;
+
+    public string? Archivo { get; set; }
 }
 }
