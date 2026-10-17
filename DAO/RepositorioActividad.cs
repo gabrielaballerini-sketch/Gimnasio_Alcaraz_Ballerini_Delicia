@@ -44,8 +44,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
 
             var sql = @"
             UPDATE actividad
-            SET Nombre = @Nombre,
-                Archivo = @Archivo
+            SET Nombre = @Nombre
             WHERE IdActividad = @IdActividad;";
 
             using var comand = new MySqlCommand(sql, conexion);
@@ -53,11 +52,6 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             comand.Parameters.AddWithValue(
                 "@Nombre",
                 actividad.Nombre ?? string.Empty
-            );
-
-            comand.Parameters.AddWithValue(
-                "@Archivo",
-                ValorODbNull(actividad.Archivo)
             );
 
             comand.Parameters.AddWithValue(
@@ -124,8 +118,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             SELECT
                 IdActividad,
                 Nombre,
-                Estado,
-                Archivo
+                Estado
             FROM actividad
             WHERE IdActividad = @IdActividad;";
 
@@ -165,8 +158,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             SELECT
                 IdActividad,
                 Nombre,
-                Estado,
-                Archivo
+                Estado
             FROM actividad
             WHERE Estado = 1
             ORDER BY Nombre, IdActividad
@@ -223,8 +215,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             SELECT
                 IdActividad,
                 Nombre,
-                Estado,
-                Archivo
+                Estado
             FROM actividad
             WHERE Estado = 0
             ORDER BY Nombre, IdActividad
@@ -320,12 +311,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
                     r.GetString("Nombre"),
 
                 Estado =
-                    r.GetBoolean("Estado"),
-
-                Archivo =
-                    r.IsDBNull(r.GetOrdinal("Archivo"))
-                        ? null
-                        : r.GetString("Archivo")
+                    r.GetBoolean("Estado")
             };
         }
     }
