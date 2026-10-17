@@ -55,8 +55,7 @@
 
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                            @if (User.IsInRole("Socio") ||
-                                 User.IsInRole("Empleado") ||
+                            @if (User.IsInRole("Empleado") ||
                                  User.IsInRole("Administrador"))
                             {
                                 <li class="nav-item">
@@ -66,11 +65,7 @@
                                         Socios
                                     </a>
                                 </li>
-                            }
 
-                            @if (User.IsInRole("Empleado") ||
-                                 User.IsInRole("Administrador"))
-                            {
                                 <li class="nav-item">
                                     <a class="nav-link text-dark"
                                        asp-controller="Profesor"
@@ -78,7 +73,13 @@
                                         Profesores
                                     </a>
                                 </li>
+                            }
 
+                            @* Planes, Actividades y Membresías: cada rol ve su propia versión *@
+                            @if (User.IsInRole("Socio") ||
+                                 User.IsInRole("Empleado") ||
+                                 User.IsInRole("Administrador"))
+                            {
                                 <li class="nav-item">
                                     <a class="nav-link text-dark"
                                        asp-controller="Plan"
@@ -94,17 +95,12 @@
                                         Actividades
                                     </a>
                                 </li>
-                            }
 
-                            @if (User.IsInRole("Socio") ||
-                                 User.IsInRole("Empleado") ||
-                                 User.IsInRole("Administrador"))
-                            {
                                 <li class="nav-item">
                                     <a class="nav-link text-dark"
                                        asp-controller="Membresia"
                                        asp-action="Index">
-                                        Membresías
+                                        @(User.IsInRole("Socio") ? "Mi membresía" : "Membresías")
                                     </a>
                                 </li>
                             }

@@ -66,6 +66,8 @@ builder.Services.AddScoped<IRepositorio<Actividad>, RepositorioActividad>();
 builder.Services.AddScoped<ActividadService>();
 builder.Services.AddScoped<IRepositorioMembresia, RepositorioMembresia>();
 builder.Services.AddScoped<MembresiaService>();
+builder.Services.AddScoped<IRepositorioActividadArchivo, RepositorioActividadArchivo>();
+builder.Services.AddScoped<ActividadArchivoService>();
 
 var app = builder.Build();
 

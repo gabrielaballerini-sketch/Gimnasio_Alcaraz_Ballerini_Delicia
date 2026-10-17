@@ -1,0 +1,162 @@
+@{
+    ViewData["Title"] = "Planes";
+}
+
+<div id="app" class="mt-4">
+
+    <!-- AVISOS -->
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1100">
+        <div v-if="aviso.texto"
+             class="toast show text-white border-0 bg-danger">
+            <div class="d-flex">
+                <div class="toast-body">{{ aviso.texto }}</div>
+                <button class="btn-close btn-close-white me-2 m-auto"
+                        v-on:click="aviso.texto = ''"></button>
+            </div>
+        </div>
+    </div>
+
+    <h2 class="mb-1">Planes</h2>
+    <p class="text-muted mb-4">
+        Estos son los planes disponibles. Para contratar o cambiar de plan, acercate a recepción.
+    </p>
+
+    <div v-if="cargando" class="text-center text-muted py-5">Cargando...</div>
+
+    <div v-else-if="planes.length === 0" class="alert alert-light border">
+        Por el momento no hay planes disponibles.
+    </div>
+
+    <div v-else class="row g-4">
+        <div class="col-12 col-sm-6 col-lg-4"
+             v-for="p in planes"
+             v-bind:key="p.idPlan">
+
+            <div class="card h-100 shadow-sm"
+                 v-bind:class="{ 'border-success border-2': p.idPlan === idPlanActual }">
+
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">{{ p.nombre }}</h5>
+                    <span v-if="p.idPlan === idPlanActual" class="badge bg-success">Tu plan actual</span>
+                </div>
+
+                <div class="card-body text-center">
+                    <div class="display-6 fw-semibold mb-1">{{ precio(p.precio) }}</div>
+                    <div class="text-muted mb-3">por mes</div>
+
+                    <div>
+                        <i class="bi bi-calendar-check me-1"></i>
+                        <span v-if="p.utilizacionesMensuales === null">Uso ilimitado</span>
+                        <span v-else>{{ p.utilizacionesMensuales }} utilizaciones por mes</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <script>
+        Vue.createApp({
+            data() {
+                return {
+                    planes: [],
+                    idPlanActual: null,
+                    cargando: true,
+                    aviso: { texto: '' },
+                    temporizadorAviso: null,
+                    token: ''
+                };
+            },
+
+            async mounted() {
+                await this.iniciar();
+            },
+
+            methods: {
+                async iniciar() {
+                    try {
+                        const resp = await fetch('/Cuenta/Token', {
+                            credentials: 'same-origin'
+                        });
+
+                        if (!resp.ok) {
+                            this.mostrarAviso('Volvé a iniciar sesión.');
+                            this.cargando = false;
+                            return;
+                        }
+
+                        const datos = await resp.json();
+                        this.token = datos.token;
+
+                        await Promise.all([this.cargarPlanes(), this.cargarPlanActual()]);
+                    } catch (error) {
+                        this.mostrarAviso('No se pudo conectar con el servidor.');
+                    } finally {
+                        this.cargando = false;
+                    }
+                },
+
+                async peticionApi(url) {
+                    const headers = new Headers();
+                    headers.set('Authorization', `Bearer ${this.token}`);
+
+                    return fetch(url, { headers, credentials: 'same-origin' });
+                },
+
+                mostrarAviso(texto) {
+                    this.aviso = { texto };
+
+                    clearTimeout(this.temporizadorAviso);
+
+                    this.temporizadorAviso = setTimeout(() => {
+                        this.aviso.texto = '';
+                    }, 5000);
+                },
+
+                precio(valor) {
+                    return Number(valor).toLocaleString('es-AR', {
+                        style: 'currency',
+                        currency: 'ARS'
+                    });
+                },
+
+                async cargarPlanes() {
+                    const resp = await this.peticionApi('/api/planes/activos?pagina=1&tamPagina=50');
+
+                    if (!resp.ok) {
+                        this.mostrarAviso('No se pudieron cargar los planes.');
+                        return;
+                    }
+
+                    const datos = await resp.json();
+                    this.planes = datos.items ?? [];
+                },
+
+                // Solo para marcar "Tu plan actual"; si falla, simplemente no se marca.
+                async cargarPlanActual() {
+                    try {
+                        const resp = await this.peticionApi('/api/membresias/mia');
+
+                        if (!resp.ok) return;
+
+                        const membresias = await resp.json();
+
+                        const hoy = new Date();
+                        hoy.setHours(0, 0, 0, 0);
+
+                        const vigente = membresias.find(m =>
+                            new Date(m.fechaInicio) <= hoy && new Date(m.fechaFin) >= hoy);
+
+                        this.idPlanActual = vigente ? vigente.plan.idPlan : null;
+                    } catch (error) {
+                        // se ignora
+                    }
+                }
+            }
+        }).mount('#app');
+    </script>
+}

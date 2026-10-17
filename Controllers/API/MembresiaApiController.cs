@@ -18,7 +18,43 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             _service = service;
         }
 
-        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        // MI MEMBRESÍA: el socio ve solo la suya. El IdSocio sale del token, no de la URL.
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+        Roles = "Socio")]
+        [HttpGet("mia")]
+        public IActionResult ObtenerMia()
+        {
+            if (!int.TryParse(User.FindFirst("IdSocio")?.Value, out var idSocio))
+            {
+                return NotFound(new
+                {
+                    mensaje = "Tu usuario no tiene una ficha de socio asociada."
+                });
+            }
+
+            var membresias = _service
+                .ObtenerActivosPorSocio(idSocio, 1, 50)
+                .Select(m => new
+                {
+                    m.IdMembresia,
+                    m.FechaInicio,
+                    m.FechaFin,
+                    m.PrecioContratado,
+                    Plan = new
+                    {
+                        m.Plan.IdPlan,
+                        m.Plan.Nombre,
+                        m.Plan.UtilizacionesMensuales
+                    }
+                });
+
+            return Ok(membresias);
+        }
+
+
+        // CAMBIO: antes lo podía llamar cualquier usuario logueado (un socio veía las membresías de todos)
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+        Roles = "Administrador, Empleado")]
         [HttpGet("activos")]
         public IActionResult ObtenerActivos(
             [FromQuery] int pagina = 1,

@@ -88,56 +88,6 @@
                            class="form-control"
                            v-model.trim="form.nombre">
                 </div>
-
-                <div class="col-md-6">
-                    <label class="form-label">Imagen o video corto (opcional)</label>
-                    <input type="file"
-                           class="form-control"
-                           ref="inputArchivo"
-                           accept=".jpg,.jpeg,.png,.webp,.gif,.mp4,.webm"
-                           v-on:change="seleccionarArchivo">
-                    <small class="text-muted">
-                        Imagen JPG, PNG, WEBP o GIF (hasta 5 MB) · Video MP4 o WEBM (hasta 20 MB).
-                    </small>
-                </div>
-
-                <!-- Vista previa del archivo elegido -->
-                <div class="col-12" v-if="vistaPrevia">
-                    <label class="form-label d-block">Vista previa</label>
-                    <video v-if="vistaPreviaEsVideo"
-                           v-bind:src="vistaPrevia"
-                           controls muted
-                           style="max-width:320px;max-height:220px"
-                           class="rounded border"></video>
-                    <img v-else
-                         v-bind:src="vistaPrevia"
-                         alt="Vista previa"
-                         style="max-width:320px;max-height:220px"
-                         class="rounded border">
-                </div>
-
-                <!-- Archivo que ya tiene la actividad (al editar) -->
-                <div class="col-12" v-else-if="archivoActual">
-                    <label class="form-label d-block">Archivo actual</label>
-                    <video v-if="esVideo(archivoActual)"
-                           v-bind:src="archivoActual"
-                           controls muted
-                           style="max-width:320px;max-height:220px"
-                           class="rounded border"></video>
-                    <img v-else
-                         v-bind:src="archivoActual"
-                         alt="Archivo actual"
-                         style="max-width:320px;max-height:220px"
-                         class="rounded border">
-                    <div class="mt-2">
-                        <button type="button"
-                                class="btn btn-sm btn-outline-danger"
-                                v-on:click="quitarArchivoActual"
-                                v-bind:disabled="procesando">
-                            Quitar archivo
-                        </button>
-                    </div>
-                </div>
             </div>
 
             <div class="mt-3">
@@ -181,7 +131,6 @@
         <table class="table table-striped align-middle">
             <thead>
                 <tr>
-                    <th style="width:140px">Archivo</th>
                     <th>Nombre</th>
                     <th class="text-end">Acciones</th>
                 </tr>
@@ -191,23 +140,15 @@
                 <tr v-for="actividad in actividades"
                     v-bind:key="actividad.idActividad">
 
-                    <td>
-                        <video v-if="actividad.archivo && esVideo(actividad.archivo)"
-                               v-bind:src="actividad.archivo"
-                               controls muted preload="metadata"
-                               style="width:130px;height:80px;object-fit:cover"
-                               class="rounded"></video>
-                        <img v-else-if="actividad.archivo"
-                             v-bind:src="actividad.archivo"
-                             alt="Archivo de la actividad"
-                             style="width:130px;height:80px;object-fit:cover"
-                             class="rounded">
-                        <span v-else class="text-muted">—</span>
-                    </td>
-
                     <td>{{ actividad.nombre }}</td>
 
                     <td class="text-end">
+                        <a class="btn btn-sm btn-outline-secondary me-1"
+                           v-bind:href="'/Actividad/Detalle/' + actividad.idActividad"
+                           title="Ver fotos y videos">
+                            <i class="bi bi-images"></i>
+                        </a>
+
                         <template v-if="pestana === 'activos'">
                             <button class="btn btn-sm btn-outline-primary me-1"
                                     v-on:click="editar(actividad)">
@@ -230,7 +171,7 @@
                 </tr>
 
                 <tr v-if="actividades.length === 0">
-                    <td colspan="3" class="text-center text-muted py-4">
+                    <td colspan="2" class="text-center text-muted py-4">
                         No hay actividades para mostrar.
                     </td>
                 </tr>
@@ -300,10 +241,6 @@
                     totalPaginas: 1,
 
                     form: formVacio(),
-                    archivoNuevo: null,
-                    vistaPrevia: '',
-                    vistaPreviaEsVideo: false,
-                    archivoActual: '',
                     mensaje: '',
                     errores: [],
 
@@ -461,9 +398,6 @@
                         nombre: actividad.nombre ?? ''
                     };
 
-                    this.reiniciarArchivo();
-                    this.archivoActual = actividad.archivo ?? '';
-
                     this.mensaje = '';
                     this.errores = [];
 
@@ -475,91 +409,8 @@
 
                 limpiar() {
                     this.form = formVacio();
-                    this.reiniciarArchivo();
-                    this.archivoActual = '';
                     this.mensaje = '';
                     this.errores = [];
-                },
-
-                // ---------- Imagen / video ----------
-                esVideo(ruta) {
-                    return /\.(mp4|webm)$/i.test(ruta || '');
-                },
-
-                reiniciarArchivo() {
-                    if (this.vistaPrevia)
-                        URL.revokeObjectURL(this.vistaPrevia);
-
-                    this.archivoNuevo = null;
-                    this.vistaPrevia = '';
-                    this.vistaPreviaEsVideo = false;
-
-                    if (this.$refs.inputArchivo)
-                        this.$refs.inputArchivo.value = '';
-                },
-
-                seleccionarArchivo(evento) {
-                    const archivo = evento.target.files[0];
-
-                    if (!archivo) {
-                        this.reiniciarArchivo();
-                        return;
-                    }
-
-                    const esVideo = /\.(mp4|webm)$/i.test(archivo.name);
-                    const esImagen = /\.(jpe?g|png|webp|gif)$/i.test(archivo.name);
-
-                    if (!esVideo && !esImagen) {
-                        this.reiniciarArchivo();
-                        this.mostrarAviso('error',
-                            'Formato no permitido. Usá JPG, PNG, WEBP, GIF, MP4 o WEBM.');
-                        return;
-                    }
-
-                    const maximo = esVideo ? 20 * 1024 * 1024 : 5 * 1024 * 1024;
-
-                    if (archivo.size > maximo) {
-                        this.reiniciarArchivo();
-                        this.mostrarAviso('error', esVideo
-                            ? 'El video no puede superar los 20 MB.'
-                            : 'La imagen no puede superar los 5 MB.');
-                        return;
-                    }
-
-                    if (this.vistaPrevia)
-                        URL.revokeObjectURL(this.vistaPrevia);
-
-                    this.archivoNuevo = archivo;
-                    this.vistaPrevia = URL.createObjectURL(archivo);
-                    this.vistaPreviaEsVideo = esVideo;
-                },
-
-                async quitarArchivoActual() {
-                    if (!this.form.idActividad || this.procesando) return;
-
-                    this.procesando = true;
-
-                    try {
-                        const resp = await this.peticionApi(
-                            `${API}/${this.form.idActividad}/archivo`,
-                            { method: 'DELETE' }
-                        );
-
-                        if (!resp.ok) {
-                            const error = await resp.json().catch(() => ({}));
-                            this.mostrarAviso('error',
-                                error.mensaje ?? 'No se pudo quitar el archivo.');
-                            return;
-                        }
-
-                        this.archivoActual = '';
-                        this.mostrarAviso('ok', 'Archivo quitado correctamente.');
-                        await this.cargar();
-                    } catch (error) {
-                        this.mostrarAviso('error', 'Error de conexión al quitar el archivo.');
-                    } finally {
-                        this.procesando = false;
-                    }
                 },
 
                 async guardar() {
@@ -602,40 +453,12 @@
                             return;
                         }
 
-                        // Si se eligió un archivo, se sube después de guardar la actividad.
-                        let errorArchivo = '';
-
-                        if (this.archivoNuevo) {
-                            const idActividad = editando
-                                ? this.form.idActividad
-                                : resultado.idActividad;
-
-                            const datosArchivo = new FormData();
-                            datosArchivo.append('archivo', this.archivoNuevo);
-
-                            const respArchivo = await this.peticionApi(
-                                `${API}/${idActividad}/archivo`,
-                                { method: 'PUT', body: datosArchivo }
-                            );
-
-                            if (!respArchivo.ok) {
-                                const error = await respArchivo.json().catch(() => ({}));
-                                errorArchivo = error.mensaje
-                                    ?? `No se pudo subir el archivo (HTTP ${respArchivo.status}).`;
-                            }
-                        }
-
-                        if (errorArchivo) {
-                            this.mostrarAviso('error',
-                                'La actividad se guardó, pero el archivo no se subió: ' + errorArchivo);
-                        } else {
-                            this.mostrarAviso(
-                                'ok',
-                                editando
-                                    ? 'Actividad modificada correctamente.'
-                                    : 'Actividad creada correctamente.'
-                            );
-                        }
+                        this.mostrarAviso(
+                            'ok',
+                            editando
+                                ? 'Actividad modificada correctamente.'
+                                : 'Actividad creada correctamente.'
+                        );
 
                         this.limpiar();
                         this.pagina = 1;

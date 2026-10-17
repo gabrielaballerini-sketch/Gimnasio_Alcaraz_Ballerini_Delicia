@@ -1,0 +1,185 @@
+@{
+    ViewData["Title"] = "Actividades";
+}
+
+<div id="app" class="mt-4">
+
+    <!-- AVISOS -->
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1100">
+        <div v-if="aviso.texto"
+             class="toast show text-white border-0 bg-danger">
+            <div class="d-flex">
+                <div class="toast-body">{{ aviso.texto }}</div>
+                <button class="btn-close btn-close-white me-2 m-auto"
+                        v-on:click="aviso.texto = ''"></button>
+            </div>
+        </div>
+    </div>
+
+    <h2 class="mb-1">Actividades</h2>
+    <p class="text-muted mb-4">
+        Conocé las actividades del gimnasio y mirá su galería de fotos y videos.
+    </p>
+
+    <div v-if="cargando" class="text-center text-muted py-5">Cargando...</div>
+
+    <div v-else-if="actividades.length === 0" class="alert alert-light border">
+        Todavía no hay actividades cargadas.
+    </div>
+
+    <div v-else class="row g-4">
+        <div class="col-12 col-sm-6 col-lg-4"
+             v-for="a in actividades"
+             v-bind:key="a.idActividad">
+
+            <div class="card h-100 shadow-sm">
+
+                <!-- Portada: primer archivo de la galería -->
+                <div class="bg-dark d-flex align-items-center justify-content-center"
+                     style="height:200px;overflow:hidden">
+
+                    <video v-if="a.portada && a.portada.esVideo"
+                           v-bind:src="a.portada.ruta + '#t=0.1'"
+                           muted preload="metadata"
+                           class="w-100 h-100"
+                           style="object-fit:cover"></video>
+
+                    <img v-else-if="a.portada"
+                         v-bind:src="a.portada.ruta"
+                         v-bind:alt="a.nombre"
+                         class="w-100 h-100"
+                         style="object-fit:cover">
+
+                    <i v-else class="bi bi-image text-secondary" style="font-size:3rem"></i>
+                </div>
+
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">{{ a.nombre }}</h5>
+
+                    <p class="text-muted small mb-3">{{ textoCantidad(a.cantidad) }}</p>
+
+                    <a class="btn btn-primary mt-auto"
+                       v-bind:href="'/Actividad/Detalle/' + a.idActividad">
+                        <i class="bi bi-images me-1"></i> Ver galería
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <script>
+        const API = '/api/actividades';
+
+        Vue.createApp({
+            data() {
+                return {
+                    actividades: [],
+                    cargando: true,
+                    aviso: { texto: '' },
+                    temporizadorAviso: null,
+                    token: ''
+                };
+            },
+
+            async mounted() {
+                await this.iniciar();
+            },
+
+            methods: {
+                async iniciar() {
+                    try {
+                        const resp = await fetch('/Cuenta/Token', {
+                            credentials: 'same-origin'
+                        });
+
+                        if (!resp.ok) {
+                            this.mostrarAviso('Volvé a iniciar sesión.');
+                            this.cargando = false;
+                            return;
+                        }
+
+                        const datos = await resp.json();
+                        this.token = datos.token;
+
+                        await this.cargar();
+                    } catch (error) {
+                        this.cargando = false;
+                        this.mostrarAviso('No se pudo conectar con el servidor.');
+                    }
+                },
+
+                async peticionApi(url) {
+                    const headers = new Headers();
+                    headers.set('Authorization', `Bearer ${this.token}`);
+
+                    return fetch(url, { headers, credentials: 'same-origin' });
+                },
+
+                mostrarAviso(texto) {
+                    this.aviso = { texto };
+
+                    clearTimeout(this.temporizadorAviso);
+
+                    this.temporizadorAviso = setTimeout(() => {
+                        this.aviso.texto = '';
+                    }, 5000);
+                },
+
+                textoCantidad(cantidad) {
+                    if (cantidad === null) return 'Cargando galería...';
+                    if (cantidad === 0) return 'Sin fotos ni videos todavía';
+                    return cantidad === 1 ? '1 foto o video' : `${cantidad} fotos y videos`;
+                },
+
+                async cargar() {
+                    try {
+                        const resp = await this.peticionApi(`${API}/activos?pagina=1&tamPagina=50`);
+
+                        if (!resp.ok) {
+                            this.mostrarAviso('No se pudieron cargar las actividades.');
+                            return;
+                        }
+
+                        const datos = await resp.json();
+
+                        this.actividades = (datos.items ?? []).map(a => ({
+                            ...a,
+                            portada: null,
+                            cantidad: null
+                        }));
+                    } catch (error) {
+                        this.mostrarAviso('Error al cargar las actividades.');
+                    } finally {
+                        this.cargando = false;
+                    }
+
+                    // La portada y la cantidad de cada galería se completan después
+                    await Promise.all(this.actividades.map(a => this.cargarGaleria(a)));
+                },
+
+                async cargarGaleria(actividad) {
+                    try {
+                        const resp = await this.peticionApi(`${API}/${actividad.idActividad}/archivos`);
+
+                        if (!resp.ok) {
+                            actividad.cantidad = 0;
+                            return;
+                        }
+
+                        const archivos = await resp.json();
+
+                        actividad.cantidad = archivos.length;
+                        actividad.portada = archivos[0] ?? null;
+                    } catch (error) {
+                        actividad.cantidad = 0;
+                    }
+                }
+            }
+        }).mount('#app');
+    </script>
+}
