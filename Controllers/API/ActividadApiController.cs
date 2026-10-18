@@ -10,11 +10,9 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
     [Route("api/actividades")]
 
 
-
     public class ActividadApiController : ControllerBase
     {
         private readonly ActividadService _service;
-
 
         public ActividadApiController(
             ActividadService service)
@@ -38,9 +36,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
 
 
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-       Roles = "Administrador")]
-
-
+        Roles = "Administrador")]
         [HttpGet("inactivos")]
         public IActionResult ObtenerInactivos(
            [FromQuery] int pagina = 1,
@@ -54,12 +50,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             );
         }
 
-
-
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-    Roles = "Administrador,Empleado")]
-
-
+         Roles = "Administrador,Empleado")]
         [HttpGet("{id:int}")]
         public ActionResult<Actividad> Obtener(
         int id)
@@ -82,9 +74,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
         }
 
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-    Roles = "Administrador,Empleado")]
-
-
+         Roles = "Administrador,Empleado")]
         [HttpPost]
         public IActionResult Crear(
         [FromForm] Actividad actividad)
@@ -117,13 +107,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             }
         }
 
-
-
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-    Roles = "Administrador,Empleado")]
-
-
-
+        Roles = "Administrador,Empleado")]
         [HttpPut("{id:int}")]
         public IActionResult Modificar(
         int id,
@@ -165,9 +150,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
         }
 
 
-
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-    Roles = "Administrador")]
+         Roles = "Administrador")]
         [HttpDelete("{id:int}")]
         public IActionResult DarDeBaja(
         int id)
@@ -186,11 +170,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             return NoContent();
         }
 
-
-
-
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-    Roles = "Administrador")]
+         Roles = "Administrador")]
         [HttpPut("{id:int}/reactivar")]
         public IActionResult Reactivar(
         int id)
@@ -207,6 +188,15 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             }
 
             return NoContent();
+        }
+
+        [AllowAnonymous]
+        [HttpGet("publicas")]
+        public IActionResult ObtenerPublicas(
+            [FromQuery] int pagina = 1,
+            [FromQuery] int tamPagina = 10)
+        {
+            return Ok(_service.ObtenerActivos(pagina, tamPagina));
         }
 
 

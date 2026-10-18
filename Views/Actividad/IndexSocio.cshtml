@@ -6,12 +6,10 @@
 
     <!-- AVISOS -->
     <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1100">
-        <div v-if="aviso.texto"
-             class="toast show text-white border-0 bg-danger">
+        <div v-if="aviso.texto" class="toast show text-white border-0 bg-danger">
             <div class="d-flex">
                 <div class="toast-body">{{ aviso.texto }}</div>
-                <button class="btn-close btn-close-white me-2 m-auto"
-                        v-on:click="aviso.texto = ''"></button>
+                <button class="btn-close btn-close-white me-2 m-auto" v-on:click="aviso.texto = ''"></button>
             </div>
         </div>
     </div>
@@ -28,27 +26,19 @@
     </div>
 
     <div v-else class="row g-4">
-        <div class="col-12 col-sm-6 col-lg-4"
-             v-for="a in actividades"
-             v-bind:key="a.idActividad">
+        <div class="col-12 col-sm-6 col-lg-4" v-for="a in actividades" v-bind:key="a.idActividad">
 
             <div class="card h-100 shadow-sm">
 
                 <!-- Portada: primer archivo de la galería -->
                 <div class="bg-dark d-flex align-items-center justify-content-center"
-                     style="height:200px;overflow:hidden">
+                    style="height:200px;overflow:hidden">
 
-                    <video v-if="a.portada && a.portada.esVideo"
-                           v-bind:src="a.portada.ruta + '#t=0.1'"
-                           muted preload="metadata"
-                           class="w-100 h-100"
-                           style="object-fit:cover"></video>
+                    <video v-if="a.portada && a.portada.esVideo" v-bind:src="a.portada.ruta + '#t=0.1'" muted
+                        preload="metadata" class="w-100 h-100" style="object-fit:cover"></video>
 
-                    <img v-else-if="a.portada"
-                         v-bind:src="a.portada.ruta"
-                         v-bind:alt="a.nombre"
-                         class="w-100 h-100"
-                         style="object-fit:cover">
+                    <img v-else-if="a.portada" v-bind:src="a.portada.ruta" v-bind:alt="a.nombre" class="w-100 h-100"
+                        style="object-fit:cover">
 
                     <i v-else class="bi bi-image text-secondary" style="font-size:3rem"></i>
                 </div>
@@ -58,8 +48,7 @@
 
                     <p class="text-muted small mb-3">{{ textoCantidad(a.cantidad) }}</p>
 
-                    <a class="btn btn-primary mt-auto"
-                       v-bind:href="'/Actividad/Detalle/' + a.idActividad">
+                    <a class="btn btn-primary mt-auto" v-bind:href="'/Actividad/Detalle/' + a.idActividad">
                         <i class="bi bi-images me-1"></i> Ver galería
                     </a>
                 </div>
@@ -68,6 +57,7 @@
     </div>
 
 </div>
+
 
 @section Scripts {
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
@@ -81,45 +71,15 @@
                     actividades: [],
                     cargando: true,
                     aviso: { texto: '' },
-                    temporizadorAviso: null,
-                    token: ''
+                    temporizadorAviso: null
                 };
             },
 
             async mounted() {
-                await this.iniciar();
+                await this.cargar();
             },
 
             methods: {
-                async iniciar() {
-                    try {
-                        const resp = await fetch('/Cuenta/Token', {
-                            credentials: 'same-origin'
-                        });
-
-                        if (!resp.ok) {
-                            this.mostrarAviso('Volvé a iniciar sesión.');
-                            this.cargando = false;
-                            return;
-                        }
-
-                        const datos = await resp.json();
-                        this.token = datos.token;
-
-                        await this.cargar();
-                    } catch (error) {
-                        this.cargando = false;
-                        this.mostrarAviso('No se pudo conectar con el servidor.');
-                    }
-                },
-
-                async peticionApi(url) {
-                    const headers = new Headers();
-                    headers.set('Authorization', `Bearer ${this.token}`);
-
-                    return fetch(url, { headers, credentials: 'same-origin' });
-                },
-
                 mostrarAviso(texto) {
                     this.aviso = { texto };
 
@@ -133,15 +93,22 @@
                 textoCantidad(cantidad) {
                     if (cantidad === null) return 'Cargando galería...';
                     if (cantidad === 0) return 'Sin fotos ni videos todavía';
-                    return cantidad === 1 ? '1 foto o video' : `${cantidad} fotos y videos`;
+
+                    return cantidad === 1
+                        ? '1 foto o video'
+                        : `${cantidad} fotos y videos`;
                 },
 
                 async cargar() {
                     try {
-                        const resp = await this.peticionApi(`${API}/activos?pagina=1&tamPagina=50`);
+                        const resp = await fetch(
+                            `${API}/publicas?pagina=1&tamPagina=50`
+                        );
 
                         if (!resp.ok) {
-                            this.mostrarAviso('No se pudieron cargar las actividades.');
+                            this.mostrarAviso(
+                                'No se pudieron cargar las actividades.'
+                            );
                             return;
                         }
 
@@ -152,22 +119,30 @@
                             portada: null,
                             cantidad: null
                         }));
+
+                        await Promise.all(
+                            this.actividades.map(a => this.cargarGaleria(a))
+                        );
+
                     } catch (error) {
-                        this.mostrarAviso('Error al cargar las actividades.');
+                        console.error('Error al cargar actividades:', error);
+                        this.mostrarAviso(
+                            'No se pudieron cargar las actividades.'
+                        );
                     } finally {
                         this.cargando = false;
                     }
-
-                    // La portada y la cantidad de cada galería se completan después
-                    await Promise.all(this.actividades.map(a => this.cargarGaleria(a)));
                 },
 
                 async cargarGaleria(actividad) {
                     try {
-                        const resp = await this.peticionApi(`${API}/${actividad.idActividad}/archivos`);
+                        const resp = await fetch(
+                            `${API}/${actividad.idActividad}/archivos`
+                        );
 
                         if (!resp.ok) {
                             actividad.cantidad = 0;
+                            actividad.portada = null;
                             return;
                         }
 
@@ -175,8 +150,16 @@
 
                         actividad.cantidad = archivos.length;
                         actividad.portada = archivos[0] ?? null;
+
                     } catch (error) {
+                        console.error(
+                            'Error al cargar la galería:',
+                            actividad.idActividad,
+                            error
+                        );
+
                         actividad.cantidad = 0;
+                        actividad.portada = null;
                     }
                 }
             }

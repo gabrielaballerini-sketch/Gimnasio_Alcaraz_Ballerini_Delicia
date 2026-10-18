@@ -200,6 +200,15 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             return NoContent();
         }
 
+        [AllowAnonymous]
+        [HttpGet("publicos")]
+        public IActionResult ObtenerPublicos(
+            [FromQuery] int pagina = 1,
+            [FromQuery] int tamPagina = 10)
+        {
+            return Ok(_service.ObtenerActivos(pagina, tamPagina));
+        }
+
         private IActionResult ErroresDeModelo()
         {
             var errores =

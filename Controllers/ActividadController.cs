@@ -14,16 +14,17 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Controllers
             _service = service;
         }
 
-        // El personal ve el ABM; el socio ve las actividades con su galería.
-        [Authorize(Roles = "Socio, Administrador, Empleado")]
+
+        [AllowAnonymous]
         [HttpGet]
         public IActionResult Index()
         {
-            if (User.IsInRole("Socio"))
+            if (User.IsInRole("Socio") || User.Identity?.IsAuthenticated != true)
                 return View("IndexSocio");
 
             return View();
         }
+
 
         // Detalle con carrusel de fotos y videos
         [Authorize(Roles = "Socio, Administrador, Empleado")]

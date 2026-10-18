@@ -19,7 +19,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
 
 
         // LISTAR las fotos y videos de una actividad 
-        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        [AllowAnonymous]
         [HttpGet("{idActividad:int}/archivos")]
         public IActionResult Listar(int idActividad)
         {
@@ -40,9 +40,9 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
         // SUBIR una foto o video
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
             Roles = "Administrador,Empleado")]
-        
+
         [HttpPost("{idActividad:int}/archivos")]
-        
+
         [Consumes("multipart/form-data")]
         [RequestSizeLimit(25 * 1024 * 1024)]
         public async Task<IActionResult> Subir(
@@ -81,9 +81,9 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
         // ELIMINAR una foto o video
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
             Roles = "Administrador,Empleado")]
-        
+
         [HttpDelete("archivos/{idArchivo:int}")]
-        
+
         public IActionResult Eliminar(int idArchivo)
         {
             if (!_service.Eliminar(idArchivo))

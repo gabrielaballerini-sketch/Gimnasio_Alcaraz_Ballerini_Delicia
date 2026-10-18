@@ -1,8 +1,167 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Inicio";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="home-page">
+
+    <!-- PORTADA / CARRUSEL -->
+    <section class="home-hero">
+        <div id="carruselGimnasio" class="carousel slide carousel-fade" data-bs-ride="carousel" data-bs-interval="5000">
+
+            <div class="carousel-indicators">
+                <button type="button" data-bs-target="#carruselGimnasio" data-bs-slide-to="0" class="active"
+                    aria-current="true" aria-label="Imagen 1"></button>
+                <button type="button" data-bs-target="#carruselGimnasio" data-bs-slide-to="1"
+                    aria-label="Imagen 2"></button>
+                <button type="button" data-bs-target="#carruselGimnasio" data-bs-slide-to="2"
+                    aria-label="Imagen 3"></button>
+            </div>
+
+            <div class="carousel-inner">
+
+                <div class="carousel-item active">
+                    <img src="~/imagenes/home/gym-1.jpg" class="d-block w-100 hero-image"
+                        alt="Equipamiento del gimnasio" fetchpriority="high" />
+
+                    <div class="hero-overlay"></div>
+
+                    <div class="carousel-caption hero-caption">
+                        <span class="hero-tag">GIMNASIO ABD</span>
+                        <h1>Tu mejor versión<br />empieza acá.</h1>
+                        <p>Entrená a tu ritmo. Superá tus límites.</p>
+
+                        <div class="hero-buttons">
+                            <a asp-controller="Plan" asp-action="Index" class="btn btn-lima">
+                                Descubrí nuestros planes
+                                <i class="bi bi-arrow-right"></i>
+                            </a>
+                            <a asp-controller="Actividad" asp-action="Index" class="btn btn-outline-light">
+                                Ver actividades
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="carousel-item">
+                    <img src="~/imagenes/home/gym-2.jpg" class="d-block w-100 hero-image"
+                        alt="Entrenamiento y actividad física" />
+
+                    <div class="hero-overlay"></div>
+
+                    <div class="carousel-caption hero-caption">
+                        <span class="hero-tag">MOVETE. CRECÉ. DISFRUTÁ.</span>
+                        <h2>Mucho más que<br />entrenar.</h2>
+                        <p>Encontrá una actividad que te motive todos los días.</p>
+
+                        <div class="hero-buttons">
+                            <a asp-controller="Actividad" asp-action="Index" class="btn btn-lima">
+                                Explorar actividades
+                                <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="carousel-item">
+                    <img src="~/imagenes/home/gym-3.jpg" class="d-block w-100 hero-image"
+                        alt="Espacio de entrenamiento del gimnasio" />
+
+                    <div class="hero-overlay"></div>
+
+                    <div class="carousel-caption hero-caption">
+                        <span class="hero-tag">TU OBJETIVO, TU CAMINO</span>
+                        <h2>El cambio empieza<br />con una decisión.</h2>
+                        <p>Elegí tu plan y empezá a construir tu mejor versión.</p>
+
+                        <div class="hero-buttons">
+                            <a asp-controller="Plan" asp-action="Index" class="btn btn-lima">
+                                Conocer los planes
+                                <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <button class="carousel-control-prev" type="button" data-bs-target="#carruselGimnasio" data-bs-slide="prev"
+                aria-label="Imagen anterior">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            </button>
+
+            <button class="carousel-control-next" type="button" data-bs-target="#carruselGimnasio" data-bs-slide="next"
+                aria-label="Imagen siguiente">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            </button>
+        </div>
+    </section>
+
+    <!-- PRESENTACION -->
+    <section class="home-intro text-center">
+        <span class="section-kicker">BIENVENIDO A GIMNASIO ABD</span>
+        <h2>Un espacio para <span>superarte</span></h2>
+        <p>
+            Entrenamiento, energía y constancia. Encontrá tu lugar,
+            elegí tu objetivo y empezá a avanzar.
+        </p>
+    </section>
+
+    <!-- ACCESOS PRINCIPALES -->
+    <section class="home-access">
+        <a asp-controller="Actividad" asp-action="Index" class="access-card">
+            <div class="access-icon">
+                <i class="bi bi-lightning-charge"></i>
+            </div>
+            <div>
+                <h3>Actividades</h3>
+                <p>Descubrí las opciones para mantenerte en movimiento.</p>
+                <span class="access-link">
+                    Ver actividades <i class="bi bi-arrow-right"></i>
+                </span>
+            </div>
+        </a>
+
+        <a asp-controller="Plan" asp-action="Index" class="access-card">
+            <div class="access-icon">
+                <i class="bi bi-calendar-check"></i>
+            </div>
+            <div>
+                <h3>Planes</h3>
+                <p>Conocé las alternativas y encontrá la que va con vos.</p>
+                <span class="access-link">
+                    Ver planes <i class="bi bi-arrow-right"></i>
+                </span>
+            </div>
+        </a>
+
+        <div class="access-card access-card-info">
+            <div class="access-icon">
+                <i class="bi bi-people"></i>
+            </div>
+            <div>
+                <h3>Tu progreso</h3>
+                <p>La constancia de hoy construye los resultados de mañana.</p>
+                <span class="access-note">Cada entrenamiento cuenta</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- CIERRE -->
+    <section class="home-cta">
+        <div>
+            <span class="section-kicker">ES TU MOMENTO</span>
+            <h2>¿Empezamos?</h2>
+            <p>Acercate a tu objetivo, un entrenamiento a la vez.</p>
+        </div>
+
+        <a asp-controller="Plan" asp-action="Index" class="btn btn-lima">
+            Conocé nuestros planes
+            <i class="bi bi-arrow-right"></i>
+        </a>
+    </section>
+
 </div>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
+}
