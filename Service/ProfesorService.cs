@@ -109,6 +109,11 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
 
             return _repo.ObtenerPorDni(dni);
         }
+        public IList<Profesor> Buscar(string? texto, int limite = 10)
+        {
+            if (limite < 1 || limite > 20) limite = 10;
+            return _repo.Buscar(texto?.Trim(), limite);
+        }
 
         private static void BorrarEspacios(Profesor profesor)
         {

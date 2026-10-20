@@ -5,12 +5,12 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
 {
     public class ActividadService
     {
-        private readonly IRepositorio<Actividad> _repo;
+        private readonly IRepositorioActividad _repo;
         private readonly IRepositorioClase _repoClase;
 
 
         public ActividadService(
-            IRepositorio<Actividad> repo,
+            IRepositorioActividad repo,
             IRepositorioClase repoClase)
         {
             _repo = repo;
@@ -135,6 +135,11 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
         public bool Reactivar(int id)
         {
             return _repo.Reactivar(id) > 0;
+        }
+        public IList<Actividad> Buscar(string? texto, bool soloProgramables, int limite = 10)
+        {
+            if (limite < 1 || limite > 20) limite = 10;
+            return _repo.Buscar(texto?.Trim(), soloProgramables, limite);
         }
 
 

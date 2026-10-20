@@ -189,6 +189,13 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
 
             return NoContent();
         }
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+        Roles = "Administrador,Empleado")]
+        [HttpGet("buscar")]
+        public IActionResult Buscar( [FromQuery] string? texto, [FromQuery] bool programables = false)
+        {
+            return Ok(_service.Buscar(texto, programables, 10));
+        }
 
         [AllowAnonymous]
         [HttpGet("publicas")]

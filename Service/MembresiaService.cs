@@ -1,5 +1,7 @@
 using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
 using Gimnasio_Alcaraz_Ballerini_Delicia.DAO;
+using System.Security.Claims;
+
 
 namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
 {
@@ -8,15 +10,18 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
         private readonly IRepositorioMembresia _repo;
         private readonly IRepositorioSocio _repoSocio;
         private readonly IRepositorio<Plan> _repoPlan;
+        
 
         public MembresiaService(
             IRepositorioMembresia repo,
             IRepositorioSocio repoSocio,
-            IRepositorio<Plan> repoPlan)
+            IRepositorio<Plan> repoPlan
+           )
         {
             _repo = repo;
             _repoSocio = repoSocio;
             _repoPlan = repoPlan;
+           
         }
 
         public ResultadoPaginado<Membresia> ObtenerActivos(
@@ -74,8 +79,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             return _repo.ObtenerPorId(id);
         }
 
-        public Membresia Crear(
-            Membresia membresia)
+        public Membresia Crear(Membresia membresia, int idUsuarioCreador)
         {
             if (membresia.IdSocio <= 0)
             {
@@ -145,9 +149,16 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             membresia.PrecioContratado =
                 plan.Precio;
 
+            
+            if (idUsuarioCreador <= 0)
+            {
+                throw new ReglaNegocioException(
+                    "No se pudo identificar al usuario que registra la membresía.");
+            }
             membresia.Estado = true;
+            membresia.IdUsuarioCreador = idUsuarioCreador;
+         
 
-            membresia.IdUsuarioCreador = 1;
 
             _repo.Alta(membresia);
 

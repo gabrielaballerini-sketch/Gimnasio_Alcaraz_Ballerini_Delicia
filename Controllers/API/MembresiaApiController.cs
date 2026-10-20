@@ -3,6 +3,7 @@ using Gimnasio_Alcaraz_Ballerini_Delicia.Service;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
 {
@@ -128,8 +129,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
         Roles = "Administrador, Empleado")]
         [HttpPost]
-        public IActionResult Crear(
-            [FromForm] Membresia membresia)
+        public IActionResult Crear( [FromForm] Membresia membresia)
         {
             // Las propiedades de navegación no vienen del formulario.
             // Solo necesitamos los Id de Socio y Plan.
@@ -144,14 +144,16 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             }
             if (!ModelState.IsValid)
                 return ErroresDeModelo();
+            // El creador sale del token, nunca del formulario
+            if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var idUsuario))
+                return Unauthorized(new { mensaje = "Token inválido." });
 
             try
             {
                 var creada =
-                    _service.Crear(membresia);
+                    _service.Crear(membresia,idUsuario);
 
-                return CreatedAtAction(
-                    nameof(Obtener),
+                return CreatedAtAction( nameof(Obtener),
                     new
                     {
                         id = creada.IdMembresia

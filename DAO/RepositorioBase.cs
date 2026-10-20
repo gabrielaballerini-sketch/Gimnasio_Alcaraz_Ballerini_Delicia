@@ -34,5 +34,11 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             int i = r.GetOrdinal(col);
             return r.IsDBNull(i) ? valorPorDefecto : r.GetBoolean(i);
         }
+        // Escapa % y _ para que se busquen como caracteres comunes
+        protected static string PatronContiene(string? texto) =>
+            "%" + (texto ?? "")
+                .Replace("\\", "\\\\")
+                .Replace("%", "\\%")
+                .Replace("_", "\\_") + "%";
     }
 }

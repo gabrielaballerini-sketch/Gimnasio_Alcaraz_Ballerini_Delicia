@@ -3,7 +3,7 @@ using MySql.Data.MySqlClient;
 
 namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
 {
-    public class RepositorioActividad : RepositorioBase, IRepositorio<Actividad>
+    public class RepositorioActividad : RepositorioBase, IRepositorioActividad
     {
         public RepositorioActividad(IConfiguration configuration)
             : base(configuration)
@@ -290,6 +290,36 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
                 comand.ExecuteScalar()
             );
         }
+        public IList<Actividad> Buscar(string? texto, bool soloProgramables, int limite = 10)
+        {
+            IList<Actividad> lista = new List<Actividad>();
+
+            using var conexion = CrearConexion();
+
+            var sql = @"
+            SELECT IdActividad, Nombre, Estado, AccesoLibre
+            FROM actividad
+            WHERE Estado = 1
+              AND (@soloProgramables = 0 OR AccesoLibre = 0)
+              AND Nombre LIKE @patron
+            ORDER BY Nombre, IdActividad
+            LIMIT @limite;";
+
+            using var comand = new MySqlCommand(sql, conexion);
+            comand.Parameters.AddWithValue("@soloProgramables", soloProgramables ? 1 : 0);
+            comand.Parameters.AddWithValue("@patron", PatronContiene(texto));
+            comand.Parameters.AddWithValue("@limite", limite);
+
+            conexion.Open();
+
+            using var read = comand.ExecuteReader();
+            while (read.Read())
+                lista.Add(Mapear(read));
+
+            return lista;
+        }
+
+
 
 
         private static void CargarParametros(

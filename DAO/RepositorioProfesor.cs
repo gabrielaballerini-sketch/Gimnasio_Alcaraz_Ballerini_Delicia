@@ -322,6 +322,36 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
 
             return cantidad;
         }
+        public IList<Profesor> Buscar(string? texto, int limite = 10)
+        {
+            IList<Profesor> lista = new List<Profesor>();
+
+            using var conexion = CrearConexion();
+
+            var sql = @"
+             SELECT IdProfesor, Nombre, Apellido, Dni, Telefono, Domicilio, Estado
+             FROM profesor
+             WHERE Estado = 1
+             AND (Nombre LIKE @patron
+             OR Apellido LIKE @patron
+             OR Dni LIKE @patron
+             OR CONCAT(Apellido, ' ', Nombre) LIKE @patron
+             OR CONCAT(Nombre, ' ', Apellido) LIKE @patron)
+             ORDER BY Apellido, Nombre, IdProfesor
+             LIMIT @limite;";
+
+            using var comand = new MySqlCommand(sql, conexion);
+            comand.Parameters.AddWithValue("@patron", PatronContiene(texto));
+            comand.Parameters.AddWithValue("@limite", limite);
+
+            conexion.Open();
+
+            using var read = comand.ExecuteReader();
+            while (read.Read())
+                lista.Add(Mapear(read));
+
+            return lista;
+        }
 
         private static void CargarParametros(
             MySqlCommand cmd,

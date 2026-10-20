@@ -7,5 +7,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
         bool ExisteDni(string dni, int? excluirId = null);
 
         Profesor? ObtenerPorDni(string dni);
+
+        IList<Profesor> Buscar(string? texto, int limite = 10);
     }
 }
