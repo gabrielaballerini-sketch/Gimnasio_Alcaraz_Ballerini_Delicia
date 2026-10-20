@@ -245,8 +245,7 @@
                             <!-- Buscador -->
                             <div v-else class="position-relative">
 
-                                <input type="text" class="form-control"
-                                       placeholder="Buscar por nombre, apellido..."
+                                <input type="text" class="form-control" placeholder="Buscar por nombre, apellido..."
                                        autocomplete="off" v-model="busquedaSocio" @@input="buscarSocios" />
 
                                 <div v-if="busquedaSocio.trim().length >= 2"
@@ -310,8 +309,8 @@
                             Fecha de inicio
                         </label>
 
-                        <input type="date" class="form-control" v-model="form.fechaInicio" :min="fechaMinima" />
-
+                        <input type="date" class="form-control" v-model="form.fechaInicio"
+                               :min="editando ? null : fechaMinima" />
                     </div>
 
                     <div class="mb-3">
@@ -396,9 +395,10 @@
             },
             computed: {
                 fechaMinima() {
-                    return new Date()
-                        .toISOString()
-                        .split('T')[0];
+                    const h = new Date();
+                    const mes = String(h.getMonth() + 1).padStart(2, '0');
+                    const dia = String(h.getDate()).padStart(2, '0');
+                    return `${h.getFullYear()}-${mes}-${dia}`;
                 },
                 precioSeleccionado() {
                     const plan =

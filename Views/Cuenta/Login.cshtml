@@ -1,75 +1,149 @@
 @{
     ViewData["Title"] = "Iniciar sesión";
+    var tieneError = ViewBag.Mensaje != null;
 }
 
-<div class="row justify-content-center mt-5">
+@section Styles {
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/login.css" asp-append-version="true" />
+}
 
-    <div class="col-md-5">
+<div class="login-page">
+    <div class="login-shell">
 
-        <div class="card shadow">
+        <aside class="login-aside">
+            <span class="login-brand">Gimnasio ABD</span>
 
-            <div class="card-header text-center">
-
-                <h3>Gimnasio ABD</h3>
-
-                <p class="mb-0">
-                    Iniciar sesión
+            <div>
+                <h2 class="login-headline">Tu entrenamiento, al día.</h2>
+                <p class="login-lead">
+                    Consultá tu membresía, la grilla de clases y las actividades del gimnasio.
                 </p>
-
             </div>
+        </aside>
 
-            <div class="card-body">
+        <section class="login-panel" aria-labelledby="login-titulo">
 
-                @if (ViewBag.Mensaje != null)
-                {
-                    <div class="alert alert-danger">
-                        @ViewBag.Mensaje
-                    </div>
-                }
+            <h1 id="login-titulo">Iniciar sesión</h1>
+            <p class="login-sub">Ingresá con el email con el que te registraron.</p>
 
-                <form asp-controller="Cuenta"
-                      asp-action="Login"
-                      method="post">
+            @if (tieneError)
+            {
+                <div class="login-error" id="login-error" role="alert">
+                    <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+                    <span>@ViewBag.Mensaje</span>
+                </div>
+            }
 
-                    <div class="mb-3">
+            <form asp-controller="Cuenta" asp-action="Login" method="post" id="formLogin">
 
-                        <label class="form-label">
-                            Email
-                        </label>
-
-                        <input type="email"
+                <div class="login-campo">
+                    <label for="email">Email</label>
+                    <div class="login-control">
+                        <i class="bi bi-envelope" aria-hidden="true"></i>
+                        <input id="email"
+                               type="email"
                                name="email"
-                               class="form-control"
+                               class="login-input"
+                               value="@ViewBag.Email"
+                               autocomplete="username"
+                               aria-describedby="@(tieneError ? "login-error" : null)"
                                required />
-
                     </div>
+                </div>
 
-                    <div class="mb-3">
-
-                        <label class="form-label">
-                            Password
-                        </label>
-
-                        <input type="password"
+                <div class="login-campo">
+                    <label for="password">Contraseña</label>
+                    <div class="login-control">
+                        <i class="bi bi-lock" aria-hidden="true"></i>
+                        <input id="password"
+                               type="password"
                                name="password"
-                               class="form-control"
+                               class="login-input login-input-pass"
+                               autocomplete="current-password"
+                               aria-describedby="@(tieneError ? "login-error" : null)"
                                required />
-
+                        <button type="button"
+                                class="login-ver"
+                                id="verPassword"
+                                aria-label="Mostrar contraseña"
+                                aria-pressed="false">
+                            <i class="bi bi-eye" aria-hidden="true"></i>
+                        </button>
                     </div>
 
-                    <button type="submit"
-                            class="btn btn-primary w-100">
+                    <p class="login-hint" id="avisoMayus" hidden>
+                        <i class="bi bi-capslock" aria-hidden="true"></i>
+                        Tenés activadas las mayúsculas.
+                    </p>
+                </div>
 
-                        Ingresar
+                <button type="submit" class="login-submit" id="btnIngresar">
+                    <span class="login-submit-texto">Ingresar</span>
+                </button>
 
-                    </button>
+            </form>
 
-                </form>
+            <p class="login-ayuda">
+                ¿Todavía no tenés cuenta? Pedila en recepción.
+            </p>
 
-            </div>
-
-        </div>
-
+        </section>
     </div>
-
 </div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var form = document.getElementById('formLogin');
+            var email = document.getElementById('email');
+            var pass = document.getElementById('password');
+            var ver = document.getElementById('verPassword');
+            var aviso = document.getElementById('avisoMayus');
+            var boton = document.getElementById('btnIngresar');
+            var texto = boton.querySelector('.login-submit-texto');
+
+            // Si volvió con un error, el email ya está cargado: va directo a la contraseña
+            (email.value ? pass : email).focus();
+
+            ver.addEventListener('click', function () {
+                var visible = pass.type === 'text';
+
+                pass.type = visible ? 'password' : 'text';
+                ver.setAttribute('aria-pressed', String(!visible));
+                ver.setAttribute('aria-label',
+                    visible ? 'Mostrar contraseña' : 'Ocultar contraseña');
+                ver.firstElementChild.className =
+                    visible ? 'bi bi-eye' : 'bi bi-eye-slash';
+
+                pass.focus();
+            });
+
+            function revisarMayusculas(e) {
+                if (e.getModifierState) {
+                    aviso.hidden = !e.getModifierState('CapsLock');
+                }
+            }
+
+            pass.addEventListener('keydown', revisarMayusculas);
+            pass.addEventListener('keyup', revisarMayusculas);
+            pass.addEventListener('blur', function () { aviso.hidden = true; });
+
+            // Evita enviar dos veces si el servidor tarda
+            form.addEventListener('submit', function () {
+                boton.disabled = true;
+                texto.textContent = 'Ingresando…';
+            });
+
+            // Al volver con el botón "atrás" el botón no debe quedar bloqueado
+            window.addEventListener('pageshow', function (e) {
+                if (e.persisted) {
+                    boton.disabled = false;
+                    texto.textContent = 'Ingresar';
+                }
+            });
+        })();
+    </script>
+}

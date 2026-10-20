@@ -74,22 +74,22 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
 
             return _repo.ObtenerPorEmail(email.Trim());
         }
-public Usuario Crear(Usuario usuario)
-{
-    usuario.Email = usuario.Email?.Trim();
-    Validar(usuario, null);
+        public Usuario Crear(Usuario usuario)
+        {
+            usuario.Email = usuario.Email?.Trim();
+            Validar(usuario, null);
 
 
-    if (usuario.Roles == Roles.Socio)
-        throw new ReglaNegocioException("Los socios se crean desde la pantalla de Socios.");
+            if (usuario.Roles == Roles.Socio)
+                throw new ReglaNegocioException("Los socios se crean desde la pantalla de Socios.");
 
-    usuario.Password = HashearPassword(usuario.Password!);
-    usuario.Estado = true;
-    usuario.Avatar = null;
-    _repo.Alta(usuario);
-  
-    return usuario;
-}
+            usuario.Password = HashearPassword(usuario.Password!);
+            usuario.Estado = true;
+            usuario.Avatar = null;
+            _repo.Alta(usuario);
+
+            return usuario;
+        }
 
         public Usuario? Modificar(int id, Usuario usuario)
         {
@@ -138,12 +138,12 @@ public Usuario Crear(Usuario usuario)
 
             _repo.Modificacion(usuario);
 
- return usuario;
+            return usuario;
         }
 
-   
-          
-  
+
+
+
         public async Task<Usuario?> ActualizarAvatar(
             int id,
             IFormFile archivo)
@@ -168,6 +168,7 @@ public Usuario Crear(Usuario usuario)
                 );
             }
 
+
             var extensionesPermitidas = new[]
             {
                 ".jpg", ".jpeg", ".png", ".webp"
@@ -182,6 +183,11 @@ public Usuario Crear(Usuario usuario)
                 throw new ReglaNegocioException(
                     "La imagen debe ser JPG, JPEG, PNG o WEBP."
                 );
+            }
+            if (!await FirmasArchivo.CoincideConExtensionAsync(archivo, extension))
+            {
+                throw new ReglaNegocioException(
+                    "El contenido del archivo no coincide con su formato.");
             }
 
             var tiposPermitidos = new[]
@@ -255,7 +261,7 @@ public Usuario Crear(Usuario usuario)
             string? passwordActual,
             string? nuevaPassword,
             string? confirmarPassword)
-                {
+        {
             var existente = _repo.ObtenerPorId(id);
 
             if (existente == null)
@@ -446,70 +452,70 @@ public Usuario Crear(Usuario usuario)
         }
 
         // Solo el rol Socio se vincula con una ficha, y cada socio tiene como máximo un usuario
-      
 
-public Usuario? ConvertirASocio(int idUsuario, Socio datos)
-{
-    var usuario = _repo.ObtenerPorId(idUsuario);
 
-    if (usuario == null)
-        return null;
-
-    if (!usuario.Estado)
-        throw new ReglaNegocioException(
-            "No se puede convertir un usuario inactivo.");
-
-    if (usuario.Roles == Roles.Socio)
-        throw new ReglaNegocioException(
-            "El usuario ya tiene el rol de socio.");
-
-    datos ??= new Socio();
-
-    datos.Nombre = datos.Nombre?.Trim();
-    datos.Apellido = datos.Apellido?.Trim();
-    datos.Dni = datos.Dni?.Trim();
-    datos.Telefono = datos.Telefono?.Trim();
-    datos.Domicilio = datos.Domicilio?.Trim();
-
-    // Si tiene una ficha histórica vinculada, se conservan sus datos.
-    var fichaAnterior = _repoSocio.ObtenerPorIdUsuario(idUsuario);
-
-    // Solo si nunca tuvo ficha se validan los datos (mismas reglas que el alta de socio).
-    if (fichaAnterior == null)
-    {
-        var resultados = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
-
-        System.ComponentModel.DataAnnotations.Validator.TryValidateObject(
-            datos,
-            new System.ComponentModel.DataAnnotations.ValidationContext(datos),
-            resultados,
-            true);
-
-        if (resultados.Count > 0)
+        public Usuario? ConvertirASocio(int idUsuario, Socio datos)
         {
-            throw new ReglaNegocioException(
-                "Revisá los datos del socio.",
-                resultados
-                    .Select(r => r.ErrorMessage ?? "Dato inválido")
-                    .Distinct()
-                    .ToList());
+            var usuario = _repo.ObtenerPorId(idUsuario);
+
+            if (usuario == null)
+                return null;
+
+            if (!usuario.Estado)
+                throw new ReglaNegocioException(
+                    "No se puede convertir un usuario inactivo.");
+
+            if (usuario.Roles == Roles.Socio)
+                throw new ReglaNegocioException(
+                    "El usuario ya tiene el rol de socio.");
+
+            datos ??= new Socio();
+
+            datos.Nombre = datos.Nombre?.Trim();
+            datos.Apellido = datos.Apellido?.Trim();
+            datos.Dni = datos.Dni?.Trim();
+            datos.Telefono = datos.Telefono?.Trim();
+            datos.Domicilio = datos.Domicilio?.Trim();
+
+            // Si tiene una ficha histórica vinculada, se conservan sus datos.
+            var fichaAnterior = _repoSocio.ObtenerPorIdUsuario(idUsuario);
+
+            // Solo si nunca tuvo ficha se validan los datos (mismas reglas que el alta de socio).
+            if (fichaAnterior == null)
+            {
+                var resultados = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+
+                System.ComponentModel.DataAnnotations.Validator.TryValidateObject(
+                    datos,
+                    new System.ComponentModel.DataAnnotations.ValidationContext(datos),
+                    resultados,
+                    true);
+
+                if (resultados.Count > 0)
+                {
+                    throw new ReglaNegocioException(
+                        "Revisá los datos del socio.",
+                        resultados
+                            .Select(r => r.ErrorMessage ?? "Dato inválido")
+                            .Distinct()
+                            .ToList());
+                }
+            }
+
+            try
+            {
+                _repoSocio.ConvertirUsuarioEnSocio(idUsuario, datos);
+            }
+            catch (InvalidOperationException ex)
+            {
+                throw new ReglaNegocioException(ex.Message);
+            }
+
+            return _repo.ObtenerPorId(idUsuario);
+
+
+
+
         }
     }
-
-    try
-    {
-        _repoSocio.ConvertirUsuarioEnSocio(idUsuario, datos);
-    }
-    catch (InvalidOperationException ex)
-    {
-        throw new ReglaNegocioException(ex.Message);
-    }
-
-    return _repo.ObtenerPorId(idUsuario);
-
-
-
-
-    }
-}
 }

@@ -51,9 +51,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
 
 
         // Devuelve null si la actividad no existe
-        public async Task<ActividadArchivo?> Subir(
-            int idActividad,
-            IFormFile archivo)
+        public async Task<ActividadArchivo?> Subir( int idActividad,IFormFile archivo)
         {
             if (_repoActividad.ObtenerPorId(idActividad) == null)
                 return null;
@@ -86,6 +84,12 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
                         ? "El video no puede superar los 20 MB."
                         : "La imagen no puede superar los 5 MB.");
             }
+            if (!await FirmasArchivo.CoincideConExtensionAsync(archivo, extension))
+            {
+                throw new ReglaNegocioException(
+                    "El contenido del archivo no coincide con su formato.");
+            }
+
 
             if (_repo.Contar(idActividad) >= MaxArchivosPorActividad)
             {

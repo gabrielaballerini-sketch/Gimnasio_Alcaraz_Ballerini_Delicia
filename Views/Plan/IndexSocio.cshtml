@@ -1,53 +1,145 @@
 @{
     ViewData["Title"] = "Planes";
+    var esSocio = User.IsInRole("Socio");
+    var logueado = User.Identity?.IsAuthenticated == true;
 }
 
-<div id="app" class="mt-4">
+@section Styles {
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/planes.css" asp-append-version="true" />
+}
+
+<div id="app" class="planes-page">
 
     <!-- AVISOS -->
     <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1100">
-        <div v-if="aviso.texto" class="toast show text-white border-0 bg-danger">
+        <div v-if="aviso.texto" class="toast show text-white border-0 bg-danger" role="alert">
             <div class="d-flex">
                 <div class="toast-body">{{ aviso.texto }}</div>
-                <button class="btn-close btn-close-white me-2 m-auto" v-on:click="aviso.texto = ''"></button>
+                <button class="btn-close btn-close-white me-2 m-auto"
+                        aria-label="Cerrar aviso"
+                        v-on:click="aviso.texto = ''"></button>
             </div>
         </div>
     </div>
 
-    <h2 class="mb-1">Planes</h2>
-    <p class="text-muted mb-4">
-        Estos son los planes disponibles. Para contratar o cambiar de plan, acercate a recepción.
-    </p>
+    <header class="planes-cabecera">
+        <h1>Planes</h1>
+        <p>Elegí el que mejor se ajuste a cómo entrenás. Todos los precios son por mes.</p>
+    </header>
 
-    <div v-if="cargando" class="text-center text-muted py-5">Cargando...</div>
+    <!-- RESUMEN DE LA MEMBRESÍA DEL SOCIO -->
+    <section v-if="vigente"
+             class="planes-actual"
+             v-bind:class="{ 'por-vencer': porVencer }"
+             aria-labelledby="actual-titulo">
 
-    <div v-else-if="planes.length === 0" class="alert alert-light border">
-        Por el momento no hay planes disponibles.
-    </div>
+        <div class="planes-actual-plan">
+            <p class="planes-actual-label">Tu plan actual</p>
+            <h2 id="actual-titulo">{{ vigente.plan.nombre }}</h2>
+        </div>
 
-    <div v-else class="row g-4">
-        <div class="col-12 col-sm-6 col-lg-4" v-for="p in planes" v-bind:key="p.idPlan">
-
-            <div class="card h-100 shadow-sm" v-bind:class="{ 'border-success border-2': p.idPlan === idPlanActual }">
-
-                <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">{{ p.nombre }}</h5>
-                    <span v-if="p.idPlan === idPlanActual" class="badge bg-success">Tu plan actual</span>
-                </div>
-
-                <div class="card-body text-center">
-                    <div class="display-6 fw-semibold mb-1">{{ precio(p.precio) }}</div>
-                    <div class="text-muted mb-3">por mes</div>
-
-                    <div>
-                        <i class="bi bi-calendar-check me-1"></i>
-                        <span v-if="p.utilizacionesMensuales === null">Uso ilimitado</span>
-                        <span v-else>{{ p.utilizacionesMensuales }} utilizaciones por mes</span>
-                    </div>
-                </div>
+        <dl class="planes-actual-datos">
+            <div>
+                <dt>Precio contratado</dt>
+                <dd>{{ precio(vigente.precioContratado) }}</dd>
             </div>
+            <div>
+                <dt>Vence el</dt>
+                <dd>{{ fecha(vigente.fechaFin) }}</dd>
+            </div>
+            <div>
+                <dt>Te quedan</dt>
+                <dd>{{ diasRestantes }} {{ diasRestantes === 1 ? 'día' : 'días' }}</dd>
+            </div>
+        </dl>
+
+        <p v-if="porVencer" class="planes-actual-aviso" role="status">
+            <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+            Tu membresía vence pronto. Para renovarla, acercate a recepción.
+        </p>
+    </section>
+
+    <!-- CARGANDO -->
+    <div v-if="cargandoPlanes" class="planes-grilla" aria-busy="true" aria-label="Cargando planes">
+        <div class="plan-card plan-esqueleto" v-for="n in 3" v-bind:key="n">
+            <span class="esq esq-etiqueta"></span>
+            <span class="esq esq-titulo"></span>
+            <span class="esq esq-precio"></span>
+            <span class="esq esq-linea"></span>
+            <span class="esq esq-linea corta"></span>
         </div>
     </div>
+
+    <!-- ERROR -->
+    <div v-else-if="errorPlanes" class="planes-vacio" role="alert">
+        <p>No pudimos cargar los planes.</p>
+        <button type="button" class="btn-planes" v-on:click="reintentar">Reintentar</button>
+    </div>
+
+    <!-- SIN PLANES -->
+    <div v-else-if="planes.length === 0" class="planes-vacio">
+        <p>Por el momento no hay planes disponibles.</p>
+        <p class="planes-vacio-sub">Consultá en recepción.</p>
+    </div>
+
+    <!-- PLANES -->
+    <div v-else class="planes-grilla">
+        <article class="plan-card"
+                 v-for="p in planesOrdenados"
+                 v-bind:key="p.idPlan"
+                 v-bind:class="{ 'es-actual': p.idPlan === idPlanActual }">
+
+            <div class="plan-etiquetas">
+                <span v-if="p.idPlan === idPlanActual" class="plan-etiqueta">Tu plan actual</span>
+                <span v-else-if="p.idPlan === idMenorCostoPorUso" class="plan-etiqueta suave">
+                    Menor costo por utilización
+                </span>
+            </div>
+
+            <h3 class="plan-nombre">{{ p.nombre }}</h3>
+
+            <p class="plan-precio">{{ precio(p.precio) }}</p>
+            <p class="plan-periodo">por mes</p>
+
+            <ul class="plan-detalles">
+                <li>
+                    <i class="bi bi-calendar-check" aria-hidden="true"></i>
+                    <span v-if="esIlimitado(p)">Uso ilimitado</span>
+                    <span v-else>{{ p.utilizacionesMensuales }} utilizaciones por mes</span>
+                </li>
+
+                <li v-if="!esIlimitado(p)">
+                    <i class="bi bi-cash-coin" aria-hidden="true"></i>
+                    <span>Unos {{ aproximado(costoPorUso(p)) }} por utilización</span>
+                </li>
+
+                <li v-if="diferencia(p)" v-bind:class="diferencia(p).clase">
+                    <i class="bi" v-bind:class="diferencia(p).icono" aria-hidden="true"></i>
+                    <span>{{ diferencia(p).texto }}</span>
+                </li>
+            </ul>
+        </article>
+    </div>
+
+    <!-- CÓMO CONTRATAR -->
+    <section class="planes-ayuda">
+        <div>
+            <h2>¿Querés contratar o cambiar de plan?</h2>
+            <p>Acercate a recepción y el personal se encarga.</p>
+        </div>
+
+        @if (esSocio)
+        {
+            <a asp-controller="Membresia" asp-action="Index" class="btn-planes">Ver mi membresía</a>
+        }
+        else if (!logueado)
+        {
+            <a asp-controller="Cuenta" asp-action="Login" class="btn-planes">Iniciar sesión</a>
+        }
+    </section>
 
 </div>
 
@@ -59,59 +151,67 @@
             data() {
                 return {
                     planes: [],
-                    idPlanActual: null,
-                    cargando: true,
+                    vigente: null,
+                    cargandoPlanes: true,
+                    errorPlanes: false,
+                    esSocio: @(esSocio ? "true" : "false"),
                     aviso: { texto: '' },
                     temporizadorAviso: null,
                     token: ''
                 };
             },
 
+            computed: {
+                idPlanActual() {
+                    return this.vigente ? this.vigente.plan.idPlan : null;
+                },
+
+                planesOrdenados() {
+                    return [...this.planes]
+                        .sort((a, b) => Number(a.precio) - Number(b.precio));
+                },
+
+                // Solo se marca si hay al menos dos planes con límite y uno es claramente el más barato
+                idMenorCostoPorUso() {
+                    const limitados = this.planes.filter(p =>
+                        !this.esIlimitado(p) && Number(p.utilizacionesMensuales) > 0);
+
+                    if (limitados.length < 2) return null;
+
+                    const minimo = Math.min(...limitados.map(p => this.costoPorUso(p)));
+                    const mejores = limitados.filter(p => this.costoPorUso(p) === minimo);
+
+                    return mejores.length === 1 ? mejores[0].idPlan : null;
+                },
+
+                diasRestantes() {
+                    if (!this.vigente) return 0;
+
+                    const hoy = new Date();
+                    hoy.setHours(0, 0, 0, 0);
+
+                    const fin = new Date(this.vigente.fechaFin);
+                    fin.setHours(0, 0, 0, 0);
+
+                    return Math.max(0, Math.round((fin - hoy) / 86400000));
+                },
+
+                porVencer() {
+                    return !!this.vigente && this.diasRestantes <= 7;
+                }
+            },
+
             async mounted() {
-                await this.iniciar();
+                // Los planes son públicos: se cargan sin iniciar sesión.
+                await this.cargarPlanes();
+
+                // Solo los socios consultan su membresía; se muestra apenas llega.
+                if (this.esSocio) {
+                    await this.cargarMembresia();
+                }
             },
 
             methods: {
-                async iniciar() {
-                    // Los planes son públicos: se cargan sin iniciar sesión.
-                    await this.cargarPlanes();
-
-                    // Solo los socios autenticados necesitan consultar su plan actual.
-                    const esSocio = @(User.IsInRole("Socio") ? "true" : "false");
-
-                    if (!esSocio) {
-                        this.cargando = false;
-                        return;
-                    }
-
-                    try {
-                        const resp = await fetch('/Cuenta/Token', {
-                            credentials: 'same-origin'
-                        });
-
-                        if (!resp.ok) {
-                            return;
-                        }
-
-                        const datos = await resp.json();
-                        this.token = datos.token;
-
-                        await this.cargarPlanActual();
-
-                    } catch (error) {
-                        console.error('Error al consultar el plan actual:', error);
-                    } finally {
-                        this.cargando = false;
-                    }
-                },
-
-                async peticionApi(url) {
-                    const headers = new Headers();
-                    headers.set('Authorization', `Bearer ${this.token}`);
-
-                    return fetch(url, { headers, credentials: 'same-origin' });
-                },
-
                 mostrarAviso(texto) {
                     this.aviso = { texto };
 
@@ -122,43 +222,124 @@
                     }, 5000);
                 },
 
+                // ---------- Formatos ----------
+
                 precio(valor) {
                     return Number(valor).toLocaleString('es-AR', {
                         style: 'currency',
-                        currency: 'ARS'
+                        currency: 'ARS',
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2
                     });
                 },
 
+                aproximado(valor) {
+                    return Number(valor).toLocaleString('es-AR', {
+                        style: 'currency',
+                        currency: 'ARS',
+                        maximumFractionDigits: 0
+                    });
+                },
+
+                fecha(valor) {
+                    return new Date(valor).toLocaleDateString('es-AR', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric'
+                    });
+                },
+
+                // ---------- Datos de cada plan ----------
+
+                esIlimitado(plan) {
+                    return plan.esIlimitado === true ||
+                        plan.utilizacionesMensuales === null ||
+                        plan.utilizacionesMensuales === undefined;
+                },
+
+                costoPorUso(plan) {
+                    return Number(plan.precio) / Number(plan.utilizacionesMensuales);
+                },
+
+                // Cuánto cambia el precio mensual respecto de lo que paga hoy el socio
+                diferencia(plan) {
+                    if (!this.vigente || plan.idPlan === this.idPlanActual) return null;
+
+                    const dif = Number(plan.precio) - Number(this.vigente.precioContratado);
+
+                    if (dif === 0) {
+                        return {
+                            texto: 'Cuesta lo mismo que tu plan actual',
+                            icono: 'bi-dash-circle',
+                            clase: 'dif-igual'
+                        };
+                    }
+
+                    if (dif > 0) {
+                        return {
+                            texto: this.precio(dif) + ' más por mes que lo que pagás hoy',
+                            icono: 'bi-arrow-up-circle',
+                            clase: 'dif-mas'
+                        };
+                    }
+
+                    return {
+                        texto: this.precio(Math.abs(dif)) + ' menos por mes que lo que pagás hoy',
+                        icono: 'bi-arrow-down-circle',
+                        clase: 'dif-menos'
+                    };
+                },
+
+                // ---------- Llamadas a la API ----------
+
                 async cargarPlanes() {
+                    this.cargandoPlanes = true;
+                    this.errorPlanes = false;
+
                     try {
-                        const resp = await fetch(
-                            '/api/planes/publicos?pagina=1&tamPagina=50'
-                        );
+                        const resp = await fetch('/api/planes/publicos?pagina=1&tamPagina=50');
 
                         if (!resp.ok) {
-                            console.error(
-                                'Error al cargar planes:',
-                                resp.status,
-                                await resp.text()
-                            );
-
+                            console.error('Error al cargar planes:', resp.status);
+                            this.errorPlanes = true;
                             this.mostrarAviso('No se pudieron cargar los planes.');
                             return;
                         }
 
                         const datos = await resp.json();
                         this.planes = datos.items ?? [];
-
                     } catch (error) {
                         console.error('Error de conexión al cargar planes:', error);
+                        this.errorPlanes = true;
                         this.mostrarAviso('No se pudo conectar con el servidor.');
+                    } finally {
+                        this.cargandoPlanes = false;
                     }
                 },
 
-                // Solo para marcar "Tu plan actual"; si falla, simplemente no se marca.
-                async cargarPlanActual() {
+                async reintentar() {
+                    await this.cargarPlanes();
+
+                    if (this.esSocio && !this.vigente) {
+                        await this.cargarMembresia();
+                    }
+                },
+
+                // Solo enriquece la pantalla; si falla, se ven los planes sin resumen.
+                async cargarMembresia() {
                     try {
-                        const resp = await this.peticionApi('/api/membresias/mia');
+                        const respToken = await fetch('/Cuenta/Token', {
+                            credentials: 'same-origin'
+                        });
+
+                        if (!respToken.ok) return;
+
+                        this.token = (await respToken.json()).token;
+
+                        const resp = await fetch('/api/membresias/mia', {
+                            headers: { Authorization: `Bearer ${this.token}` },
+                            credentials: 'same-origin'
+                        });
 
                         if (!resp.ok) return;
 
@@ -167,12 +348,11 @@
                         const hoy = new Date();
                         hoy.setHours(0, 0, 0, 0);
 
-                        const vigente = membresias.find(m =>
-                            new Date(m.fechaInicio) <= hoy && new Date(m.fechaFin) >= hoy);
-
-                        this.idPlanActual = vigente ? vigente.plan.idPlan : null;
+                        this.vigente = membresias.find(m =>
+                            new Date(m.fechaInicio) <= hoy &&
+                            new Date(m.fechaFin) >= hoy) ?? null;
                     } catch (error) {
-                        // se ignora
+                        console.error('Error al consultar la membresía:', error);
                     }
                 }
             }

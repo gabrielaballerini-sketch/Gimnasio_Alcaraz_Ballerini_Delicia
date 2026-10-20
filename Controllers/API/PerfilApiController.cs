@@ -77,8 +77,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
         [HttpPut("avatar")]
         [Consumes("multipart/form-data")]
-        public async Task<IActionResult> ActualizarAvatar(
-            [FromForm] IFormFile? avatarFile)
+        [RequestSizeLimit(6 * 1024 * 1024)]
+        public async Task<IActionResult> ActualizarAvatar( [FromForm] IFormFile? avatarFile)
         {
             var id = IdLogueado();
             if (id == null) return Unauthorized();

@@ -10,7 +10,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
         private readonly IRepositorioMembresia _repo;
         private readonly IRepositorioSocio _repoSocio;
         private readonly IRepositorio<Plan> _repoPlan;
-        
+
 
         public MembresiaService(
             IRepositorioMembresia repo,
@@ -21,7 +21,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             _repo = repo;
             _repoSocio = repoSocio;
             _repoPlan = repoPlan;
-           
+
         }
 
         public ResultadoPaginado<Membresia> ObtenerActivos(
@@ -149,7 +149,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             membresia.PrecioContratado =
                 plan.Precio;
 
-            
+
             if (idUsuarioCreador <= 0)
             {
                 throw new ReglaNegocioException(
@@ -157,7 +157,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             }
             membresia.Estado = true;
             membresia.IdUsuarioCreador = idUsuarioCreador;
-         
+
 
 
             _repo.Alta(membresia);
@@ -165,9 +165,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             return membresia;
         }
 
-        public Membresia? Modificar(
-            int id,
-            Membresia membresia)
+        public Membresia? Modificar(int id, Membresia membresia)
         {
             var existente =
                 _repo.ObtenerPorId(id);
@@ -189,10 +187,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
                 );
             }
 
-            var socio =
-                _repoSocio.ObtenerPorId(
-                    membresia.IdSocio
-                );
+            var socio = _repoSocio.ObtenerPorId(membresia.IdSocio);
 
             if (socio == null)
             {
@@ -208,48 +203,40 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
                 );
             }
 
-            var plan =
-                _repoPlan.ObtenerPorId(
-                    membresia.IdPlan
-                );
+            var plan = _repoPlan.ObtenerPorId(membresia.IdPlan);
 
             if (plan == null)
             {
-                throw new ReglaNegocioException(
-                    "El plan seleccionado no existe."
-                );
+                throw new ReglaNegocioException("El plan seleccionado no existe.");
             }
 
-            if (!plan.Estado)
+            var cambioPlan = membresia.IdPlan != existente.IdPlan;
+            var cambioFecha = membresia.FechaInicio.Date != existente.FechaInicio.Date;
+
+            // Solo se exige plan activo si se está eligiendo otro plan
+            if (cambioPlan && !plan.Estado)
             {
-                throw new ReglaNegocioException(
-                    "No se puede utilizar un plan inactivo."
-                );
+                throw new ReglaNegocioException("No se puede utilizar un plan inactivo.");
             }
 
-            if (membresia.FechaInicio.Date < DateTime.Today)
+            // Solo se exige fecha futura si se está cambiando la fecha
+            if (cambioFecha && membresia.FechaInicio.Date < DateTime.Today)
             {
                 throw new ReglaNegocioException(
-                    "La fecha de inicio no puede ser anterior a la fecha actual."
-                );
+                    "La fecha de inicio no puede ser anterior a la fecha actual.");
             }
 
             membresia.IdMembresia = id;
+            membresia.FechaInicio = membresia.FechaInicio.Date;
+            membresia.FechaFin = membresia.FechaInicio.AddMonths(1);
 
-            membresia.FechaInicio =
-                membresia.FechaInicio.Date;
+            // El precio contratado solo se actualiza si cambió el plan
+            membresia.PrecioContratado = cambioPlan
+                ? plan.Precio
+                : existente.PrecioContratado;
 
-            membresia.FechaFin =
-                membresia.FechaInicio.AddMonths(1);
-
-            membresia.PrecioContratado =
-                plan.Precio;
-
-            membresia.Estado =
-                existente.Estado;
-
-            membresia.IdUsuarioCreador =
-                existente.IdUsuarioCreador;
+            membresia.Estado = existente.Estado;
+            membresia.IdUsuarioCreador = existente.IdUsuarioCreador;
 
             _repo.Modificacion(membresia);
 

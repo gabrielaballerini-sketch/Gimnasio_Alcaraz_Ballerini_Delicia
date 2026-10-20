@@ -1,63 +1,172 @@
 @{
     ViewData["Title"] = "Actividades";
+    var logueado = User.Identity?.IsAuthenticated == true;
 }
 
-<div id="app" class="mt-4">
+@section Styles {
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/actividades.css" asp-append-version="true" />
+}
+
+<div id="app" class="act-page">
 
     <!-- AVISOS -->
     <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1100">
-        <div v-if="aviso.texto" class="toast show text-white border-0 bg-danger">
+        <div v-if="aviso.texto" class="toast show text-white border-0 bg-danger" role="alert">
             <div class="d-flex">
                 <div class="toast-body">{{ aviso.texto }}</div>
-                <button class="btn-close btn-close-white me-2 m-auto" v-on:click="aviso.texto = ''"></button>
+                <button class="btn-close btn-close-white me-2 m-auto"
+                        aria-label="Cerrar aviso"
+                        v-on:click="aviso.texto = ''"></button>
             </div>
         </div>
     </div>
 
-    <h2 class="mb-1">Actividades</h2>
-    <p class="text-muted mb-4">
-        Conocé las actividades del gimnasio y mirá su galería de fotos y videos.
-    </p>
+    <header class="act-cabecera">
+        <div>
+            <h1>Actividades</h1>
+            <p>Conocé lo que ofrece el gimnasio y mirá la galería de cada actividad.</p>
+        </div>
 
-    <div v-if="cargando" class="text-center text-muted py-5">Cargando...</div>
+        @if (logueado)
+        {
+            <a asp-controller="Clase" asp-action="Grilla" class="btn-act-sec">
+                <i class="bi bi-calendar-week" aria-hidden="true"></i>
+                Ver grilla semanal
+            </a>
+        }
+    </header>
 
-    <div v-else-if="actividades.length === 0" class="alert alert-light border">
-        Todavía no hay actividades cargadas.
+    <!-- BUSCADOR Y FILTROS -->
+    <div v-if="!cargando && !error && actividades.length" class="act-filtros">
+
+        <div class="act-buscador">
+            <label for="busqueda" class="visually-hidden">Buscar actividad</label>
+            <i class="bi bi-search" aria-hidden="true"></i>
+            <input id="busqueda"
+                   type="search"
+                   v-model.trim="busqueda"
+                   placeholder="Buscar actividad"
+                   autocomplete="off" />
+        </div>
+
+        <div v-if="hayAmbosTipos" class="act-chips" role="group" aria-label="Tipo de actividad">
+            <button type="button"
+                    v-for="f in filtros"
+                    v-bind:key="f.valor"
+                    class="act-chip"
+                    v-bind:class="{ activo: tipo === f.valor }"
+                    v-bind:aria-pressed="String(tipo === f.valor)"
+                    v-on:click="tipo = f.valor">
+                {{ f.texto }}
+                <span class="act-chip-n">{{ f.cantidad }}</span>
+            </button>
+        </div>
+
+        <p class="visually-hidden" aria-live="polite">
+            {{ filtradas.length }} {{ filtradas.length === 1 ? 'actividad' : 'actividades' }}
+        </p>
     </div>
 
-    <div v-else class="row g-4">
-        <div class="col-12 col-sm-6 col-lg-4" v-for="a in actividades" v-bind:key="a.idActividad">
-
-            <div class="card h-100 shadow-sm">
-
-                <!-- Portada: primer archivo de la galería -->
-                <div class="bg-dark d-flex align-items-center justify-content-center"
-                    style="height:200px;overflow:hidden">
-
-                    <video v-if="a.portada && a.portada.esVideo" v-bind:src="a.portada.ruta + '#t=0.1'" muted
-                        preload="metadata" class="w-100 h-100" style="object-fit:cover"></video>
-
-                    <img v-else-if="a.portada" v-bind:src="a.portada.ruta" v-bind:alt="a.nombre" class="w-100 h-100"
-                        style="object-fit:cover">
-
-                    <i v-else class="bi bi-image text-secondary" style="font-size:3rem"></i>
-                </div>
-
-                <div class="card-body d-flex flex-column">
-                    <h5 class="card-title">{{ a.nombre }}</h5>
-
-                    <p class="text-muted small mb-3">{{ textoCantidad(a.cantidad) }}</p>
-
-                    <a class="btn btn-primary mt-auto" v-bind:href="'/Actividad/Detalle/' + a.idActividad">
-                        <i class="bi bi-images me-1"></i> Ver galería
-                    </a>
-                </div>
+    <!-- CARGANDO -->
+    <div v-if="cargando" class="act-grilla" aria-busy="true" aria-label="Cargando actividades">
+        <div class="act-card" v-for="n in 6" v-bind:key="n">
+            <div class="act-media cargando"></div>
+            <div class="act-cuerpo">
+                <span class="esq esq-titulo"></span>
+                <span class="esq esq-linea"></span>
+                <span class="esq esq-linea corta"></span>
             </div>
         </div>
+    </div>
+
+    <!-- ERROR -->
+    <div v-else-if="error" class="act-vacio" role="alert">
+        <p>No pudimos cargar las actividades.</p>
+        <button type="button" class="btn-act" v-on:click="cargar">Reintentar</button>
+    </div>
+
+    <!-- SIN ACTIVIDADES -->
+    <div v-else-if="actividades.length === 0" class="act-vacio">
+        <p>Todavía no hay actividades cargadas.</p>
+        <p class="act-vacio-sub">Volvé a mirar más tarde.</p>
+    </div>
+
+    <!-- SIN RESULTADOS -->
+    <div v-else-if="filtradas.length === 0" class="act-vacio">
+        <p>No hay actividades que coincidan con tu búsqueda.</p>
+        <button type="button" class="btn-act" v-on:click="limpiarFiltros">Limpiar filtros</button>
+    </div>
+
+    <!-- ACTIVIDADES -->
+    <div v-else class="act-grilla">
+        <article class="act-card" v-for="a in filtradas" v-bind:key="a.idActividad">
+
+            <div class="act-media" v-bind:class="{ cargando: a.cantidad === null }">
+
+                <video v-if="a.portada && a.portada.esVideo"
+                       v-bind:src="a.portada.ruta + '#t=0.1'"
+                       muted
+                       preload="metadata"></video>
+
+                <img v-else-if="a.portada"
+                     v-bind:src="a.portada.ruta"
+                     alt=""
+                     loading="lazy" />
+
+                <i v-else-if="a.cantidad === 0" class="bi bi-image act-sin-foto" aria-hidden="true"></i>
+
+                <span class="act-tipo" v-bind:class="{ libre: a.accesoLibre }">
+                    {{ a.accesoLibre ? 'Acceso libre' : 'Con clases' }}
+                </span>
+
+                <span v-if="a.portada && a.portada.esVideo" class="act-play" aria-hidden="true">
+                    <i class="bi bi-play-fill"></i>
+                </span>
+            </div>
+
+            <div class="act-cuerpo">
+                <h2 class="act-nombre">{{ a.nombre }}</h2>
+
+                <template v-if="a.accesoLibre">
+                    <p class="act-nota">No necesita clase ni horario fijo.</p>
+                </template>
+
+                <template v-else-if="esLogueado">
+                    <ul v-if="horariosDe(a).length" class="act-horarios" aria-label="Horarios">
+                        <li v-for="h in horariosDe(a).slice(0, 3)" v-bind:key="h.idClase">
+                            <i class="bi bi-clock" aria-hidden="true"></i>
+                            {{ h.texto }}
+                        </li>
+                        <li v-if="horariosDe(a).length > 3" class="act-mas">
+                            y {{ horariosDe(a).length - 3 }} más
+                        </li>
+                    </ul>
+                    <p v-else-if="grillaCargada" class="act-nota">Sin clases programadas por ahora.</p>
+                </template>
+
+                <p v-else class="act-nota">Iniciá sesión para ver los horarios.</p>
+
+                <p class="act-cantidad">
+                    <i class="bi bi-images" aria-hidden="true"></i>
+                    {{ textoCantidad(a.cantidad) }}
+                </p>
+
+                <a v-if="esLogueado"
+                   class="act-boton stretched-link"
+                   v-bind:href="'/Actividad/Detalle/' + a.idActividad">
+                    Ver galería de {{ a.nombre }}
+                </a>
+                <a v-else class="act-boton stretched-link" href="/Cuenta/Login">
+                    Iniciar sesión para ver la galería
+                </a>
+            </div>
+        </article>
     </div>
 
 </div>
-
 
 @section Scripts {
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
@@ -65,14 +174,81 @@
     <script>
         const API = '/api/actividades';
 
+        const DIAS = {
+            1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves',
+            5: 'Viernes', 6: 'Sábado', 7: 'Domingo'
+        };
+
+        // Minúsculas y sin tildes, para que "pilates" encuentre "Pilátes"
+        function normalizar(texto) {
+            return (texto ?? '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase();
+        }
+
         Vue.createApp({
             data() {
                 return {
                     actividades: [],
+                    clases: [],
+                    grillaCargada: false,
                     cargando: true,
+                    error: false,
+                    busqueda: '',
+                    tipo: 'todas',
+                    esLogueado: @(logueado ? "true" : "false"),
                     aviso: { texto: '' },
                     temporizadorAviso: null
                 };
+            },
+
+            computed: {
+                cantidadLibres() {
+                    return this.actividades.filter(a => a.accesoLibre).length;
+                },
+
+                cantidadConClases() {
+                    return this.actividades.length - this.cantidadLibres;
+                },
+
+                // Los filtros solo sirven si existen los dos tipos de actividad
+                hayAmbosTipos() {
+                    return this.cantidadLibres > 0 && this.cantidadConClases > 0;
+                },
+
+                filtros() {
+                    return [
+                        { valor: 'todas', texto: 'Todas', cantidad: this.actividades.length },
+                        { valor: 'clases', texto: 'Con clases', cantidad: this.cantidadConClases },
+                        { valor: 'libre', texto: 'Acceso libre', cantidad: this.cantidadLibres }
+                    ];
+                },
+
+                filtradas() {
+                    const texto = normalizar(this.busqueda);
+
+                    return this.actividades.filter(a => {
+                        if (this.tipo === 'clases' && a.accesoLibre) return false;
+                        if (this.tipo === 'libre' && !a.accesoLibre) return false;
+
+                        return !texto || normalizar(a.nombre).includes(texto);
+                    });
+                },
+
+                // { idActividad: [ { idClase, texto }, ... ] }, ya ordenado por día y hora
+                clasesPorActividad() {
+                    const grupos = {};
+
+                    for (const c of this.clases) {
+                        (grupos[c.idActividad] ??= []).push({
+                            idClase: c.idClase,
+                            texto: `${DIAS[c.dia] ?? ''} ${this.hora(c.horaInicio)} a ${this.hora(c.horaFin)}`
+                        });
+                    }
+
+                    return grupos;
+                }
             },
 
             async mounted() {
@@ -90,6 +266,14 @@
                     }, 5000);
                 },
 
+                hora(valor) {
+                    return (valor ?? '').substring(0, 5);
+                },
+
+                horariosDe(actividad) {
+                    return this.clasesPorActividad[actividad.idActividad] ?? [];
+                },
+
                 textoCantidad(cantidad) {
                     if (cantidad === null) return 'Cargando galería...';
                     if (cantidad === 0) return 'Sin fotos ni videos todavía';
@@ -99,16 +283,21 @@
                         : `${cantidad} fotos y videos`;
                 },
 
+                limpiarFiltros() {
+                    this.busqueda = '';
+                    this.tipo = 'todas';
+                },
+
                 async cargar() {
+                    this.cargando = true;
+                    this.error = false;
+
                     try {
-                        const resp = await fetch(
-                            `${API}/publicas?pagina=1&tamPagina=50`
-                        );
+                        const resp = await fetch(`${API}/publicas?pagina=1&tamPagina=50`);
 
                         if (!resp.ok) {
-                            this.mostrarAviso(
-                                'No se pudieron cargar las actividades.'
-                            );
+                            this.error = true;
+                            this.mostrarAviso('No se pudieron cargar las actividades.');
                             return;
                         }
 
@@ -119,26 +308,26 @@
                             portada: null,
                             cantidad: null
                         }));
-
-                        await Promise.all(
-                            this.actividades.map(a => this.cargarGaleria(a))
-                        );
-
                     } catch (error) {
                         console.error('Error al cargar actividades:', error);
-                        this.mostrarAviso(
-                            'No se pudieron cargar las actividades.'
-                        );
+                        this.error = true;
+                        this.mostrarAviso('No se pudo conectar con el servidor.');
+                        return;
                     } finally {
                         this.cargando = false;
+                    }
+
+                    // La lista ya se ve: fotos y horarios se completan en segundo plano
+                    this.actividades.forEach(a => this.cargarGaleria(a));
+
+                    if (this.esLogueado) {
+                        this.cargarHorarios();
                     }
                 },
 
                 async cargarGaleria(actividad) {
                     try {
-                        const resp = await fetch(
-                            `${API}/${actividad.idActividad}/archivos`
-                        );
+                        const resp = await fetch(`${API}/${actividad.idActividad}/archivos`);
 
                         if (!resp.ok) {
                             actividad.cantidad = 0;
@@ -150,16 +339,36 @@
 
                         actividad.cantidad = archivos.length;
                         actividad.portada = archivos[0] ?? null;
-
                     } catch (error) {
-                        console.error(
-                            'Error al cargar la galería:',
-                            actividad.idActividad,
-                            error
-                        );
+                        console.error('Error al cargar la galería:', actividad.idActividad, error);
 
                         actividad.cantidad = 0;
                         actividad.portada = null;
+                    }
+                },
+
+                // Una sola petición con toda la grilla; si falla, no se muestran horarios
+                async cargarHorarios() {
+                    try {
+                        const respToken = await fetch('/Cuenta/Token', {
+                            credentials: 'same-origin'
+                        });
+
+                        if (!respToken.ok) return;
+
+                        const token = (await respToken.json()).token;
+
+                        const resp = await fetch('/api/clases/grilla', {
+                            headers: { Authorization: `Bearer ${token}` },
+                            credentials: 'same-origin'
+                        });
+
+                        if (!resp.ok) return;
+
+                        this.clases = await resp.json();
+                        this.grillaCargada = true;
+                    } catch (error) {
+                        console.error('Error al cargar los horarios:', error);
                     }
                 }
             }

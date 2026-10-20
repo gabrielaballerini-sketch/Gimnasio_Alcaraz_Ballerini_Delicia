@@ -36,9 +36,9 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Controllers
         {
             if (string.IsNullOrWhiteSpace(email) ||
                 string.IsNullOrWhiteSpace(password))
-            {
-                ViewBag.Mensaje =
-                    "Debe ingresar email y password.";
+            { 
+                ViewBag.Email = email;
+                ViewBag.Mensaje ="Debe ingresar email y password.";
 
                 return View();
             }
@@ -49,8 +49,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Controllers
                 !usuario.Estado ||
                 !_usuarioService.VerificarPassword(usuario, password))
             {
-                ViewBag.Mensaje =
-                    "Email o password incorrectos.";
+                ViewBag.Email = email;
+                ViewBag.Mensaje = "Email o contraseña incorrectos.";
 
                 return View();
             }

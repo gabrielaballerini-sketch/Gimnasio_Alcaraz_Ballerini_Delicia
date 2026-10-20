@@ -133,6 +133,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
         // SUBIR O CAMBIAR AVATAR
         [HttpPut("{id:int}/avatar")]
         [Consumes("multipart/form-data")]
+        [RequestSizeLimit(6 * 1024 * 1024)]
         public async Task<IActionResult> ActualizarAvatar(
             int id,
             [FromForm] IFormFile? avatarFile)

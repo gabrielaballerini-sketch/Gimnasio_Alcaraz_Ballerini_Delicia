@@ -1,0 +1,335 @@
+/* Estilos de la vista de planes para socios y visitantes.
+   Misma paleta y radios que el Home y el login. */
+
+.planes-page {
+    --ink: #171a19;
+    --lime: #c7f464;
+    --lime-hover: #b9e84f;
+    --lime-text: #4d7a12;
+    --muted: #5d6560;
+    --line: #d5dad7;
+    --suave: #f3f5f3;
+    --aviso-bg: #fff6df;
+    --aviso-borde: #e0a800;
+    --aviso-texto: #6b4a00;
+
+    padding: 1.5rem 0 2rem;
+    color: var(--ink);
+}
+
+.planes-page h1,
+.planes-page h2,
+.planes-page h3,
+.plan-precio {
+    font-family: "Archivo", "Segoe UI", system-ui, sans-serif;
+}
+
+/* ---------- Cabecera ---------- */
+
+.planes-cabecera {
+    margin-bottom: 1.75rem;
+}
+
+.planes-cabecera h1 {
+    margin: 0 0 .35rem;
+    font-size: 2.1rem;
+    font-weight: 800;
+    letter-spacing: -.025em;
+}
+
+.planes-cabecera p {
+    margin: 0;
+    color: var(--muted);
+}
+
+/* ---------- Resumen de la membresía ---------- */
+
+.planes-actual {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem 2.5rem;
+    align-items: center;
+    margin-bottom: 1.75rem;
+    padding: 1.4rem 1.6rem;
+    border: 1px solid var(--line);
+    border-left: 6px solid var(--lime);
+    border-radius: 18px;
+    background: #fff;
+}
+
+.planes-actual.por-vencer {
+    border-color: var(--aviso-borde);
+    border-left-color: var(--aviso-borde);
+    background: var(--aviso-bg);
+}
+
+.planes-actual-label {
+    margin: 0 0 .15rem;
+    color: var(--muted);
+    font-size: .9rem;
+}
+
+.planes-actual h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -.02em;
+}
+
+.planes-actual-datos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 2.25rem;
+    margin: 0;
+}
+
+.planes-actual-datos dt {
+    color: var(--muted);
+    font-size: .85rem;
+    font-weight: 500;
+}
+
+.planes-actual-datos dd {
+    margin: 0;
+    font-weight: 700;
+}
+
+.planes-actual-aviso {
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+    flex-basis: 100%;
+    margin: 0;
+    color: var(--aviso-texto);
+    font-weight: 600;
+}
+
+/* ---------- Grilla y tarjetas ---------- */
+
+.planes-grilla {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1.25rem;
+}
+
+.plan-card {
+    display: flex;
+    flex-direction: column;
+    padding: 1.6rem 1.5rem 1.75rem;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: #fff;
+}
+
+.plan-card.es-actual {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: #fff;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, .18);
+}
+
+/* Reserva el alto de la etiqueta para que los precios queden alineados entre tarjetas */
+.plan-etiquetas {
+    min-height: 1.9rem;
+    margin-bottom: .6rem;
+}
+
+.plan-etiqueta {
+    display: inline-block;
+    padding: .25rem .7rem;
+    border-radius: 999px;
+    background: var(--lime);
+    color: var(--ink);
+    font-size: .8rem;
+    font-weight: 700;
+}
+
+.plan-etiqueta.suave {
+    background: #e9f5cf;
+}
+
+.plan-nombre {
+    margin: 0 0 1rem;
+    font-size: 1.2rem;
+    font-weight: 800;
+    letter-spacing: -.01em;
+}
+
+.plan-precio {
+    margin: 0;
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: -.03em;
+    line-height: 1;
+}
+
+.plan-periodo {
+    margin: .25rem 0 0;
+    color: var(--muted);
+}
+
+.es-actual .plan-periodo {
+    color: rgba(255, 255, 255, .7);
+}
+
+.plan-detalles {
+    display: grid;
+    gap: .75rem;
+    margin: 1.4rem 0 0;
+    padding: 1.25rem 0 0;
+    border-top: 1px solid var(--line);
+    list-style: none;
+}
+
+.es-actual .plan-detalles {
+    border-top-color: rgba(255, 255, 255, .22);
+}
+
+.plan-detalles li {
+    display: flex;
+    gap: .6rem;
+    align-items: flex-start;
+}
+
+.plan-detalles i {
+    margin-top: .12rem;
+    color: var(--lime-text);
+}
+
+.es-actual .plan-detalles i {
+    color: var(--lime);
+}
+
+.plan-detalles .dif-igual,
+.plan-detalles .dif-mas {
+    color: var(--muted);
+}
+
+.plan-detalles .dif-igual i,
+.plan-detalles .dif-mas i {
+    color: var(--muted);
+}
+
+.plan-detalles .dif-menos {
+    color: var(--lime-text);
+    font-weight: 600;
+}
+
+/* ---------- Estados: cargando, error, vacío ---------- */
+
+.plan-esqueleto {
+    gap: .9rem;
+}
+
+.esq {
+    display: block;
+    height: 1rem;
+    border-radius: 6px;
+    background: #e6eae7;
+    animation: planes-pulso 1.4s ease-in-out infinite;
+}
+
+.esq-etiqueta { width: 40%; height: 1.5rem; border-radius: 999px; }
+.esq-titulo   { width: 55%; height: 1.2rem; }
+.esq-precio   { width: 70%; height: 2.4rem; }
+.esq-linea    { width: 90%; }
+.esq-linea.corta { width: 60%; }
+
+@keyframes planes-pulso {
+    50% { opacity: .45; }
+}
+
+.planes-vacio {
+    padding: 2.5rem 1.5rem;
+    border: 1px dashed var(--line);
+    border-radius: 18px;
+    text-align: center;
+}
+
+.planes-vacio p {
+    margin: 0 0 .75rem;
+    font-weight: 600;
+}
+
+.planes-vacio .planes-vacio-sub {
+    margin: 0;
+    color: var(--muted);
+    font-weight: 400;
+}
+
+/* ---------- Cierre ---------- */
+
+.planes-ayuda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 2rem;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 2rem;
+    padding: 1.5rem 1.75rem;
+    border-radius: 18px;
+    background: var(--suave);
+}
+
+.planes-ayuda h2 {
+    margin: 0 0 .2rem;
+    font-size: 1.2rem;
+    font-weight: 800;
+    letter-spacing: -.01em;
+}
+
+.planes-ayuda p {
+    margin: 0;
+    color: var(--muted);
+}
+
+.btn-planes {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: .75rem 1.4rem;
+    border: 0;
+    border-radius: 10px;
+    background: var(--lime);
+    color: var(--ink);
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color .15s;
+}
+
+.btn-planes:hover {
+    background: var(--lime-hover);
+    color: var(--ink);
+}
+
+.btn-planes:focus-visible {
+    outline: 3px solid var(--ink);
+    outline-offset: 3px;
+}
+
+/* ---------- Celulares ---------- */
+
+@media (max-width: 575.98px) {
+    .planes-cabecera h1 {
+        font-size: 1.75rem;
+    }
+
+    .planes-actual {
+        padding: 1.2rem 1.25rem;
+    }
+
+    .planes-grilla {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .esq {
+        animation: none;
+    }
+
+    .btn-planes {
+        transition: none;
+    }
+}
