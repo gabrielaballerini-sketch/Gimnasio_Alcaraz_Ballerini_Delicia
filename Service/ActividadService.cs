@@ -6,12 +6,15 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
     public class ActividadService
     {
         private readonly IRepositorio<Actividad> _repo;
+        private readonly IRepositorioClase _repoClase;
 
 
         public ActividadService(
-            IRepositorio<Actividad> repo)
+            IRepositorio<Actividad> repo,
+            IRepositorioClase repoClase)
         {
             _repo = repo;
+            _repoClase = repoClase;
         }
 
 
@@ -101,6 +104,16 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             BorrarEspacios(actividad);
 
             Validar(actividad);
+
+            // Una actividad con clases programadas activas no puede pasar a acceso libre
+            if (actividad.AccesoLibre &&
+                !existente.AccesoLibre &&
+                _repoClase.ContarActivasPorActividad(id) > 0)
+            {
+                throw new ReglaNegocioException(
+                    "No se puede marcar como acceso libre: la actividad tiene clases programadas activas. Dalas de baja primero."
+                );
+            }
 
             actividad.IdActividad = id;
 

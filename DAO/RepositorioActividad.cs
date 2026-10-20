@@ -16,9 +16,9 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
 
             var sql = @"
             INSERT INTO actividad
-                (Nombre, Estado)
+                (Nombre, Estado, AccesoLibre)
             VALUES
-                (@Nombre, @Estado);
+                (@Nombre, @Estado, @AccesoLibre);
 
             SELECT LAST_INSERT_ID();";
 
@@ -44,7 +44,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
 
             var sql = @"
             UPDATE actividad
-            SET Nombre = @Nombre
+            SET Nombre = @Nombre,
+                AccesoLibre = @AccesoLibre
             WHERE IdActividad = @IdActividad;";
 
             using var comand = new MySqlCommand(sql, conexion);
@@ -52,6 +53,11 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             comand.Parameters.AddWithValue(
                 "@Nombre",
                 actividad.Nombre ?? string.Empty
+            );
+
+            comand.Parameters.AddWithValue(
+                "@AccesoLibre",
+                actividad.AccesoLibre
             );
 
             comand.Parameters.AddWithValue(
@@ -118,7 +124,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             SELECT
                 IdActividad,
                 Nombre,
-                Estado
+                Estado,
+                AccesoLibre
             FROM actividad
             WHERE IdActividad = @IdActividad;";
 
@@ -158,7 +165,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             SELECT
                 IdActividad,
                 Nombre,
-                Estado
+                Estado,
+                AccesoLibre
             FROM actividad
             WHERE Estado = 1
             ORDER BY Nombre, IdActividad
@@ -215,7 +223,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             SELECT
                 IdActividad,
                 Nombre,
-                Estado
+                Estado,
+                AccesoLibre
             FROM actividad
             WHERE Estado = 0
             ORDER BY Nombre, IdActividad
@@ -296,6 +305,11 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
                 "@Estado",
                 actividad.Estado
             );
+
+            cmd.Parameters.AddWithValue(
+                "@AccesoLibre",
+                actividad.AccesoLibre
+            );
         }
 
 
@@ -311,7 +325,10 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
                     r.GetString("Nombre"),
 
                 Estado =
-                    r.GetBoolean("Estado")
+                    r.GetBoolean("Estado"),
+
+                AccesoLibre =
+                    r.GetBoolean("AccesoLibre")
             };
         }
     }

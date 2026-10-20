@@ -1,0 +1,754 @@
+@{
+    ViewData["Title"] = "Clases";
+}
+
+<div id="app" class="mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Clases</h2>
+
+        <a class="btn btn-outline-secondary" href="/Clase/Grilla">
+            <i class="bi bi-calendar-week me-1"></i> Ver grilla semanal
+        </a>
+    </div>
+
+    <!-- AVISOS -->
+    <div class="toast-container position-fixed top-0 end-0 p-3"
+         style="z-index:1100">
+        <div v-if="aviso.texto"
+             class="toast show text-white border-0"
+             v-bind:class="aviso.tipo === 'ok' ? 'bg-success' : 'bg-danger'">
+            <div class="d-flex">
+                <div class="toast-body">{{ aviso.texto }}</div>
+                <button class="btn-close btn-close-white me-2 m-auto"
+                        v-on:click="aviso.texto = ''"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE BAJA / REACTIVACIÓN -->
+    <div class="modal fade" tabindex="-1" ref="modalConfirmar">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-body text-center p-4">
+
+                    <div class="mx-auto mb-3 rounded-circle d-flex
+                                align-items-center justify-content-center fs-2"
+                         style="width:64px;height:64px"
+                         v-bind:class="confirmacion.tipo === 'danger'
+                            ? 'bg-danger-subtle text-danger'
+                            : 'bg-success-subtle text-success'">
+                        {{ confirmacion.tipo === 'danger' ? '!' : '✓' }}
+                    </div>
+
+                    <h5>{{ confirmacion.titulo }}</h5>
+                    <p class="text-muted">{{ confirmacion.mensaje }}</p>
+
+                    <div v-if="confirmacion.clase"
+                         class="bg-light rounded p-3 mb-3">
+                        <strong>{{ confirmacion.clase.actividad.nombre }}</strong><br>
+                        <span class="text-muted">
+                            {{ nombreDia(confirmacion.clase.dia) }}
+                            {{ hora(confirmacion.clase.horaInicio) }} a {{ hora(confirmacion.clase.horaFin) }}
+                        </span>
+                    </div>
+
+                    <div class="d-flex gap-2 justify-content-center">
+                        <button class="btn btn-light px-4"
+                                data-bs-dismiss="modal">
+                            Cancelar
+                        </button>
+
+                        <button class="btn px-4"
+                                v-bind:class="confirmacion.tipo === 'danger'
+                                    ? 'btn-danger' : 'btn-success'"
+                                v-on:click="confirmar"
+                                v-bind:disabled="procesando">
+                            {{ procesando ? 'Procesando...' : confirmacion.textoBoton }}
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FORMULARIO -->
+    <div class="card mb-4">
+        <div class="card-header">
+            {{ form.idClase ? 'Editar clase' : 'Nueva clase' }}
+        </div>
+
+        <div class="card-body">
+
+            <div v-if="mensaje" class="alert alert-danger">
+                {{ mensaje }}
+                <ul v-if="errores.length" class="mb-0">
+                    <li v-for="(error, i) in errores" v-bind:key="i">
+                        {{ error }}
+                    </li>
+                </ul>
+            </div>
+
+            <div class="row g-3">
+
+                <div class="col-md-4">
+                    <label class="form-label">Actividad</label>
+                    <select class="form-select" v-model.number="form.idActividad">
+                        <option v-bind:value="0">Seleccioná una actividad</option>
+                        <option v-for="a in actividades"
+                                v-bind:key="a.idActividad"
+                                v-bind:value="a.idActividad">
+                            {{ a.nombre }}
+                        </option>
+                    </select>
+                    <small class="text-muted">
+                        Las actividades de acceso libre no se programan en la grilla.
+                    </small>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Profesor</label>
+                    <select class="form-select" v-model.number="form.idProfesor">
+                        <option v-bind:value="0">Seleccioná un profesor</option>
+                        <option v-for="p in profesores"
+                                v-bind:key="p.idProfesor"
+                                v-bind:value="p.idProfesor">
+                            {{ p.apellido }}, {{ p.nombre }}
+                        </option>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Día</label>
+                    <select class="form-select" v-model.number="form.dia">
+                        <option v-bind:value="0">Seleccioná un día</option>
+                        <option v-for="d in dias"
+                                v-bind:key="d.numero"
+                                v-bind:value="d.numero">
+                            {{ d.nombre }}
+                        </option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Hora de inicio</label>
+                    <input type="time" class="form-control" v-model="form.horaInicio">
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Hora de fin</label>
+                    <input type="time" class="form-control" v-model="form.horaFin">
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <button class="btn btn-primary me-2"
+                        v-on:click="guardar"
+                        v-bind:disabled="procesando">
+                    {{ form.idClase ? 'Guardar cambios' : 'Crear clase' }}
+                </button>
+
+                <button class="btn btn-secondary"
+                        v-on:click="limpiar">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILTROS -->
+    <div class="row g-2 mb-3">
+        <div class="col-md-4">
+            <select class="form-select"
+                    v-model.number="filtroActividad"
+                    v-on:change="aplicarFiltros">
+                <option v-bind:value="0">Todas las actividades</option>
+                <option v-for="a in actividades"
+                        v-bind:key="a.idActividad"
+                        v-bind:value="a.idActividad">
+                    {{ a.nombre }}
+                </option>
+            </select>
+        </div>
+
+        <div class="col-md-4">
+            <select class="form-select"
+                    v-model.number="filtroProfesor"
+                    v-on:change="aplicarFiltros">
+                <option v-bind:value="0">Todos los profesores</option>
+                <option v-for="p in profesores"
+                        v-bind:key="p.idProfesor"
+                        v-bind:value="p.idProfesor">
+                    {{ p.apellido }}, {{ p.nombre }}
+                </option>
+            </select>
+        </div>
+    </div>
+
+    <!-- PESTAÑAS -->
+    <ul class="nav nav-tabs mb-3">
+        <li class="nav-item">
+            <a href="#"
+               class="nav-link"
+               v-bind:class="{ active: pestana === 'activos' }"
+               v-on:click.prevent="cambiarPestana('activos')">
+                Activas
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a href="#"
+               class="nav-link"
+               v-bind:class="{ active: pestana === 'inactivos' }"
+               v-on:click.prevent="cambiarPestana('inactivos')">
+                Inactivas
+            </a>
+        </li>
+    </ul>
+
+    <!-- TABLA -->
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Día</th>
+                    <th>Horario</th>
+                    <th>Actividad</th>
+                    <th>Profesor</th>
+                    <th class="text-end">Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <tr v-for="clase in clases"
+                    v-bind:key="clase.idClase">
+
+                    <td>{{ nombreDia(clase.dia) }}</td>
+                    <td>{{ hora(clase.horaInicio) }} a {{ hora(clase.horaFin) }}</td>
+                    <td>{{ clase.actividad.nombre }}</td>
+                    <td>{{ clase.profesor.apellido }}, {{ clase.profesor.nombre }}</td>
+
+                    <td class="text-end">
+                        <template v-if="pestana === 'activos'">
+                            <button class="btn btn-sm btn-outline-primary me-1"
+                                    v-on:click="editar(clase)">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+
+                            <button class="btn btn-sm btn-outline-danger"
+                                    v-on:click="pedirBaja(clase)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </template>
+
+                        <template v-else>
+                            <button class="btn btn-sm btn-outline-success"
+                                    v-on:click="pedirReactivar(clase)">
+                                Reactivar
+                            </button>
+                        </template>
+                    </td>
+                </tr>
+
+                <tr v-if="clases.length === 0">
+                    <td colspan="5" class="text-center text-muted py-4">
+                        No hay clases para mostrar.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- PAGINACIÓN -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+            Mostrando {{ clases.length }} de {{ total }} clases
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <select class="form-select"
+                    style="width:auto"
+                    v-model.number="tamPagina"
+                    v-on:change="cambiarTamano">
+                <option v-bind:value="5">5</option>
+                <option v-bind:value="10">10</option>
+                <option v-bind:value="20">20</option>
+            </select>
+
+            <button class="btn btn-outline-secondary"
+                    v-on:click="irAPagina(pagina - 1)"
+                    v-bind:disabled="pagina <= 1">
+                Anterior
+            </button>
+
+            <span class="text-nowrap">
+                {{ pagina }} / {{ totalPaginas }}
+            </span>
+
+            <button class="btn btn-outline-secondary"
+                    v-on:click="irAPagina(pagina + 1)"
+                    v-bind:disabled="pagina >= totalPaginas">
+                Siguiente
+            </button>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <script>
+        const API = '/api/clases';
+
+        const DIAS = [
+            { numero: 1, nombre: 'Lunes' },
+            { numero: 2, nombre: 'Martes' },
+            { numero: 3, nombre: 'Miércoles' },
+            { numero: 4, nombre: 'Jueves' },
+            { numero: 5, nombre: 'Viernes' },
+            { numero: 6, nombre: 'Sábado' },
+            { numero: 7, nombre: 'Domingo' }
+        ];
+
+        function formVacio() {
+            return {
+                idClase: 0,
+                idActividad: 0,
+                idProfesor: 0,
+                dia: 0,
+                horaInicio: '',
+                horaFin: ''
+            };
+        }
+
+        Vue.createApp({
+            data() {
+                return {
+                    clases: [],
+                    actividades: [],
+                    profesores: [],
+                    dias: DIAS,
+
+                    filtroActividad: 0,
+                    filtroProfesor: 0,
+
+                    pestana: 'activos',
+                    pagina: 1,
+                    tamPagina: 10,
+                    total: 0,
+                    totalPaginas: 1,
+
+                    form: formVacio(),
+                    mensaje: '',
+                    errores: [],
+
+                    aviso: {
+                        tipo: 'ok',
+                        texto: ''
+                    },
+
+                    temporizadorAviso: null,
+                    token: '',
+                    modal: null,
+                    procesando: false,
+
+                    confirmacion: {
+                        titulo: '',
+                        mensaje: '',
+                        textoBoton: '',
+                        tipo: 'danger',
+                        clase: null,
+                        accion: null
+                    }
+                };
+            },
+
+            async mounted() {
+                this.modal = new bootstrap.Modal(
+                    this.$refs.modalConfirmar
+                );
+
+                await this.iniciar();
+            },
+
+            methods: {
+                async iniciar() {
+                    try {
+                        const resp = await fetch('/Cuenta/Token', {
+                            credentials: 'same-origin'
+                        });
+
+                        if (!resp.ok) {
+                            this.mostrarAviso(
+                                'error',
+                                'No se pudo obtener el token. Volvé a iniciar sesión.'
+                            );
+                            return;
+                        }
+
+                        const datos = await resp.json();
+                        this.token = datos.token;
+
+                        if (!this.token) {
+                            this.mostrarAviso(
+                                'error',
+                                'No se recibió el token de autenticación.'
+                            );
+                            return;
+                        }
+
+                        await Promise.all([
+                            this.cargarCatalogos(),
+                            this.cargar()
+                        ]);
+                    } catch (error) {
+                        this.mostrarAviso(
+                            'error',
+                            'No se pudo conectar con el servidor.'
+                        );
+                    }
+                },
+
+                async peticionApi(url, opciones = {}) {
+                    const headers = new Headers(opciones.headers || {});
+                    headers.set('Authorization', `Bearer ${this.token}`);
+
+                    return fetch(url, {
+                        ...opciones,
+                        headers,
+                        credentials: 'same-origin'
+                    });
+                },
+
+                mostrarAviso(tipo, texto) {
+                    this.aviso = { tipo, texto };
+
+                    clearTimeout(this.temporizadorAviso);
+
+                    this.temporizadorAviso = setTimeout(() => {
+                        this.aviso.texto = '';
+                    }, 4000);
+                },
+
+                nombreDia(numero) {
+                    return DIAS.find(d => d.numero === numero)?.nombre ?? '';
+                },
+
+                // El servidor devuelve "18:00:00"; se muestra "18:00"
+                hora(valor) {
+                    return (valor ?? '').substring(0, 5);
+                },
+
+                // Actividades (sin las de acceso libre) y profesores para los desplegables
+                async cargarCatalogos() {
+                    try {
+                        const [respActividades, respProfesores] = await Promise.all([
+                            this.peticionApi('/api/actividades/activos?pagina=1&tamPagina=100'),
+                            this.peticionApi('/api/profesores/activos?pagina=1&tamPagina=100')
+                        ]);
+
+                        if (respActividades.ok) {
+                            const datos = await respActividades.json();
+                            this.actividades = (datos.items ?? [])
+                                .filter(a => !a.accesoLibre);
+                        }
+
+                        if (respProfesores.ok) {
+                            const datos = await respProfesores.json();
+                            this.profesores = datos.items ?? [];
+                        }
+                    } catch (error) {
+                        this.mostrarAviso(
+                            'error',
+                            'No se pudieron cargar las actividades y los profesores.'
+                        );
+                    }
+                },
+
+                async cargar() {
+                    try {
+                        let url =
+                            `${API}/${this.pestana}?pagina=${this.pagina}&tamPagina=${this.tamPagina}`;
+
+                        if (this.filtroActividad > 0)
+                            url += `&idActividad=${this.filtroActividad}`;
+
+                        if (this.filtroProfesor > 0)
+                            url += `&idProfesor=${this.filtroProfesor}`;
+
+                        const resp = await this.peticionApi(url);
+
+                        if (!resp.ok) {
+                            this.clases = [];
+
+                            this.mostrarAviso(
+                                'error',
+                                resp.status === 401
+                                    ? 'Tu sesión venció. Volvé a iniciar sesión.'
+                                    : resp.status === 403
+                                        ? 'No tenés permisos para ver esta lista.'
+                                        : 'No se pudieron cargar las clases.'
+                            );
+                            return;
+                        }
+
+                        const datos = await resp.json();
+
+                        this.clases = datos.items ?? [];
+                        this.total = datos.total ?? 0;
+                        this.totalPaginas = Math.max(
+                            1,
+                            datos.totalPaginas ?? 1
+                        );
+
+                        if (this.pagina > this.totalPaginas) {
+                            this.pagina = this.totalPaginas;
+                            await this.cargar();
+                        }
+                    } catch (error) {
+                        this.clases = [];
+                        this.mostrarAviso(
+                            'error',
+                            'Error al cargar las clases.'
+                        );
+                    }
+                },
+
+                async aplicarFiltros() {
+                    this.pagina = 1;
+                    await this.cargar();
+                },
+
+                async cambiarPestana(nombre) {
+                    if (this.pestana === nombre) return;
+
+                    this.pestana = nombre;
+                    this.pagina = 1;
+                    await this.cargar();
+                },
+
+                async cambiarTamano() {
+                    this.pagina = 1;
+                    await this.cargar();
+                },
+
+                async irAPagina(numero) {
+                    if (numero < 1 || numero > this.totalPaginas) return;
+
+                    this.pagina = numero;
+                    await this.cargar();
+                },
+
+                editar(clase) {
+                    this.form = {
+                        idClase: clase.idClase,
+                        idActividad: clase.idActividad,
+                        idProfesor: clase.idProfesor,
+                        dia: clase.dia,
+                        horaInicio: this.hora(clase.horaInicio),
+                        horaFin: this.hora(clase.horaFin)
+                    };
+
+                    this.mensaje = '';
+                    this.errores = [];
+
+                    window.scrollTo({
+                        top: 0,
+                        behavior: 'smooth'
+                    });
+                },
+
+                limpiar() {
+                    this.form = formVacio();
+                    this.mensaje = '';
+                    this.errores = [];
+                },
+
+                async guardar() {
+                    if (this.procesando) return;
+
+                    this.mensaje = '';
+                    this.errores = [];
+
+                    const f = this.form;
+
+                    if (!f.idActividad) {
+                        this.mensaje = 'Seleccioná una actividad.';
+                        return;
+                    }
+
+                    if (!f.idProfesor) {
+                        this.mensaje = 'Seleccioná un profesor.';
+                        return;
+                    }
+
+                    if (!f.dia) {
+                        this.mensaje = 'Seleccioná un día.';
+                        return;
+                    }
+
+                    if (!f.horaInicio || !f.horaFin) {
+                        this.mensaje = 'Ingresá el horario de inicio y de fin.';
+                        return;
+                    }
+
+                    if (f.horaFin <= f.horaInicio) {
+                        this.mensaje = 'El horario de fin debe ser posterior al de inicio.';
+                        return;
+                    }
+
+                    this.procesando = true;
+
+                    try {
+                        const editando = f.idClase > 0;
+                        const datos = new FormData();
+
+                        datos.append('idActividad', f.idActividad);
+                        datos.append('idProfesor', f.idProfesor);
+                        datos.append('dia', f.dia);
+                        datos.append('horaInicio', f.horaInicio);
+                        datos.append('horaFin', f.horaFin);
+
+                        const resp = editando
+                            ? await this.peticionApi(
+                                `${API}/${f.idClase}`,
+                                { method: 'PUT', body: datos }
+                            )
+                            : await this.peticionApi(
+                                API,
+                                { method: 'POST', body: datos }
+                            );
+
+                        const resultado = await resp.json().catch(() => null);
+
+                        if (!resp.ok) {
+                            this.mensaje =
+                                resultado?.mensaje ??
+                                `No se pudo guardar la clase (HTTP ${resp.status}).`;
+
+                            this.errores = resultado?.errores ?? [];
+                            return;
+                        }
+
+                        this.mostrarAviso(
+                            'ok',
+                            editando
+                                ? 'Clase modificada correctamente.'
+                                : 'Clase creada correctamente.'
+                        );
+
+                        this.limpiar();
+                        this.pagina = 1;
+                        await this.cargar();
+                    } catch (error) {
+                        this.mensaje = 'Error de conexión al guardar la clase.';
+                    } finally {
+                        this.procesando = false;
+                    }
+                },
+
+                pedirBaja(clase) {
+                    this.confirmacion = {
+                        titulo: '¿Dar de baja esta clase?',
+                        mensaje: 'La clase dejará de aparecer en la grilla. Podrás reactivarla más adelante.',
+                        textoBoton: 'Sí, dar de baja',
+                        tipo: 'danger',
+                        clase: clase,
+                        accion: () => this.ejecutarBaja(clase)
+                    };
+
+                    this.modal.show();
+                },
+
+                pedirReactivar(clase) {
+                    this.confirmacion = {
+                        titulo: '¿Reactivar esta clase?',
+                        mensaje: 'La clase volverá a aparecer en la grilla.',
+                        textoBoton: 'Sí, reactivar',
+                        tipo: 'success',
+                        clase: clase,
+                        accion: () => this.ejecutarReactivar(clase)
+                    };
+
+                    this.modal.show();
+                },
+
+                async confirmar() {
+                    if (this.procesando) return;
+
+                    const accion = this.confirmacion.accion;
+                    if (!accion) return;
+
+                    this.procesando = true;
+
+                    try {
+                        this.modal.hide();
+                        await accion();
+                    } finally {
+                        this.procesando = false;
+                    }
+                },
+
+                async ejecutarBaja(clase) {
+                    try {
+                        const resp = await this.peticionApi(
+                            `${API}/${clase.idClase}`,
+                            { method: 'DELETE' }
+                        );
+
+                        if (!resp.ok) {
+                            const error = await resp.json().catch(() => ({}));
+
+                            this.mostrarAviso(
+                                'error',
+                                error.mensaje ??
+                                `No se pudo dar de baja (HTTP ${resp.status}).`
+                            );
+                            return;
+                        }
+
+                        this.mostrarAviso('ok', 'La clase fue dada de baja.');
+
+                        await this.cargar();
+                    } catch (error) {
+                        this.mostrarAviso(
+                            'error',
+                            'Error de conexión al dar de baja la clase.'
+                        );
+                    }
+                },
+
+                async ejecutarReactivar(clase) {
+                    try {
+                        const resp = await this.peticionApi(
+                            `${API}/${clase.idClase}/reactivar`,
+                            { method: 'PUT' }
+                        );
+
+                        if (!resp.ok) {
+                            const error = await resp.json().catch(() => ({}));
+
+                            this.mostrarAviso(
+                                'error',
+                                error.mensaje ??
+                                `No se pudo reactivar (HTTP ${resp.status}).`
+                            );
+                            return;
+                        }
+
+                        this.mostrarAviso('ok', 'La clase fue reactivada.');
+
+                        await this.cargar();
+                    } catch (error) {
+                        this.mostrarAviso(
+                            'error',
+                            'Error de conexión al reactivar la clase.'
+                        );
+                    }
+                }
+            }
+        }).mount('#app');
+    </script>
+}

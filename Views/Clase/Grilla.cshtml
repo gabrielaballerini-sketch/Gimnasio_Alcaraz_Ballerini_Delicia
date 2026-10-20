@@ -1,0 +1,222 @@
+@{
+    ViewData["Title"] = "Grilla de clases";
+    var puedeEditar = User.IsInRole("Administrador") || User.IsInRole("Empleado");
+}
+
+<div id="app" class="mt-4">
+
+    <!-- AVISOS -->
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1100">
+        <div v-if="aviso.texto"
+             class="toast show text-white border-0 bg-danger">
+            <div class="d-flex">
+                <div class="toast-body">{{ aviso.texto }}</div>
+                <button class="btn-close btn-close-white me-2 m-auto"
+                        v-on:click="aviso.texto = ''"></button>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="mb-0">Grilla de clases</h2>
+            <p class="text-muted mb-0">Las clases que se dictan durante la semana.</p>
+        </div>
+
+        @if (puedeEditar)
+        {
+            <a asp-controller="Clase" asp-action="Index" class="btn btn-outline-secondary">
+                <i class="bi bi-pencil-square me-1"></i> Administrar clases
+            </a>
+        }
+    </div>
+
+    <!-- Actividades de acceso libre -->
+    <div class="alert alert-info" v-if="libres.length">
+        <i class="bi bi-info-circle me-1"></i>
+        <strong>Acceso libre, sin clase programada:</strong>
+        {{ libres.map(a => a.nombre).join(', ') }}.
+    </div>
+
+    <!-- Filtro por actividad -->
+    <div class="row mb-3" v-if="actividades.length > 1">
+        <div class="col-md-4">
+            <select class="form-select" v-model.number="filtroActividad">
+                <option v-bind:value="0">Todas las actividades</option>
+                <option v-for="a in actividades"
+                        v-bind:key="a.idActividad"
+                        v-bind:value="a.idActividad">
+                    {{ a.nombre }}
+                </option>
+            </select>
+        </div>
+    </div>
+
+    <div v-if="cargando" class="text-center text-muted py-5">Cargando...</div>
+
+    <div v-else-if="clases.length === 0" class="alert alert-light border text-center">
+        <i class="bi bi-calendar-x fs-2 d-block mb-2"></i>
+        Todavía no hay clases cargadas en la grilla.
+    </div>
+
+    <!-- GRILLA SEMANAL -->
+    <div v-else class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-3">
+        <div class="col" v-for="d in diasConClases" v-bind:key="d.numero">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-dark text-white fw-semibold">
+                    {{ d.nombre }}
+                </div>
+
+                <ul class="list-group list-group-flush" v-if="d.clases.length">
+                    <li class="list-group-item" v-for="c in d.clases" v-bind:key="c.idClase">
+                        <div class="fw-semibold">
+                            {{ hora(c.horaInicio) }} a {{ hora(c.horaFin) }}
+                        </div>
+                        <div>{{ c.actividad.nombre }}</div>
+                        <div class="text-muted small">
+                            <i class="bi bi-person me-1"></i>
+                            {{ c.profesor.nombre }} {{ c.profesor.apellido }}
+                        </div>
+                    </li>
+                </ul>
+
+                <div class="card-body text-muted small" v-else>Sin clases.</div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <script>
+        const DIAS = [
+            { numero: 1, nombre: 'Lunes' },
+            { numero: 2, nombre: 'Martes' },
+            { numero: 3, nombre: 'Miércoles' },
+            { numero: 4, nombre: 'Jueves' },
+            { numero: 5, nombre: 'Viernes' },
+            { numero: 6, nombre: 'Sábado' },
+            { numero: 7, nombre: 'Domingo' }
+        ];
+
+        Vue.createApp({
+            data() {
+                return {
+                    clases: [],
+                    libres: [],
+                    filtroActividad: 0,
+                    cargando: true,
+                    aviso: { texto: '' },
+                    temporizadorAviso: null,
+                    token: ''
+                };
+            },
+
+            computed: {
+                // Actividades que tienen clases en la grilla (para el filtro)
+                actividades() {
+                    const mapa = new Map();
+
+                    for (const c of this.clases)
+                        mapa.set(c.idActividad, c.actividad);
+
+                    return [...mapa.values()]
+                        .sort((a, b) => a.nombre.localeCompare(b.nombre));
+                },
+
+                clasesFiltradas() {
+                    return this.filtroActividad
+                        ? this.clases.filter(c => c.idActividad === this.filtroActividad)
+                        : this.clases;
+                },
+
+                diasConClases() {
+                    return DIAS.map(d => ({
+                        ...d,
+                        clases: this.clasesFiltradas
+                            .filter(c => c.dia === d.numero)
+                            .sort((a, b) => a.horaInicio.localeCompare(b.horaInicio))
+                    }));
+                }
+            },
+
+            async mounted() {
+                await this.iniciar();
+            },
+
+            methods: {
+                async iniciar() {
+                    try {
+                        const resp = await fetch('/Cuenta/Token', {
+                            credentials: 'same-origin'
+                        });
+
+                        if (!resp.ok) {
+                            this.mostrarAviso('Volvé a iniciar sesión.');
+                            this.cargando = false;
+                            return;
+                        }
+
+                        const datos = await resp.json();
+                        this.token = datos.token;
+
+                        await Promise.all([this.cargarGrilla(), this.cargarLibres()]);
+                    } catch (error) {
+                        this.mostrarAviso('No se pudo conectar con el servidor.');
+                    } finally {
+                        this.cargando = false;
+                    }
+                },
+
+                async peticionApi(url) {
+                    const headers = new Headers();
+                    headers.set('Authorization', `Bearer ${this.token}`);
+
+                    return fetch(url, { headers, credentials: 'same-origin' });
+                },
+
+                mostrarAviso(texto) {
+                    this.aviso = { texto };
+
+                    clearTimeout(this.temporizadorAviso);
+
+                    this.temporizadorAviso = setTimeout(() => {
+                        this.aviso.texto = '';
+                    }, 5000);
+                },
+
+                // El servidor devuelve "18:00:00"; se muestra "18:00"
+                hora(valor) {
+                    return (valor ?? '').substring(0, 5);
+                },
+
+                async cargarGrilla() {
+                    const resp = await this.peticionApi('/api/clases/grilla');
+
+                    if (!resp.ok) {
+                        this.mostrarAviso('No se pudo cargar la grilla de clases.');
+                        return;
+                    }
+
+                    this.clases = await resp.json();
+                },
+
+                // Solo informativo; si falla, simplemente no se muestra el aviso
+                async cargarLibres() {
+                    try {
+                        const resp = await this.peticionApi('/api/actividades/activos?pagina=1&tamPagina=100');
+
+                        if (!resp.ok) return;
+
+                        const datos = await resp.json();
+                        this.libres = (datos.items ?? []).filter(a => a.accesoLibre);
+                    } catch (error) {
+                        // se ignora
+                    }
+                }
+            }
+        }).mount('#app');
+    </script>
+}
