@@ -1,153 +1,258 @@
 @model Gimnasio_Alcaraz_Ballerini_Delicia.Models.Actividad
 @{
-    ViewData["Title"] = "Detalle de actividad";
+    ViewData["Title"] = Model.Nombre;
     var puedeEditar = User.IsInRole("Administrador") || User.IsInRole("Empleado");
 }
 
-<div id="app" class="mt-4">
+@section Styles {
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/detalle-actividad.css" asp-append-version="true" />
+}
+
+<div id="app" class="det-page">
 
     <!-- AVISOS -->
     <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1100">
         <div v-if="aviso.texto"
              class="toast show text-white border-0"
-             v-bind:class="aviso.tipo === 'ok' ? 'bg-success' : 'bg-danger'">
+             v-bind:class="aviso.tipo === 'ok' ? 'bg-success' : 'bg-danger'"
+             v-bind:role="aviso.tipo === 'ok' ? 'status' : 'alert'">
             <div class="d-flex">
                 <div class="toast-body">{{ aviso.texto }}</div>
                 <button class="btn-close btn-close-white me-2 m-auto"
+                        aria-label="Cerrar aviso"
                         v-on:click="aviso.texto = ''"></button>
             </div>
         </div>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">@Model.Nombre</h2>
+    <a asp-controller="Actividad" asp-action="Index" class="det-volver">
+        <i class="bi bi-arrow-left" aria-hidden="true"></i> Actividades
+    </a>
 
-        
-     
-            <a asp-controller="Actividad" asp-action="Index" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left me-1"></i> Volver a actividades
-            </a>
-        
-    </div>
+    <header class="det-cabecera">
+        <h1>@Model.Nombre</h1>
 
-    <!-- CARRUSEL -->
-    <div v-if="archivos.length"
-         v-bind:key="versionCarrusel"
-         id="carrusel"
-         class="carousel slide mb-4 mx-auto"
-         data-bs-interval="false"
-         style="max-width:900px">
+        <div class="det-etiquetas">
+            <span class="det-tipo @(Model.AccesoLibre ? "libre" : "")">
+                @(Model.AccesoLibre ? "Acceso libre" : "Con clases")
+            </span>
 
-        <div class="carousel-indicators">
-            <button v-for="(a, i) in archivos"
-                    v-bind:key="a.idArchivo"
-                    type="button"
-                    data-bs-target="#carrusel"
-                    v-bind:data-bs-slide-to="i"
-                    v-bind:class="{ active: i === 0 }"
-                    v-bind:aria-label="'Archivo ' + (i + 1)"></button>
+            @if (!Model.Estado)
+            {
+                <span class="det-baja">Dada de baja</span>
+            }
         </div>
+    </header>
 
-        <div class="carousel-inner rounded bg-dark">
-            <div v-for="(a, i) in archivos"
-                 v-bind:key="a.idArchivo"
-                 class="carousel-item"
-                 v-bind:class="{ active: i === 0 }">
+    <div class="det-layout">
 
-                <video v-if="a.esVideo"
-                       v-bind:src="a.ruta"
-                       controls muted preload="metadata"
-                       class="d-block w-100"
-                       style="height:480px;object-fit:contain"></video>
+        <!-- GALERÍA -->
+        <section class="det-galeria" aria-label="Galería de fotos y videos">
 
-                <img v-else
-                     v-bind:src="a.ruta"
-                     class="d-block w-100"
-                     style="height:480px;object-fit:contain"
-                     v-bind:alt="'Archivo ' + (i + 1) + ' de la actividad'">
+            <div v-if="cargando" class="det-escenario det-cargando" aria-busy="true"></div>
+
+            <div v-else-if="errorGaleria" class="det-vacio" role="alert">
+                <p>No pudimos cargar la galería.</p>
+                <button type="button" class="btn-det" v-on:click="cargarGaleria">Reintentar</button>
             </div>
-        </div>
 
-        <button class="carousel-control-prev" type="button"
-                data-bs-target="#carrusel" data-bs-slide="prev">
-            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-            <span class="visually-hidden">Anterior</span>
-        </button>
+            <div v-else-if="archivos.length === 0" class="det-vacio">
+                <i class="bi bi-images" aria-hidden="true"></i>
+                <p>Esta actividad todavía no tiene fotos ni videos.</p>
+            </div>
 
-        <button class="carousel-control-next" type="button"
-                data-bs-target="#carrusel" data-bs-slide="next">
-            <span class="carousel-control-next-icon" aria-hidden="true"></span>
-            <span class="visually-hidden">Siguiente</span>
-        </button>
-    </div>
+            <div v-else class="det-visor">
 
-    <div v-else-if="!cargando"
-         class="alert alert-light border text-center mx-auto"
-         style="max-width:900px">
-        <i class="bi bi-images fs-2 d-block mb-2"></i>
-        Esta actividad todavía no tiene fotos ni videos.
-    </div>
+                <div class="det-escenario"
+                     tabindex="0"
+                     role="group"
+                     aria-label="Galería. Usá las flechas del teclado para cambiar de archivo."
+                     v-on:keydown.left.prevent="anterior"
+                     v-on:keydown.right.prevent="siguiente">
 
-    <!-- ADMINISTRAR (solo Administrador y Empleado) -->
-    <div class="card mb-4" v-if="puedeEditar">
-        <div class="card-header">Administrar fotos y videos</div>
+                    <video v-if="actual.esVideo"
+                           v-bind:key="actual.idArchivo"
+                           v-bind:src="actual.ruta"
+                           controls
+                           muted
+                           preload="metadata"></video>
 
-        <div class="card-body">
+                    <img v-else
+                         v-bind:key="actual.idArchivo"
+                         v-bind:src="actual.ruta"
+                         v-bind:alt="'Foto ' + (indice + 1) + ' de ' + archivos.length + ' de ' + NOMBRE" />
 
-            <div class="row g-2 align-items-end">
-                <div class="col-md-8">
-                    <label class="form-label">Agregar fotos o videos</label>
-                    <input type="file"
-                           class="form-control"
-                           multiple
-                           ref="inputArchivos"
-                           accept=".jpg,.jpeg,.png,.webp,.gif,.mp4,.webm"
-                           v-on:change="seleccionar">
-                    <small class="text-muted">
-                        Imágenes JPG, PNG, WEBP o GIF (hasta 5 MB) · Videos MP4 o WEBM (hasta 20 MB) ·
-                        Máximo 10 archivos por actividad.
-                    </small>
+                    <template v-if="archivos.length > 1">
+                        <button type="button" class="det-nav izq" aria-label="Archivo anterior"
+                                v-on:click="anterior">
+                            <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                        </button>
+                        <button type="button" class="det-nav der" aria-label="Archivo siguiente"
+                                v-on:click="siguiente">
+                            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                        </button>
+                    </template>
+
+                    <span class="det-contador" aria-live="polite">
+                        {{ indice + 1 }} de {{ archivos.length }}
+                    </span>
                 </div>
 
-                <div class="col-md-4">
-                    <button class="btn btn-primary"
-                            v-on:click="subir"
-                            v-bind:disabled="subiendo || seleccionados.length === 0">
-                        {{ subiendo
-                            ? 'Subiendo...'
-                            : (seleccionados.length
-                                ? 'Subir ' + seleccionados.length + ' archivo(s)'
-                                : 'Subir') }}
+                <div v-if="archivos.length > 1" class="det-miniaturas">
+                    <button type="button"
+                            v-for="(a, i) in archivos"
+                            v-bind:key="a.idArchivo"
+                            class="det-mini"
+                            v-bind:class="{ activo: i === indice }"
+                            v-bind:aria-label="'Ver archivo ' + (i + 1)"
+                            v-bind:aria-current="i === indice ? 'true' : null"
+                            v-on:click="indice = i">
+
+                        <video v-if="a.esVideo" v-bind:src="a.ruta + '#t=0.1'" muted preload="metadata"></video>
+                        <img v-else v-bind:src="a.ruta" alt="" loading="lazy" />
+
+                        <i v-if="a.esVideo" class="bi bi-play-fill det-mini-play" aria-hidden="true"></i>
                     </button>
                 </div>
             </div>
+        </section>
 
-            <!-- Archivos que ya tiene la actividad -->
-            <div class="row g-3 mt-2" v-if="archivos.length">
-                <div class="col-6 col-md-3" v-for="a in archivos" v-bind:key="a.idArchivo">
-                    <div class="border rounded p-2 h-100 text-center">
-                        <video v-if="a.esVideo"
-                               v-bind:src="a.ruta"
-                               muted preload="metadata"
-                               class="w-100 rounded"
-                               style="height:100px;object-fit:cover"></video>
-                        <img v-else
-                             v-bind:src="a.ruta"
-                             alt="Archivo de la actividad"
-                             class="w-100 rounded"
-                             style="height:100px;object-fit:cover">
+        <!-- INFORMACIÓN -->
+        <aside class="det-info">
 
-                        <button class="btn btn-sm btn-outline-danger mt-2"
-                                v-on:click="eliminar(a)"
-                                v-bind:disabled="subiendo">
-                            <i class="bi bi-trash"></i> Eliminar
-                        </button>
-                    </div>
-                </div>
-            </div>
+            @if (Model.AccesoLibre)
+            {
+                <h2>Acceso libre</h2>
+                <p class="det-nota">
+                    Esta actividad no necesita clase ni horario fijo.
+                </p>
+            }
+            else
+            {
+                <h2>Horarios de la semana</h2>
 
-        </div>
+                <p v-if="estadoHorarios === 'cargando'" class="det-nota">Cargando horarios...</p>
+
+                <p v-else-if="estadoHorarios === 'error'" class="det-nota">
+                    No se pudieron cargar los horarios.
+                </p>
+
+                <ul v-else-if="horarios.length" class="det-horarios">
+                    <li v-for="h in horarios" v-bind:key="h.idClase">
+                        <span class="det-dia">{{ h.dia }}</span>
+                        <span class="det-hora">{{ h.hora }}</span>
+                        <span v-if="h.profesor" class="det-prof">{{ h.profesor }}</span>
+                    </li>
+                </ul>
+
+                <p v-else class="det-nota">Sin clases programadas por ahora.</p>
+
+                <a asp-controller="Clase" asp-action="Grilla" class="btn-det-sec">
+                    <i class="bi bi-calendar-week" aria-hidden="true"></i>
+                    Ver grilla semanal completa
+                </a>
+            }
+        </aside>
     </div>
+
+    <!-- ADMINISTRAR (solo Administrador y Empleado) -->
+    <section v-if="puedeEditar" class="det-admin" aria-labelledby="admin-titulo">
+
+        <div class="det-admin-cab">
+            <h2 id="admin-titulo">Administrar galería</h2>
+            <p class="det-nota">{{ archivos.length }} de {{ MAX_ARCHIVOS }} archivos usados</p>
+        </div>
+
+        <label class="det-drop"
+               v-bind:class="{ arrastrando }"
+               v-on:dragover.prevent="arrastrando = true"
+               v-on:dragleave="arrastrando = false"
+               v-on:drop.prevent="soltar">
+
+            <input type="file"
+                   class="visually-hidden"
+                   multiple
+                   accept=".jpg,.jpeg,.png,.webp,.gif,.mp4,.webm"
+                   v-bind:disabled="subiendo"
+                   v-on:change="alElegir" />
+
+            <i class="bi bi-cloud-arrow-up" aria-hidden="true"></i>
+            <strong>Arrastrá archivos acá o hacé clic para elegirlos</strong>
+            <span>
+                Imágenes JPG, PNG, WEBP o GIF (hasta 5 MB) y videos MP4 o WEBM (hasta 20 MB).
+                Máximo {{ MAX_ARCHIVOS }} archivos por actividad.
+            </span>
+        </label>
+
+        <!-- Archivos elegidos, antes y durante la subida -->
+        <ul v-if="seleccionados.length" class="det-sel">
+            <li v-for="s in seleccionados" v-bind:key="s.id">
+                <i class="bi" v-bind:class="s.archivo.type.startsWith('video') ? 'bi-film' : 'bi-image'"
+                   aria-hidden="true"></i>
+
+                <div class="det-sel-datos">
+                    <span class="det-sel-nombre">{{ s.archivo.name }}</span>
+                    <span class="det-sel-estado" v-bind:class="s.estado">
+                        <template v-if="s.estado === 'pendiente'">Listo para subir · {{ tamano(s.archivo.size) }}</template>
+                        <template v-else-if="s.estado === 'subiendo'">
+                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Subiendo...
+                        </template>
+                        <template v-else-if="s.estado === 'ok'">Subido</template>
+                        <template v-else>{{ s.mensaje }}</template>
+                    </span>
+                </div>
+
+                <button type="button" class="det-quitar"
+                        v-bind:aria-label="'Quitar ' + s.archivo.name"
+                        v-bind:disabled="subiendo"
+                        v-on:click="quitar(s)">
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                </button>
+            </li>
+        </ul>
+
+        <button v-if="seleccionados.length"
+                type="button"
+                class="btn-det"
+                v-bind:disabled="subiendo"
+                v-on:click="subir">
+            {{ subiendo ? 'Subiendo...' : 'Subir ' + seleccionados.length + (seleccionados.length === 1 ? ' archivo' : ' archivos') }}
+        </button>
+
+        <!-- Archivos que ya tiene la actividad -->
+        <div v-if="archivos.length" class="det-existentes">
+            <article class="det-ex" v-for="a in archivos" v-bind:key="a.idArchivo">
+
+                <div class="det-ex-media">
+                    <video v-if="a.esVideo" v-bind:src="a.ruta + '#t=0.1'" muted preload="metadata"></video>
+                    <img v-else v-bind:src="a.ruta" alt="" loading="lazy" />
+                </div>
+
+                <div class="det-ex-acciones">
+                    <button v-if="confirmando !== a.idArchivo"
+                            type="button"
+                            class="btn-det-peligro"
+                            v-bind:disabled="subiendo"
+                            v-on:click="confirmando = a.idArchivo">
+                        <i class="bi bi-trash" aria-hidden="true"></i> Eliminar
+                    </button>
+
+                    <template v-else>
+                        <span class="det-ex-pregunta">¿Eliminar este archivo?</span>
+                        <button type="button" class="btn-det-peligro lleno"
+                                v-bind:disabled="eliminando"
+                                v-on:click="eliminar(a)">Sí, eliminar</button>
+                        <button type="button" class="btn-det-sec-chico"
+                                v-bind:disabled="eliminando"
+                                v-on:click="confirmando = null">Cancelar</button>
+                    </template>
+                </div>
+            </article>
+        </div>
+    </section>
 
 </div>
 
@@ -156,7 +261,15 @@
 
     <script>
         const ID_ACTIVIDAD = @Model.IdActividad;
+        const NOMBRE = @Json.Serialize(Model.Nombre);
+        const ACCESO_LIBRE = @(Model.AccesoLibre ? "true" : "false");
+        const MAX_ARCHIVOS = 10;
         const API = '/api/actividades';
+
+        const DIAS = {
+            1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves',
+            5: 'Viernes', 6: 'Sábado', 7: 'Domingo'
+        };
 
         // Mismas reglas que el servidor (ActividadArchivoService)
         function validarArchivo(archivo) {
@@ -178,13 +291,25 @@
         Vue.createApp({
             data() {
                 return {
+                    NOMBRE,
+                    MAX_ARCHIVOS,
+
                     archivos: [],
+                    indice: 0,
                     cargando: true,
-                    versionCarrusel: 0,
+                    errorGaleria: false,
+
+                    horarios: [],
+                    estadoHorarios: 'cargando',
+
                     puedeEditar: @(puedeEditar ? "true" : "false"),
 
                     seleccionados: [],
+                    contador: 0,
+                    arrastrando: false,
                     subiendo: false,
+                    confirmando: null,
+                    eliminando: false,
 
                     aviso: { tipo: 'ok', texto: '' },
                     temporizadorAviso: null,
@@ -192,37 +317,45 @@
                 };
             },
 
-            async mounted() {
-                // Al pasar de slide se pausan los videos que estaban reproduciéndose
-                document.addEventListener('slide.bs.carousel', () => {
-                    document.querySelectorAll('#carrusel video')
-                        .forEach(v => v.pause());
-                });
+            computed: {
+                actual() {
+                    return this.archivos[this.indice] ?? null;
+                }
+            },
 
+            async mounted() {
                 await this.iniciar();
             },
 
             methods: {
                 async iniciar() {
+                    // La galería es pública: se muestra sin esperar al token
+                    this.cargarGaleria();
+
+                    await this.obtenerToken();
+
+                    if (!ACCESO_LIBRE) {
+                        await this.cargarHorarios();
+                    }
+                },
+
+                async obtenerToken() {
                     try {
                         const resp = await fetch('/Cuenta/Token', {
                             credentials: 'same-origin'
                         });
 
                         if (!resp.ok) {
-                            this.mostrarAviso('error',
-                                'No se pudo obtener el token. Volvé a iniciar sesión.');
-                            this.cargando = false;
+                            if (this.puedeEditar) {
+                                this.mostrarAviso('error',
+                                    'No se pudo obtener el token. Volvé a iniciar sesión.');
+                            }
                             return;
                         }
 
-                        const datos = await resp.json();
-                        this.token = datos.token;
-
-                        await this.cargar();
+                        this.token = (await resp.json()).token;
                     } catch (error) {
-                        this.cargando = false;
-                        this.mostrarAviso('error', 'No se pudo conectar con el servidor.');
+                        console.error('Error al obtener el token:', error);
                     }
                 },
 
@@ -247,62 +380,165 @@
                     }, 5000);
                 },
 
-                async cargar() {
+                tamano(bytes) {
+                    return bytes >= 1024 * 1024
+                        ? (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+                        : Math.max(1, Math.round(bytes / 1024)) + ' KB';
+                },
+
+                // ---------- Galería ----------
+
+                async cargarGaleria() {
+                    this.cargando = true;
+                    this.errorGaleria = false;
+
                     try {
-                        const resp = await this.peticionApi(
-                            `${API}/${ID_ACTIVIDAD}/archivos`
-                        );
+                        const resp = await fetch(`${API}/${ID_ACTIVIDAD}/archivos`);
 
                         if (!resp.ok) {
-                            this.archivos = [];
-                            this.mostrarAviso('error', 'No se pudieron cargar los archivos.');
+                            this.errorGaleria = true;
                             return;
                         }
 
                         this.archivos = await resp.json();
 
-                        // Se recrea el carrusel para que arranque siempre en la primera imagen
-                        this.versionCarrusel++;
+                        // Si se borró el último archivo mostrado, el visor se acomoda solo
+                        this.indice = Math.min(this.indice, Math.max(0, this.archivos.length - 1));
                     } catch (error) {
-                        this.archivos = [];
-                        this.mostrarAviso('error', 'Error al cargar los archivos.');
+                        console.error('Error al cargar la galería:', error);
+                        this.errorGaleria = true;
                     } finally {
                         this.cargando = false;
                     }
                 },
 
-                seleccionar(evento) {
-                    const elegidos = Array.from(evento.target.files);
-                    const validos = [];
-                    const errores = [];
+                anterior() {
+                    const n = this.archivos.length;
+                    this.indice = (this.indice - 1 + n) % n;
+                },
 
-                    for (const archivo of elegidos) {
-                        const error = validarArchivo(archivo);
+                siguiente() {
+                    this.indice = (this.indice + 1) % this.archivos.length;
+                },
 
-                        if (error) errores.push(error);
-                        else validos.push(archivo);
+                // ---------- Horarios ----------
+
+                async cargarHorarios() {
+                    if (!this.token) {
+                        this.estadoHorarios = 'error';
+                        return;
                     }
 
-                    this.seleccionados = validos;
+                    try {
+                        const resp = await this.peticionApi('/api/clases/grilla');
+
+                        if (!resp.ok) {
+                            this.estadoHorarios = 'error';
+                            return;
+                        }
+
+                        const clases = await resp.json();
+                        const hora = v => (v ?? '').substring(0, 5);
+
+                        this.horarios = clases
+                            .filter(c => c.idActividad === ID_ACTIVIDAD)
+                            .map(c => ({
+                                idClase: c.idClase,
+                                dia: DIAS[c.dia] ?? '',
+                                hora: `${hora(c.horaInicio)} a ${hora(c.horaFin)}`,
+                                profesor: c.profesor
+                                    ? `${c.profesor.apellido}, ${c.profesor.nombre}`
+                                    : ''
+                            }));
+
+                        this.estadoHorarios = 'ok';
+                    } catch (error) {
+                        console.error('Error al cargar los horarios:', error);
+                        this.estadoHorarios = 'error';
+                    }
+                },
+
+                // ---------- Administración: selección ----------
+
+                agregar(lista) {
+                    const errores = [];
+                    let libres = MAX_ARCHIVOS - this.archivos.length - this.seleccionados.length;
+
+                    for (const archivo of Array.from(lista)) {
+                        const error = validarArchivo(archivo);
+
+                        if (error) {
+                            errores.push(error);
+                            continue;
+                        }
+
+                        const repetido = this.seleccionados.some(s =>
+                            s.archivo.name === archivo.name && s.archivo.size === archivo.size);
+
+                        if (repetido) continue;
+
+                        if (libres <= 0) {
+                            errores.push(
+                                `"${archivo.name}": se alcanzó el máximo de ${MAX_ARCHIVOS} archivos por actividad.`);
+                            continue;
+                        }
+
+                        this.seleccionados.push({
+                            id: ++this.contador,
+                            archivo,
+                            estado: 'pendiente',
+                            mensaje: ''
+                        });
+
+                        libres--;
+                    }
 
                     if (errores.length) {
                         this.mostrarAviso('error', errores.join(' '));
                     }
                 },
 
+                alElegir(evento) {
+                    this.agregar(evento.target.files);
+
+                    // Permite volver a elegir el mismo archivo
+                    evento.target.value = '';
+                },
+
+                soltar(evento) {
+                    this.arrastrando = false;
+
+                    if (this.subiendo) return;
+
+                    this.agregar(evento.dataTransfer.files);
+                },
+
+                quitar(item) {
+                    if (this.subiendo) return;
+
+                    this.seleccionados = this.seleccionados.filter(s => s.id !== item.id);
+                },
+
+                // ---------- Administración: subir y eliminar ----------
+
                 async subir() {
-                    if (this.subiendo || this.seleccionados.length === 0) return;
+                    const pendientes = this.seleccionados.filter(s => s.estado !== 'ok');
+
+                    if (this.subiendo || pendientes.length === 0) return;
 
                     this.subiendo = true;
 
                     let subidos = 0;
-                    const errores = [];
+                    let fallidos = 0;
 
-                    try {
-                        // Uno por uno: si alguno falla, se informa cuál y los demás siguen
-                        for (const archivo of this.seleccionados) {
+                    // Uno por uno: si alguno falla, se informa cuál y los demás siguen
+                    for (const item of pendientes) {
+                        item.estado = 'subiendo';
+                        item.mensaje = '';
+
+                        try {
                             const datos = new FormData();
-                            datos.append('archivo', archivo);
+                            datos.append('archivo', item.archivo);
 
                             const resp = await this.peticionApi(
                                 `${API}/${ID_ACTIVIDAD}/archivos`,
@@ -310,43 +546,44 @@
                             );
 
                             if (resp.ok) {
+                                item.estado = 'ok';
                                 subidos++;
                             } else {
                                 const error = await resp.json().catch(() => ({}));
-                                errores.push(
-                                    `"${archivo.name}": ` +
-                                    (error.mensaje ?? `error HTTP ${resp.status}`)
-                                );
+                                item.estado = 'error';
+                                item.mensaje = error.mensaje ?? `Error HTTP ${resp.status}`;
+                                fallidos++;
                             }
+                        } catch (error) {
+                            item.estado = 'error';
+                            item.mensaje = 'Error de conexión.';
+                            fallidos++;
                         }
-                    } catch (error) {
-                        errores.push('Error de conexión al subir los archivos.');
-                    } finally {
-                        this.seleccionados = [];
-
-                        if (this.$refs.inputArchivos)
-                            this.$refs.inputArchivos.value = '';
-
-                        this.subiendo = false;
                     }
 
-                    if (errores.length) {
-                        this.mostrarAviso('error',
-                            (subidos ? `Se subieron ${subidos}. ` : '') + errores.join(' '));
-                    } else {
+                    this.subiendo = false;
+
+                    // Los subidos salen de la lista; los que fallaron quedan para reintentar
+                    this.seleccionados = this.seleccionados.filter(s => s.estado !== 'ok');
+
+                    if (fallidos === 0) {
                         this.mostrarAviso('ok',
                             subidos === 1
                                 ? 'Archivo subido correctamente.'
                                 : `${subidos} archivos subidos correctamente.`);
+                    } else {
+                        this.mostrarAviso('error',
+                            (subidos ? `Se subieron ${subidos}. ` : '') +
+                            `${fallidos} ${fallidos === 1 ? 'archivo tuvo' : 'archivos tuvieron'} errores: revisá la lista.`);
                     }
 
-                    await this.cargar();
+                    await this.cargarGaleria();
                 },
 
                 async eliminar(archivo) {
-                    if (this.subiendo) return;
+                    if (this.eliminando || this.subiendo) return;
 
-                    if (!confirm('¿Eliminar este archivo de la actividad?')) return;
+                    this.eliminando = true;
 
                     try {
                         const resp = await this.peticionApi(
@@ -361,10 +598,13 @@
                             return;
                         }
 
+                        this.confirmando = null;
                         this.mostrarAviso('ok', 'Archivo eliminado correctamente.');
-                        await this.cargar();
+                        await this.cargarGaleria();
                     } catch (error) {
                         this.mostrarAviso('error', 'Error de conexión al eliminar el archivo.');
+                    } finally {
+                        this.eliminando = false;
                     }
                 }
             }

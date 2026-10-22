@@ -1,6 +1,5 @@
 using Gimnasio_Alcaraz_Ballerini_Delicia.Service;
 using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Gimnasio_Alcaraz_Ballerini_Delicia.DAO;
@@ -72,6 +71,8 @@ builder.Services.AddScoped<IRepositorioActividadArchivo, RepositorioActividadArc
 builder.Services.AddScoped<ActividadArchivoService>();
 builder.Services.AddScoped<IRepositorioClase, RepositorioClase>();
 builder.Services.AddScoped<ClaseService>();
+builder.Services.AddScoped<IRepositorioAsistencia, RepositorioAsistencia>();
+builder.Services.AddScoped<AsistenciaService>();
 
 
 

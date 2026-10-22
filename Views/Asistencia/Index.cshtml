@@ -1,0 +1,701 @@
+
+@{
+    ViewData["Title"] = "Control de asistencia";
+}
+
+<div id="appAsistencia" class="container py-4">
+
+    <!-- Encabezado -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">
+                <i class="bi bi-person-check me-2"></i>
+                Control de asistencia
+            </h2>
+            <p class="text-muted mb-0">
+                Consultá el DNI del socio, verificá su membresía y registrá el ingreso.
+            </p>
+        </div>
+
+        <a href="/Asistencia/Historial" class="btn btn-outline-primary">
+            <i class="bi bi-clock-history me-1"></i>
+            Historial
+        </a>
+    </div>
+
+    <!-- Mensajes -->
+    <div v-if="mensaje.texto"
+         class="alert d-flex align-items-start gap-2"
+         v-bind:class="'alert-' + mensaje.tipo"
+         role="alert">
+
+        <i class="bi bi-info-circle-fill mt-1"></i>
+
+        <div class="flex-grow-1">
+            {{ mensaje.texto }}
+        </div>
+
+        <button type="button"
+                class="btn-close"
+                aria-label="Cerrar"
+                v-on:click="mensaje.texto = ''">
+        </button>
+    </div>
+
+    <div class="row g-4">
+
+        <!-- Panel de registro -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm h-100">
+
+                <div class="card-header bg-primary text-white py-3">
+                    <h5 class="mb-0">
+                        <i class="bi bi-person-vcard me-2"></i>
+                        Registrar ingreso
+                    </h5>
+                </div>
+
+                <div class="card-body p-4">
+
+                    <form v-on:submit.prevent="consultarAcceso">
+
+                        <label for="dni" class="form-label fw-semibold">
+                            DNI del socio
+                        </label>
+
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text">
+                                <i class="bi bi-person"></i>
+                            </span>
+
+                            <input id="dni"
+                                   type="text"
+                                   class="form-control"
+                                   v-model.trim="dni"
+                                   inputmode="numeric"
+                                   maxlength="10"
+                                   autocomplete="off"
+                                   placeholder="Ej. 12345678"
+                                   required />
+                        </div>
+
+                        <small class="text-muted d-block mt-2 mb-4">
+                            Ingresá entre 7 y 10 dígitos, sin puntos.
+                        </small>
+
+                        <button type="submit"
+                                class="btn btn-primary w-100"
+                                v-bind:disabled="consultando || registrando">
+
+                            <span v-if="consultando"
+                                  class="spinner-border spinner-border-sm me-2">
+                            </span>
+
+                            <i v-else class="bi bi-search me-2"></i>
+
+                            {{ consultando ? 'Consultando...' : 'Consultar acceso' }}
+                        </button>
+
+                    </form>
+
+                    <!-- Datos del socio -->
+                    <div v-if="socio" class="mt-4">
+
+                        <hr />
+
+                        <div class="d-flex align-items-center gap-3 mb-3">
+
+                            <div class="rounded-circle bg-primary-subtle text-primary
+                                        d-flex align-items-center justify-content-center"
+                                 style="width:58px;height:58px;font-size:1.5rem;flex-shrink:0">
+
+                                <i class="bi bi-person-fill"></i>
+                            </div>
+
+                            <div class="min-w-0">
+                                <h5 class="fw-bold mb-1">
+                                    {{ socio.nombre || '' }}
+                                    {{ socio.apellido || '' }}
+                                </h5>
+
+                                <div class="text-muted small">
+                                    DNI: {{ socio.dni || dni }}
+                                </div>
+
+                                <div class="text-muted small">
+                                    Socio #{{ socio.idSocio || '' }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Estado del acceso -->
+                        <div class="rounded p-3 mb-4"
+                             v-bind:class="socio.puedeIngresar
+                                ? 'bg-success-subtle'
+                                : 'bg-danger-subtle'">
+
+                            <div class="fw-bold"
+                                 v-bind:class="socio.puedeIngresar
+                                    ? 'text-success'
+                                    : 'text-danger'">
+
+                                <i class="bi me-2"
+                                   v-bind:class="socio.puedeIngresar
+                                    ? 'bi-check-circle-fill'
+                                    : 'bi-x-circle-fill'">
+                                </i>
+
+                                {{ socio.puedeIngresar
+                                    ? 'Acceso habilitado'
+                                    : 'Acceso denegado' }}
+                            </div>
+
+                            <div v-if="socio.motivo" class="small mt-2">
+                                {{ socio.motivo }}
+                            </div>
+                        </div>
+
+                        <!-- Tipo de ingreso -->
+                        <div v-if="socio.puedeIngresar">
+
+                            <label for="tipoIngreso"
+                                   class="form-label fw-semibold">
+                                Tipo de ingreso
+                            </label>
+
+                            <select id="tipoIngreso"
+                                    class="form-select form-select-lg mb-3"
+                                    v-model.number="tipo"
+                                    v-on:change="cambioTipo"
+                                    v-bind:disabled="registrando">
+
+                                <option :value="2">
+                                    Musculación / acceso libre
+                                </option>
+
+                                <option :value="1">
+                                    Clase programada
+                                </option>
+                            </select>
+
+                            <!-- Selector de clases -->
+                            <div v-if="tipo === 1" class="mb-3">
+
+                                <label for="idClase"
+                                       class="form-label fw-semibold">
+                                    Clases disponibles ahora
+                                </label>
+
+                                <select id="idClase"
+                                        class="form-select"
+                                        v-model.number="idClase"
+                                        v-bind:disabled="cargandoClases ||
+                                            clases.length === 0 ||
+                                            registrando"
+                                        required>
+
+                                    <option :value="null" disabled>
+                                        {{ cargandoClases
+                                            ? 'Buscando clases...'
+                                            : clases.length === 0
+                                                ? 'No hay clases disponibles ahora'
+                                                : 'Seleccioná una clase' }}
+                                    </option>
+
+                                    <option v-for="clase in clases"
+                                            :key="clase.idClase"
+                                            :value="clase.idClase">
+
+                                        {{ clase.actividad }}
+                                        — {{ clase.horaInicio }} a {{ clase.horaFin }}
+                                        — Prof. {{ clase.profesor }}
+                                    </option>
+
+                                </select>
+
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-secondary mt-2"
+                                        v-on:click="cargarClases"
+                                        v-bind:disabled="cargandoClases || registrando">
+
+                                    <span v-if="cargandoClases"
+                                          class="spinner-border spinner-border-sm me-1">
+                                    </span>
+
+                                    <i v-else class="bi bi-arrow-clockwise me-1"></i>
+
+                                    Actualizar clases
+                                </button>
+
+                                <small class="text-muted d-block mt-2">
+                                    Se muestran las clases que se están dictando
+                                    en el horario actual.
+                                </small>
+
+                            </div>
+
+                            <!-- Confirmación -->
+                            <div v-if="tipo === 1 && claseSeleccionada"
+                                 class="alert alert-info py-2 small">
+
+                                <i class="bi bi-calendar-check me-1"></i>
+
+                                Seleccionaste:
+                                <strong>{{ claseSeleccionada.actividad }}</strong>,
+                                de {{ claseSeleccionada.horaInicio }}
+                                a {{ claseSeleccionada.horaFin }}.
+                            </div>
+
+                            <!-- Botón de registrar -->
+                            <button type="button"
+                                    class="btn btn-success btn-lg w-100 mt-2"
+                                    v-on:click="registrar"
+                                    v-bind:disabled="registrando ||
+                                        consultando ||
+                                        (tipo === 1 &&
+                                        (!idClase ||
+                                        !clases.some(c => c.idClase === idClase)))">
+
+                                <span v-if="registrando"
+                                      class="spinner-border spinner-border-sm me-2">
+                                </span>
+
+                                <i v-else class="bi bi-check2-circle me-2"></i>
+
+                                {{ registrando
+                                    ? 'Registrando ingreso...'
+                                    : 'Registrar ingreso' }}
+                            </button>
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel informativo -->
+        <div class="col-lg-7">
+
+            <!-- Membresía -->
+            <div class="card border-0 shadow-sm mb-4">
+
+                <div class="card-body p-4">
+
+                    <h5 class="fw-bold mb-3">
+                        <i class="bi bi-card-checklist me-2 text-primary"></i>
+                        Información de la membresía
+                    </h5>
+
+                    <div v-if="!socio"
+                         class="text-center text-muted py-5">
+
+                        <i class="bi bi-person-lines-fill display-4"></i>
+
+                        <p class="mt-3 mb-0">
+                            Consultá un DNI para visualizar la información.
+                        </p>
+                    </div>
+
+                    <div v-else>
+
+                        <div class="row g-3">
+
+                            <div class="col-sm-6">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="text-muted small">
+                                        Plan contratado
+                                    </div>
+
+                                    <div class="fw-semibold mt-1">
+                                        {{ socio.plan || 'Sin plan vigente' }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-sm-6">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="text-muted small">
+                                        Vencimiento
+                                    </div>
+
+                                    <div class="fw-semibold mt-1">
+                                        {{ formatearFecha(socio.venceEl) }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-sm-6">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="text-muted small">
+                                        Límite de utilizaciones
+                                    </div>
+
+                                    <div class="fw-semibold mt-1">
+                                        {{ socio.ilimitado
+                                            ? 'Ilimitado'
+                                            : (socio.limite ?? 'No informado') }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-sm-6">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="text-muted small">
+                                        Utilizaciones registradas
+                                    </div>
+
+                                    <div class="fw-semibold mt-1"
+                                         v-bind:class="!socio.ilimitado &&
+                                            socio.limite != null &&
+                                            socio.usadas >= socio.limite
+                                            ? 'text-danger'
+                                            : 'text-success'">
+
+                                        {{ socio.usadas ?? 0 }}
+
+                                        <span v-if="!socio.ilimitado &&
+                                            socio.limite != null">
+                                            / {{ socio.limite }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="progress mt-4"
+                             style="height:10px"
+                             v-if="!socio.ilimitado && socio.limite > 0">
+
+                            <div class="progress-bar"
+                                 role="progressbar"
+                                 v-bind:style="{
+                                    width: Math.min(
+                                        100,
+                                        ((socio.usadas || 0) / socio.limite) * 100
+                                    ) + '%'
+                                 }"
+                                 v-bind:aria-valuenow="socio.usadas || 0"
+                                 aria-valuemin="0"
+                                 v-bind:aria-valuemax="socio.limite">
+                            </div>
+                        </div>
+
+                        <small v-if="!socio.ilimitado && socio.limite > 0"
+                               class="text-muted d-block mt-2">
+                            Utilizaciones consumidas del límite informado.
+                        </small>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Instrucciones -->
+            <div class="card border-0 shadow-sm">
+
+                <div class="card-body p-4">
+
+                    <h5 class="fw-bold mb-3">
+                        <i class="bi bi-lightbulb me-2 text-warning"></i>
+                        Cómo utilizar el control
+                    </h5>
+
+                    <ol class="ps-3 mb-0">
+                        <li class="mb-2">
+                            Ingresá el DNI del socio.
+                        </li>
+
+                        <li class="mb-2">
+                            Comprobá que su membresía esté vigente y tenga acceso habilitado.
+                        </li>
+
+                        <li class="mb-2">
+                            Elegí musculación o una clase disponible en ese horario.
+                        </li>
+
+                        <li>
+                            Registrá el ingreso y comprobá el mensaje de confirmación.
+                        </li>
+                    </ol>
+
+                    <div class="alert alert-warning mt-4 mb-0 small">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+
+                        No vuelvas a registrar el mismo ingreso si ya recibiste
+                        la confirmación. Consultá nuevamente el DNI para
+                        actualizar el contador de utilizaciones.
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <script>
+        Vue.createApp({
+            data() {
+                return {
+                    dni: '',
+                    socio: null,
+
+                    tipo: 2,
+                    idClase: null,
+
+                    clases: [],
+                    cargandoClases: false,
+
+                    consultando: false,
+                    registrando: false,
+
+                    mensaje: {
+                        texto: '',
+                        tipo: 'info'
+                    }
+                };
+            },
+
+            computed: {
+                claseSeleccionada() {
+                    return this.clases.find(
+                        c => c.idClase === this.idClase
+                    ) || null;
+                }
+            },
+
+            methods: {
+                limpiarMensaje() {
+                    this.mensaje = {
+                        texto: '',
+                        tipo: 'info'
+                    };
+                },
+
+                mostrarMensaje(texto, tipo = 'info') {
+                    this.mensaje = { texto, tipo };
+                },
+
+                async leerRespuesta(response) {
+                    const texto = await response.text();
+
+                    if (!texto) return {};
+
+                    try {
+                        return JSON.parse(texto);
+                    } catch {
+                        throw new Error(
+                            'El servidor devolvió una respuesta inesperada. Verificá la API.'
+                        );
+                    }
+                },
+
+                async consultarAcceso() {
+                    this.limpiarMensaje();
+                    this.socio = null;
+                    this.idClase = null;
+                    this.clases = [];
+
+                    if (!/^\d{7,10}$/.test(this.dni)) {
+                        this.mostrarMensaje(
+                            'Ingresá un DNI válido de entre 7 y 10 dígitos.',
+                            'warning'
+                        );
+                        return;
+                    }
+
+                    this.consultando = true;
+
+                    try {
+                        const response = await fetch(
+                            `/api/asistencias/acceso/${encodeURIComponent(this.dni)}`,
+                            {
+                                method: 'GET',
+                                headers: {
+                                    'Accept': 'application/json'
+                                },
+                                credentials: 'same-origin'
+                            }
+                        );
+
+                        const data = await this.leerRespuesta(response);
+
+                        if (!response.ok) {
+                            this.mostrarMensaje(
+                                data.mensaje || 'No se pudo consultar el acceso.',
+                                'danger'
+                            );
+                            return;
+                        }
+
+                        this.socio = data;
+
+                        if (!data.puedeIngresar) {
+                            this.mostrarMensaje(
+                                data.motivo ||
+                                'El socio no tiene acceso habilitado.',
+                                'warning'
+                            );
+                        } else {
+                            this.mostrarMensaje(
+                                'Socio encontrado. Verificá los datos antes de registrar.',
+                                'success'
+                            );
+                        }
+
+                    } catch (error) {
+                        this.mostrarMensaje(error.message, 'danger');
+                    } finally {
+                        this.consultando = false;
+                    }
+                },
+
+                async cambioTipo() {
+                    this.idClase = null;
+                    this.limpiarMensaje();
+
+                    if (this.tipo === 1) {
+                        await this.cargarClases();
+                    }
+                },
+
+                async cargarClases() {
+                    this.cargandoClases = true;
+                    this.idClase = null;
+
+                    try {
+                        const response = await fetch(
+                            '/api/asistencias/clases-disponibles',
+                            {
+                                method: 'GET',
+                                headers: {
+                                    'Accept': 'application/json'
+                                },
+                                credentials: 'same-origin'
+                            }
+                        );
+
+                        const data = await this.leerRespuesta(response);
+
+                        if (!response.ok) {
+                            throw new Error(
+                                data.mensaje ||
+                                'No se pudieron cargar las clases.'
+                            );
+                        }
+
+                        this.clases = Array.isArray(data) ? data : [];
+
+                        if (this.clases.length === 0) {
+                            this.mostrarMensaje(
+                                'No hay clases programadas en este horario.',
+                                'warning'
+                            );
+                        } else {
+                            this.limpiarMensaje();
+                        }
+
+                    } catch (error) {
+                        this.clases = [];
+                        this.mostrarMensaje(error.message, 'danger');
+                    } finally {
+                        this.cargandoClases = false;
+                    }
+                },
+
+                async registrar() {
+                    this.limpiarMensaje();
+
+                    if (!this.socio || !this.socio.puedeIngresar) {
+                        this.mostrarMensaje(
+                            'Primero consultá un socio con acceso habilitado.',
+                            'warning'
+                        );
+                        return;
+                    }
+
+                    if (this.tipo === 1 &&
+                        !this.clases.some(c => c.idClase === this.idClase)) {
+                        this.mostrarMensaje(
+                            'Seleccioná una clase disponible.',
+                            'warning'
+                        );
+                        return;
+                    }
+
+                    this.registrando = true;
+
+                    try {
+                        const response = await fetch(
+                            '/api/asistencias/registrar',
+                            {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json'
+                                },
+                                credentials: 'same-origin',
+                                body: JSON.stringify({
+                                    dni: this.dni,
+                                    tipo: this.tipo,
+                                    idClase: this.tipo === 1
+                                        ? this.idClase
+                                        : null
+                                })
+                            }
+                        );
+
+                        const data = await this.leerRespuesta(response);
+
+                        if (!response.ok) {
+                            this.mostrarMensaje(
+                                data.mensaje ||
+                                'No se pudo registrar el ingreso.',
+                                'danger'
+                            );
+                            return;
+                        }
+
+                        this.mostrarMensaje(
+                            data.mensaje ||
+                            'Ingreso registrado correctamente.',
+                            'success'
+                        );
+
+                        // Actualiza el estado y las utilizaciones
+                        // después de registrar la asistencia.
+                        await this.consultarAcceso();
+
+                    } catch (error) {
+                        this.mostrarMensaje(error.message, 'danger');
+                    } finally {
+                        this.registrando = false;
+                    }
+                },
+
+                formatearFecha(fecha) {
+                    if (!fecha) return 'No informada';
+
+                    const valor = new Date(fecha);
+
+                    if (Number.isNaN(valor.getTime())) {
+                        return 'No informada';
+                    }
+
+                    return valor.toLocaleDateString('es-AR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        timeZone: 'UTC'
+                    });
+                }
+            }
+        }).mount('#appAsistencia');
+    </script>
+}

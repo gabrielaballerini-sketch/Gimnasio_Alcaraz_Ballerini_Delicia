@@ -24,7 +24,7 @@
 
         
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarPrincipal"
-                    aria-controls="navbarPrincipal" aria-expanded="false" aria-label="Mostrar navegación">
+                        aria-controls="navbarPrincipal" aria-expanded="false" aria-label="Mostrar navegación">
                     <span class="navbar-toggler-icon"></span>
                 </button>
 
@@ -38,6 +38,22 @@
                                 Home
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Asistencia" asp-action="Index">
+                                <i class="bi bi-person-check me-1"></i>
+                                Asistencia
+                            </a>
+                        </li>
+
+                        @if (User.IsInRole("Administrador") || User.IsInRole("Empleado"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Asistencia" asp-action="Historial">
+                                    <i class="bi bi-clock-history me-1"></i>
+                                    Historial
+                                </a>
+                            </li>
+                        }
 
                         @if (User.Identity?.IsAuthenticated == true)
                         {
@@ -77,9 +93,7 @@
                             
 
                                 <li class="nav-item">
-                                    <a class="nav-link text-dark"
-                                       asp-controller="Clase"
-                                       asp-action="Index">
+                                    <a class="nav-link text-dark" asp-controller="Clase" asp-action="Index">
                                         Clases
                                     </a>
                                 </li>
@@ -108,7 +122,7 @@
                         {
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle text-dark d-flex align-items-center" href="#"
-                                    id="menuUsuario" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                   id="menuUsuario" role="button" data-bs-toggle="dropdown" aria-expanded="false">
 
                                     <span
                                         class="rounded-circle bg-secondary text-white d-inline-flex align-items-center justify-content-center me-2"
