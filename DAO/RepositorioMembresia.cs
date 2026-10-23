@@ -357,6 +357,41 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             );
         }
 
+        public Membresia? ObtenerVigentePorDni(string dni, DateTime fecha)
+        {
+            using var conexion = CrearConexion();
+            var sql = @"
+                SELECT
+                    m.IdMembresia, m.IdSocio, m.IdPlan,
+                    m.FechaInicio, m.FechaFin, m.PrecioContratado,
+                    m.Estado, m.IdUsuarioCreador,
+                    s.IdSocio AS Socio_IdSocio,
+                    s.Nombre AS Socio_Nombre,
+                    s.Apellido AS Socio_Apellido,
+                    s.Dni AS Socio_Dni,
+                    p.IdPlan AS Plan_IdPlan,
+                    p.Nombre AS Plan_Nombre,
+                    p.Precio AS Plan_Precio,
+                    p.UtilizacionesMensuales AS Plan_UtilizacionesMensuales
+                FROM membresia m
+                INNER JOIN socio s ON s.IdSocio = m.IdSocio
+                INNER JOIN plan p ON p.IdPlan = m.IdPlan
+                WHERE s.Dni = @Dni
+                  AND s.Estado = 1
+                  AND m.Estado = 1
+                  AND m.FechaInicio <= @Fecha
+                  AND m.FechaFin >= @Fecha
+                ORDER BY m.FechaInicio DESC, m.IdMembresia DESC
+                LIMIT 1;";
+
+            using var comand = new MySqlCommand(sql, conexion);
+            comand.Parameters.AddWithValue("@Dni", dni.Trim());
+            comand.Parameters.AddWithValue("@Fecha", fecha.Date);
+            conexion.Open();
+            using var read = comand.ExecuteReader();
+            return read.Read() ? Mapear(read) : null;
+        }
+
         public IList<Membresia> ObtenerActivosPorSocio(
             int idSocio,
             int pagina = 1,

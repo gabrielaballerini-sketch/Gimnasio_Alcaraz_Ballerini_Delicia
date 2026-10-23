@@ -1,0 +1,198 @@
+@{
+    ViewData["Title"] = "Registrar pago";
+}
+
+<div class="container mt-4 mb-5" id="appPagos">
+    <div class="mb-4">
+        <h1 class="mb-1"><i class="bi bi-cash-stack me-2"></i>Registrar pago</h1>
+        <p class="text-muted mb-0">Buscá al socio por DNI. El sistema identifica su membresía vigente y calcula el importe automáticamente.</p>
+    </div>
+
+    <div v-if="mensaje" class="alert alert-success alert-dismissible" role="alert">
+        {{ mensaje }}
+        <button type="button" class="btn-close" @@click="mensaje = ''" aria-label="Cerrar"></button>
+    </div>
+    <div v-if="error" class="alert alert-danger alert-dismissible" role="alert">
+        {{ error }}
+        <button type="button" class="btn-close" @@click="error = ''" aria-label="Cerrar"></button>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0">1. Identificar socio</h5>
+        </div>
+        <div class="card-body">
+            <form @@submit.prevent="buscarSocio">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-6">
+                        <label for="dni" class="form-label">DNI del socio</label>
+                        <input id="dni" class="form-control" type="text" inputmode="numeric"
+                               maxlength="10" pattern="[0-9]{7,10}" v-model.trim="dni"
+                               placeholder="Ingresá el DNI sin puntos" required />
+                        <div class="form-text">Entre 7 y 10 dígitos, sin puntos ni espacios.</div>
+                    </div>
+                    <div class="col-md-auto">
+                        <button type="submit" class="btn btn-primary" :disabled="buscando || !dni">
+                            <span v-if="buscando" class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            <i v-else class="bi bi-search me-1"></i>
+                            {{ buscando ? 'Buscando...' : 'Buscar socio' }}
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div v-if="resultado" class="card shadow-sm border-0">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0">2. Confirmar datos del pago</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="border rounded p-3 h-100">
+                        <div class="small text-muted mb-1">Socio</div>
+                        <div class="fs-5 fw-semibold">{{ resultado.socio.apellido }}, {{ resultado.socio.nombre }}</div>
+                        <div class="text-muted">DNI {{ resultado.socio.dni }}</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="border rounded p-3 h-100">
+                        <div class="small text-muted mb-1">Membresía vigente</div>
+                        <div class="fs-5 fw-semibold">{{ resultado.membresia.plan }}</div>
+                        <div class="text-muted">Vigencia: {{ fecha(resultado.membresia.fechaInicio) }} al {{ fecha(resultado.membresia.fechaFin) }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <form @@submit.prevent="registrarPago">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-5">
+                        <label for="importe" class="form-label">Importe a registrar</label>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text">$</span>
+                            <input id="importe" class="form-control fw-semibold" :value="moneda(resultado.membresia.precioContratado)" readonly />
+                        </div>
+                        <div class="form-text">Importe tomado de la membresía contratada; no se puede editar desde el formulario.</div>
+                    </div>
+                    <div class="col-md-5">
+                        <label for="medioPago" class="form-label">Medio de pago</label>
+                        <select id="medioPago" class="form-select form-select-lg" v-model.number="medioPago" required>
+                            <option :value="1">Efectivo</option>
+                            <option :value="2">Débito</option>
+                            <option :value="3">Crédito</option>
+                            <option :value="4">Transferencia</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-grid">
+                        <button type="submit" class="btn btn-success btn-lg" :disabled="registrando">
+                            <span v-if="registrando" class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            {{ registrando ? 'Guardando...' : 'Registrar' }}
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div v-else-if="!buscando" class="text-center text-muted py-4">
+        <i class="bi bi-person-vcard fs-1 d-block mb-2"></i>
+        Ingresá el DNI y buscá al socio para consultar su membresía vigente.
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    token: '',
+                    dni: '',
+                    medioPago: 1,
+                    resultado: null,
+                    buscando: false,
+                    registrando: false,
+                    mensaje: '',
+                    error: ''
+                };
+            },
+            async mounted() {
+                try {
+                    const respuesta = await fetch('/Cuenta/Token', { credentials: 'same-origin' });
+                    if (!respuesta.ok) {
+                        this.error = 'No se pudo obtener el token de acceso. Volvé a iniciar sesión.';
+                        return;
+                    }
+                    const datos = await respuesta.json();
+                    this.token = datos.token;
+                } catch {
+                    this.error = 'No se pudo conectar con el servidor.';
+                }
+            },
+            methods: {
+                async peticionApi(url, opciones = {}) {
+                    const headers = new Headers(opciones.headers || {});
+                    headers.set('Authorization', `Bearer ${this.token}`);
+                    return fetch(url, { ...opciones, headers, credentials: 'same-origin' });
+                },
+                async buscarSocio() {
+                    this.error = '';
+                    this.mensaje = '';
+                    this.resultado = null;
+                    if (!/^\d{7,10}$/.test(this.dni)) {
+                        this.error = 'Ingresá un DNI válido de entre 7 y 10 dígitos.';
+                        return;
+                    }
+                    if (!this.token) {
+                        this.error = 'No se pudo validar tu sesión. Volvé a iniciar sesión.';
+                        return;
+                    }
+                    this.buscando = true;
+                    try {
+                        const respuesta = await this.peticionApi(`/api/pagos/membresia-vigente?dni=${encodeURIComponent(this.dni)}`);
+                        const datos = await respuesta.json();
+                        if (!respuesta.ok) throw new Error(datos.mensaje || 'No se encontró una membresía vigente para ese DNI.');
+                        this.resultado = datos;
+                        this.medioPago = 1;
+                    } catch (e) {
+                        this.error = e.message || 'No se pudo buscar al socio.';
+                    } finally {
+                        this.buscando = false;
+                    }
+                },
+                async registrarPago() {
+                    if (!this.resultado) return;
+                    this.error = '';
+                    this.mensaje = '';
+                    this.registrando = true;
+                    try {
+                        const respuesta = await this.peticionApi('/api/pagos', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ dni: this.resultado.socio.dni, medioPago: this.medioPago })
+                        });
+                        const datos = await respuesta.json();
+                        if (!respuesta.ok) throw new Error(datos.mensaje || 'No se pudo registrar el pago.');
+                        this.mensaje = `${datos.mensaje} N.º ${datos.idPago}. Importe: ${this.moneda(datos.importe)}.`;
+                        this.resultado = null;
+                        this.dni = '';
+                    } catch (e) {
+                        this.error = e.message || 'No se pudo registrar el pago.';
+                    } finally {
+                        this.registrando = false;
+                    }
+                },
+                fecha(valor) {
+                    if (!valor) return '';
+                    return new Date(valor).toLocaleDateString('es-AR', { timeZone: 'UTC' });
+                },
+                moneda(valor) {
+                    return Number(valor || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+            }
+        }).mount('#appPagos');
+    </script>
+}

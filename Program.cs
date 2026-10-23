@@ -16,7 +16,7 @@ builder.Services.AddControllersWithViews()
     });
 
 // 1. Validar y obtener la clave JWT desde appsettings.json ANTES de registrar la autenticación
-var jwtKey = builder.Configuration["Jwt:Key"] 
+var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("Falta configurar 'Jwt:Key' en appsettings.json");
 
 // 2. Configurar Autenticación (Cookies + JWT)
@@ -35,21 +35,21 @@ builder.Services.AddAuthentication(options =>
 .AddJwtBearer(options =>
 
    options.TokenValidationParameters = new TokenValidationParameters
-{
-    ValidateIssuer = true,
-    ValidateAudience = true,
-    ValidateLifetime = true,
-    ValidateIssuerSigningKey = true,
+   {
+       ValidateIssuer = true,
+       ValidateAudience = true,
+       ValidateLifetime = true,
+       ValidateIssuerSigningKey = true,
 
-    ValidIssuer = builder.Configuration["Jwt:Issuer"],
-    ValidAudience = builder.Configuration["Jwt:Audience"],
+       ValidIssuer = builder.Configuration["Jwt:Issuer"],
+       ValidAudience = builder.Configuration["Jwt:Audience"],
 
-    IssuerSigningKey = new SymmetricSecurityKey(
+       IssuerSigningKey = new SymmetricSecurityKey(
         Encoding.UTF8.GetBytes(jwtKey)
     ),
 
-    RoleClaimType = System.Security.Claims.ClaimTypes.Role
-});
+       RoleClaimType = System.Security.Claims.ClaimTypes.Role
+   });
 builder.Services.AddAuthorization();
 
 
@@ -73,9 +73,8 @@ builder.Services.AddScoped<IRepositorioClase, RepositorioClase>();
 builder.Services.AddScoped<ClaseService>();
 builder.Services.AddScoped<IRepositorioAsistencia, RepositorioAsistencia>();
 builder.Services.AddScoped<AsistenciaService>();
-
-
-
+builder.Services.AddScoped<IRepositorioPago, RepositorioPago>();
+builder.Services.AddScoped<PagoService>();
 
 
 var app = builder.Build();

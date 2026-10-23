@@ -1,0 +1,130 @@
+@{
+    ViewData["Title"] = "Mis pagos";
+}
+
+<div id="app-pagos-socio" class="container mt-4">
+    <h2>Mis pagos</h2>
+    <p class="text-muted">
+        Consultá los pagos asociados a tus membresías.
+    </p>
+
+    <div v-if="mensaje" class="alert alert-danger">
+        {{ mensaje }}
+    </div>
+
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>N.º</th>
+                        <th>Membresía</th>
+                        <th>Concepto</th>
+                        <th>Fecha</th>
+                        <th>Importe</th>
+                        <th>Medio de pago</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-if="cargando">
+                        <td colspan="7" class="text-center py-4">
+                            Cargando pagos...
+                        </td>
+                    </tr>
+
+                    <tr v-else-if="pagos.length === 0">
+                        <td colspan="7" class="text-center py-4">
+                            Todavía no tenés pagos registrados.
+                        </td>
+                    </tr>
+
+                    <tr v-for="p in pagos" :key="p.idPago">
+                        <td>{{ p.idPago }}</td>
+                        <td>{{ p.idMembresia }}</td>
+                        <td>{{ p.concepto }}</td>
+                        <td>{{ fecha(p.fecha) }}</td>
+                        <td>{{ moneda(p.importe) }}</td>
+                        <td>{{ medio(p.medioPago) }}</td>
+                        <td>
+                            <span class="badge" :class="p.estado ? 'text-bg-success' : 'text-bg-secondary'">
+                                {{ p.estado ? 'Activo' : 'Anulado' }}
+                            </span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    token: '',
+                    pagos: [],
+                    cargando: true,
+                    mensaje: ''
+                };
+            },
+
+            async mounted() {
+                try {
+                    const respuestaToken = await fetch('/Cuenta/Token', {
+                        credentials: 'same-origin'
+                    });
+
+                    if (!respuestaToken.ok)
+                        throw new Error('No se pudo validar la sesión.');
+
+                    const datosToken = await respuestaToken.json();
+                    this.token = datosToken.token ?? datosToken;
+
+                    const respuesta = await fetch('/api/pagos/mios?pagina=1&tamPagina=100', {
+                        headers: {
+                            Authorization: `Bearer ${this.token}`
+                        }
+                    });
+
+                    if (!respuesta.ok)
+                        throw new Error('No se pudieron cargar tus pagos.');
+
+                    const datos = await respuesta.json();
+                    this.pagos = Array.isArray(datos) ? datos : (datos.items ?? []);
+                } catch (e) {
+                    this.mensaje = e.message;
+                } finally {
+                    this.cargando = false;
+                }
+            },
+
+            methods: {
+                fecha(valor) {
+                    return valor
+                        ? new Date(valor).toLocaleDateString('es-AR')
+                        : '';
+                },
+
+                moneda(valor) {
+                    return new Intl.NumberFormat('es-AR', {
+                        style: 'currency',
+                        currency: 'ARS'
+                    }).format(valor);
+                },
+
+                medio(valor) {
+                    return ({
+                        1: 'Efectivo',
+                        2: 'Débito',
+                        3: 'Crédito',
+                        4: 'Transferencia'
+                    })[valor] ?? 'Desconocido';
+                }
+            }
+        }).mount('#app-pagos-socio');
+    </script>
+}

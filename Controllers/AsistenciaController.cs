@@ -15,7 +15,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Controllers
         }
 
         // Historial reservado al personal del gimnasio.
-        [Authorize(Roles = "Administrador,Empleado")]
+        [Authorize(Roles = "Administrador")]
         [HttpGet]
         public IActionResult Historial()
         {
