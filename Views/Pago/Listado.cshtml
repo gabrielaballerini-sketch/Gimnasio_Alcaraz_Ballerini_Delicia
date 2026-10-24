@@ -1,0 +1,281 @@
+@{
+    ViewData["Title"] = "Pagos";
+    var esAdmin = User.IsInRole("Administrador");
+}
+
+<div id="appListadoPagos" class="container mt-4 mb-5">
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h1 class="mb-1"><i class="bi bi-receipt me-2"></i>Pagos</h1>
+            <p class="text-muted mb-0">
+                Pagos registrados. Los pagos anulados siguen visibles.
+            </p>
+        </div>
+
+        <a asp-controller="Pago" asp-action="Index" class="btn btn-outline-primary">
+            <i class="bi bi-cash-stack me-1"></i> Registrar pago
+        </a>
+    </div>
+
+    <div v-if="mensaje" class="alert alert-success alert-dismissible" role="alert">
+        {{ mensaje }}
+        <button type="button" class="btn-close" v-on:click="mensaje = ''" aria-label="Cerrar"></button>
+    </div>
+
+    <div v-if="error" class="alert alert-danger alert-dismissible" role="alert">
+        {{ error }}
+        <button type="button" class="btn-close" v-on:click="error = ''" aria-label="Cerrar"></button>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Listado</h5>
+                <span class="badge text-bg-secondary">Total: {{ total }}</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>N.º</th>
+                            <th>Fecha</th>
+                            <th>Socio</th>
+                            <th>Membresía</th>
+                            <th>Importe</th>
+                            <th>Medio de pago</th>
+                            <th>Estado</th>
+                            @if (esAdmin)
+                            {
+                                <th>Registrado por</th>
+                                <th>Anulado por</th>
+                                <th></th>
+                            }
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <tr v-if="cargando">
+                            <td colspan="10" class="text-center py-4">
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                Cargando pagos...
+                            </td>
+                        </tr>
+
+                        <tr v-else-if="pagos.length === 0">
+                            <td colspan="10" class="text-center text-muted py-5">
+                                <i class="bi bi-inbox display-6 d-block mb-2"></i>
+                                Todavía no hay pagos registrados.
+                            </td>
+                        </tr>
+
+                        <tr v-for="p in pagos" v-bind:key="p.idPago"
+                            v-bind:class="p.estado ? '' : 'text-muted'">
+                            <td>{{ p.idPago }}</td>
+                            <td>{{ fechaHora(p.fecha) }}</td>
+                            <td>
+                                {{ p.socio ? p.socio.apellido + ', ' + p.socio.nombre : '-' }}
+                            </td>
+                            <td>{{ p.idMembresia }}</td>
+                            <td>{{ moneda(p.importe) }}</td>
+                            <td>{{ medio(p.medioPago) }}</td>
+                            <td>
+                                <span class="badge"
+                                      v-bind:class="p.estado ? 'text-bg-success' : 'text-bg-secondary'">
+                                    {{ p.estado ? 'Activo' : 'Anulado' }}
+                                </span>
+                            </td>
+
+                            @if (esAdmin)
+                            {
+                                <td>{{ p.idUsuarioCreador ? 'Usuario #' + p.idUsuarioCreador : '-' }}</td>
+                                <td>{{ p.idUsuarioAnulador ? 'Usuario #' + p.idUsuarioAnulador : '-' }}</td>
+                                <td class="text-end">
+                                    <button v-if="p.estado"
+                                            type="button"
+                                            class="btn btn-sm btn-outline-danger"
+                                            v-bind:disabled="anulando === p.idPago"
+                                            v-on:click="anular(p)">
+                                        <span v-if="anulando === p.idPago"
+                                              class="spinner-border spinner-border-sm"></span>
+                                        <i v-else class="bi bi-x-circle"></i>
+                                        Anular
+                                    </button>
+                                </td>
+                            }
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mt-3">
+                <span class="text-muted small">
+                    Página {{ pagina }} de {{ totalPaginas }}
+                </span>
+
+                <div class="d-flex gap-2 align-items-center">
+                    <button class="btn btn-outline-secondary btn-sm"
+                            v-on:click="irPagina(pagina - 1)"
+                            v-bind:disabled="pagina <= 1 || cargando">
+                        <i class="bi bi-chevron-left"></i> Anterior
+                    </button>
+
+                    <button class="btn btn-outline-secondary btn-sm"
+                            v-on:click="irPagina(pagina + 1)"
+                            v-bind:disabled="pagina >= totalPaginas || cargando">
+                        Siguiente <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script>
+        Vue.createApp({
+            data() {
+                return {
+                    token: '',
+                    pagos: [],
+                    total: 0,
+                    pagina: 1,
+                    tamPagina: 10,
+                    cargando: true,
+                    anulando: null,
+                    mensaje: '',
+                    error: ''
+                };
+            },
+
+            computed: {
+                totalPaginas() {
+                    return Math.max(1, Math.ceil(this.total / this.tamPagina));
+                }
+            },
+
+            async mounted() {
+                try {
+                    const respuesta = await fetch('/Cuenta/Token', { credentials: 'same-origin' });
+
+                    if (!respuesta.ok) {
+                        this.error = 'No se pudo validar la sesión. Volvé a iniciar sesión.';
+                        this.cargando = false;
+                        return;
+                    }
+
+                    const datos = await respuesta.json();
+                    this.token = datos.token ?? datos;
+                } catch {
+                    this.error = 'No se pudo conectar con el servidor.';
+                    this.cargando = false;
+                    return;
+                }
+
+                await this.cargar();
+            },
+
+            methods: {
+                peticionApi(url, opciones = {}) {
+                    const headers = new Headers(opciones.headers || {});
+                    headers.set('Authorization', `Bearer ${this.token}`);
+
+                    return fetch(url, { ...opciones, headers, credentials: 'same-origin' });
+                },
+
+                async cargar() {
+                    this.cargando = true;
+
+                    try {
+                        const respuesta = await this.peticionApi(
+                            `/api/pagos?pagina=${this.pagina}&tamPagina=${this.tamPagina}`
+                        );
+
+                        if (!respuesta.ok)
+                            throw new Error('No se pudieron cargar los pagos.');
+
+                        const datos = await respuesta.json();
+
+                        this.pagos = datos.items || [];
+                        this.total = datos.total || 0;
+                    } catch (e) {
+                        this.pagos = [];
+                        this.total = 0;
+                        this.error = e.message;
+                    } finally {
+                        this.cargando = false;
+                    }
+                },
+
+                async anular(pago) {
+                    const socio = pago.socio
+                        ? `${pago.socio.apellido}, ${pago.socio.nombre}`
+                        : 'el socio';
+
+                    const confirmado = confirm(
+                        `¿Anular el pago N.º ${pago.idPago} de ${socio} por ${this.moneda(pago.importe)}?\n\n` +
+                        'Si es el último pago de la membresía, quedará pendiente de pago ' +
+                        'y el socio no podrá ingresar hasta que se registre otro pago.'
+                    );
+
+                    if (!confirmado) return;
+
+                    this.error = '';
+                    this.mensaje = '';
+                    this.anulando = pago.idPago;
+
+                    try {
+                        const respuesta = await this.peticionApi(
+                            `/api/pagos/${pago.idPago}/anular`,
+                            { method: 'POST' }
+                        );
+
+                        const datos = await respuesta.json().catch(() => ({}));
+
+                        if (!respuesta.ok)
+                            throw new Error(datos.mensaje || 'No se pudo anular el pago.');
+
+                        this.mensaje = datos.mensaje || 'Pago anulado correctamente.';
+                        await this.cargar();
+                    } catch (e) {
+                        this.error = e.message;
+                    } finally {
+                        this.anulando = null;
+                    }
+                },
+
+                irPagina(numero) {
+                    if (numero < 1 || numero > this.totalPaginas) return;
+
+                    this.pagina = numero;
+                    this.cargar();
+                },
+
+                fechaHora(valor) {
+                    return valor ? new Date(valor).toLocaleString('es-AR') : '-';
+                },
+
+                moneda(valor) {
+                    return Number(valor || 0).toLocaleString('es-AR', {
+                        style: 'currency',
+                        currency: 'ARS'
+                    });
+                },
+
+                medio(valor) {
+                    return ({
+                        1: 'Efectivo',
+                        2: 'Débito',
+                        3: 'Crédito',
+                        4: 'Transferencia'
+                    })[valor] ?? 'Desconocido';
+                }
+            }
+        }).mount('#appListadoPagos');
+    </script>
+}

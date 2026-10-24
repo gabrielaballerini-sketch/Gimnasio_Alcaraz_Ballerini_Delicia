@@ -1,6 +1,6 @@
-
 @{
     ViewData["Title"] = "Historial de asistencias";
+    var esSocio = User.IsInRole("Socio");
 }
 
 <div id="appHistorial" class="container py-4">
@@ -15,9 +15,18 @@
             </p>
         </div>
 
-        <a href="/Asistencia" class="btn btn-outline-primary">
-            <i class="bi bi-person-check me-1"></i> Registrar asistencia
-        </a>
+        <div class="d-flex flex-wrap gap-2">
+            @if (esSocio)
+            {
+                <a asp-controller="Asistencia" asp-action="MiUtilizacion" class="btn btn-outline-secondary">
+                    <i class="bi bi-speedometer2 me-1"></i> Mi utilización
+                </a>
+            }
+
+            <a href="/Asistencia" class="btn btn-outline-primary">
+                <i class="bi bi-person-check me-1"></i> Registrar asistencia
+            </a>
+        </div>
     </div>
 
     <div v-if="mensaje"
@@ -42,7 +51,8 @@
                         <input type="date" class="form-control" v-model="filtros.hasta">
                     </div>
 
-                    <div class="col-md-2">
+                    <!-- Solo lo ve el personal -->
+                    <div class="col-md-2" v-if="!esSocio">
                         <label class="form-label">ID de socio</label>
                         <input type="number" min="1" class="form-control"
                                v-model="filtros.idSocio" placeholder="Todos">
@@ -96,8 +106,8 @@
                     <thead class="table-light">
                         <tr>
                             <th>Fecha y hora</th>
-                            <th>Socio</th>
-                            <th>DNI</th>
+                            <th v-if="!esSocio">Socio</th>
+                            <th v-if="!esSocio">DNI</th>
                             <th>Tipo</th>
                             <th>Clase</th>
                         </tr>
@@ -107,13 +117,13 @@
                         <tr v-for="item in asistencias" v-bind:key="item.idAsistencia">
                             <td>{{ formatearFechaHora(item.fechaHoraIngreso) }}</td>
 
-                            <td>
+                            <td v-if="!esSocio">
                                 {{ item.socio
                                     ? item.socio.apellido + ', ' + item.socio.nombre
                                     : 'Socio #' + item.idSocio }}
                             </td>
 
-                            <td>{{ item.socio ? item.socio.dni : '-' }}</td>
+                            <td v-if="!esSocio">{{ item.socio ? item.socio.dni : '-' }}</td>
 
                             <td>
                                 <span class="badge"
@@ -183,6 +193,7 @@
         Vue.createApp({
             data() {
                 return {
+                    esSocio: @(esSocio ? "true" : "false"),
                     asistencias: [],
                     total: 0,
                     pagina: 1,
@@ -227,12 +238,21 @@
                     if (this.filtros.hasta)
                         params.set('hasta', this.filtros.hasta);
 
-                    if (this.filtros.idSocio)
+                    if (this.esSocio) {
+                        // Historial completo: no limitar al período actual
+                        params.set('periodoActual', 'false');
+                    } else if (this.filtros.idSocio) {
+                        // El socio nunca manda un id: la API lo toma de su sesión
                         params.set('idSocio', this.filtros.idSocio);
+                    }
+
+                    const url = this.esSocio
+                        ? '/api/asistencias/mia'
+                        : '/api/asistencias';
 
                     try {
                         const response = await fetch(
-                            `/api/asistencias?${params.toString()}`,
+                            `${url}?${params.toString()}`,
                             {
                                 headers: { 'Accept': 'application/json' },
                                 credentials: 'same-origin'

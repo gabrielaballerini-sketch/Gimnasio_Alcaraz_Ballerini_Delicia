@@ -45,7 +45,7 @@
                             </a>
                         </li>
 
-                        @if (User.IsInRole("Administrador"))
+                       @if (User.IsInRole("Administrador") || User.IsInRole("Empleado") || User.IsInRole("Socio"))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Asistencia" asp-action="Historial">
@@ -54,6 +54,19 @@
                                 </a>
                             </li>
                         }
+
+                         @if (User.IsInRole("Socio"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Asistencia" asp-action="MiUtilizacion">
+                                    <i class="bi bi-speedometer2 me-1"></i>
+                                    Mi utilización
+                                </a>
+                            </li>
+                        }
+
+
+
 
                         @if (User.Identity?.IsAuthenticated == true)
                         {
@@ -103,6 +116,34 @@
                                         @(User.IsInRole("Socio") ? "Mi membresía" : "Membresías")
                                     </a>
                                 </li>
+
+                               @*  Mis pagos solo para el socio  *@
+                                @if (User.IsInRole("Socio"))
+                                {
+                                    <li class="nav-item">
+                                        <a class="nav-link text-dark" asp-controller="Pago" asp-action="Index">
+                                            <i class="bi bi-cash-stack me-1"></i>
+                                            Mis pagos
+                                        </a>
+                                    </li>
+                                }
+                     
+                     
+
+                                @if (User.IsInRole("Administrador") ||
+                                                        User.IsInRole("Empleado"))
+                                {
+                                    <li class="nav-item">
+                                        <a class="nav-link text-dark" asp-controller="Pago" asp-action="Index">
+                                            <i class="bi bi-cash-stack me-1"></i>
+                                            Pagos
+                                        </a>
+                                    </li>
+                                }
+
+
+
+
                                 @if (User.IsInRole("Administrador") ||
                                                         User.IsInRole("Empleado"))
                                 {

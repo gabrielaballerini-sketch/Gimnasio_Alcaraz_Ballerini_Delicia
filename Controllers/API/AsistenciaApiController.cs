@@ -156,6 +156,98 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
 
             return Ok(resultado);
         }
+    
+
+ 
+ [Authorize(Roles = "Socio")]
+        [HttpGet("mia")]
+        public IActionResult ObtenerMias(
+            [FromQuery] DateTime? desde,
+            [FromQuery] DateTime? hasta,
+            [FromQuery] bool periodoActual = true,
+            [FromQuery] int pagina = 1,
+            [FromQuery] int tamPagina = 10)
+        {
+            if (!int.TryParse(User.FindFirst("IdSocio")?.Value, out var idSocio))
+            {
+                return NotFound(new
+                {
+                    mensaje = "Tu usuario no tiene una ficha de socio asociada."
+                });
+            }
+
+            if (desde.HasValue && hasta.HasValue &&
+                desde.Value.Date > hasta.Value.Date)
+            {
+                return BadRequest(new
+                {
+                    mensaje = "La fecha inicial no puede ser posterior a la fecha final."
+                });
+            }
+
+            if (pagina < 1) pagina = 1;
+            if (tamPagina < 1) tamPagina = 10;
+            if (tamPagina > 100) tamPagina = 100;
+
+            try
+            {
+                var acceso = _service.ObtenerAcceso(idSocio);
+
+                var resumen = new
+                {
+                    plan = acceso.Plan,
+                    tienePeriodoVigente = acceso.IdMembresia.HasValue,
+                    vigenteDesde = acceso.VigenteDesde,
+                    venceEl = acceso.VenceEl,
+                    ilimitado = acceso.Ilimitado,
+                    permitidas = acceso.Limite,
+                    utilizadas = acceso.Usadas,
+                    disponibles = acceso.Ilimitado
+                        ? (int?)null
+                        : Math.Max(0, (acceso.Limite ?? 0) - acceso.Usadas),
+                    motivo = acceso.Motivo
+                };
+
+                if (periodoActual)
+                {
+                    // Sin período vigente (sin membresía o pendiente de pago)
+                    // no hay nada que mostrar en "período actual".
+                    if (!acceso.VigenteDesde.HasValue || !acceso.VenceEl.HasValue)
+                    {
+                        return Ok(new
+                        {
+                            resumen,
+                            items = new List<Asistencia>(),
+                            total = 0,
+                            pagina = 1,
+                            tamPagina
+                        });
+                    }
+
+                    // Las fechas las fija el servidor, no el navegador
+                    desde = acceso.VigenteDesde.Value.Date;
+                    hasta = acceso.VenceEl.Value.Date;
+                }
+
+                var historial = _service.Listar(desde, hasta, idSocio, pagina, tamPagina);
+
+                return Ok(new
+                {
+                    resumen,
+                    items = historial.Items,
+                    total = historial.Total,
+                    pagina = historial.Pagina,
+                    tamPagina = historial.TamPagina
+                });
+            }
+            catch (ReglaNegocioException ex)
+            {
+                return BadRequest(new { mensaje = ex.Message });
+            }
+        }
+
+
+ 
 
         private IActionResult ErroresDeModelo()
         {

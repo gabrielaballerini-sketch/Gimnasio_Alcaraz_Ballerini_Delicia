@@ -1,4 +1,3 @@
-
 using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
 using Gimnasio_Alcaraz_Ballerini_Delicia.Service;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -11,9 +10,6 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
 {
     [ApiController]
     [Route("api/pagos")]
-    [Authorize(
-        AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-        Roles = "Administrador,Empleado")]
     public class PagoApiController : ControllerBase
     {
         private readonly PagoService _service;
@@ -25,14 +21,14 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
 
         // Busca la membresía del socio que corresponde cobrar
         // (pendiente de pago, vencida o vigente).
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+            Roles = "Administrador,Empleado")]
         [HttpGet("membresia-cobro")]
-        public IActionResult BuscarMembresiaParaCobro(
-            [FromQuery] string dni)
+        public IActionResult BuscarMembresiaParaCobro([FromQuery] string dni)
         {
             try
             {
-                var membresia =
-                    _service.ObtenerMembresiaParaCobroPorDni(dni);
+                var membresia = _service.ObtenerMembresiaParaCobroPorDni(dni);
 
                 var hoy = DateTime.Today;
                 bool vigente =
@@ -73,6 +69,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
         }
 
         // Registra el pago inicial o la renovación.
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+            Roles = "Administrador,Empleado")]
         [HttpPost("membresia/{idMembresia:int}")]
         public IActionResult RegistrarPorMembresia(
             int idMembresia,
@@ -121,6 +119,104 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             {
                 return BadRequest(new { mensaje = ex.Message });
             }
+        }
+
+        // Listado de todos los pagos
+        // Quién registr / anuló el pago 
+
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+            Roles = "Administrador,Empleado")]
+        [HttpGet]
+        public IActionResult Listar(
+            [FromQuery] int pagina = 1,
+            [FromQuery] int tamPagina = 10)
+        {
+            if (tamPagina > 100)
+                tamPagina = 100;
+
+            var resultado = _service.Listar(pagina, tamPagina);
+            bool esAdmin = User.IsInRole("Administrador");
+
+            return Ok(new
+            {
+                items = resultado.Items.Select(p => Proyectar(p, esAdmin)),
+                total = resultado.Total,
+                pagina = resultado.Pagina,
+                tamPagina = resultado.TamPagina
+            });
+        }
+
+        // Pagos del socio logueado. 
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+            Roles = "Socio")]
+        [HttpGet("mios")]
+        public IActionResult Mios(
+            [FromQuery] int pagina = 1,
+            [FromQuery] int tamPagina = 100)
+        {
+            if (!int.TryParse(
+                User.FindFirstValue(ClaimTypes.NameIdentifier),
+                out var idUsuario))
+            {
+                return Unauthorized(new { mensaje = "Token inválido." });
+            }
+
+            if (tamPagina > 100)
+                tamPagina = 100;
+
+            var pagos = _service.ListarDeUsuario(idUsuario, pagina, tamPagina);
+
+            return Ok(pagos.Select(p => Proyectar(p, false)));
+        }
+
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+            Roles = "Administrador")]
+        [HttpPost("{idPago:int}/anular")]
+        public IActionResult Anular(int idPago)
+        {
+            if (!int.TryParse(
+                User.FindFirstValue(ClaimTypes.NameIdentifier),
+                out var idUsuario))
+            {
+                return Unauthorized(new
+                {
+                    mensaje = "Token inválido: no se pudo identificar al usuario."
+                });
+            }
+
+            try
+            {
+                _service.Anular(idPago, idUsuario);
+
+                return Ok(new { mensaje = "Pago anulado correctamente." });
+            }
+            catch (ReglaNegocioException ex)
+            {
+                return BadRequest(new { mensaje = ex.Message });
+            }
+        }
+
+
+        // lo usamos en listar y mio ( para q salga solo lo q yo quiero)
+        private static object Proyectar(Pago p, bool incluirAuditoria)
+        {
+            return new
+            {
+                p.IdPago,
+                p.IdMembresia,
+                p.Fecha,
+                p.Importe,
+                medioPago = (int)p.MedioPago,
+                estado = p.Estado,
+                socio = p.Membresia?.Socio == null ? null : new
+                {
+                    p.Membresia.Socio.IdSocio,
+                    p.Membresia.Socio.Nombre,
+                    p.Membresia.Socio.Apellido
+                },
+                idUsuarioCreador = incluirAuditoria ? (int?)p.IdUsuarioCreador : null,
+                idUsuarioAnulador = incluirAuditoria ? p.IdUsuarioAnulador : null
+            };
         }
     }
 

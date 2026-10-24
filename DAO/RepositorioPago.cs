@@ -330,28 +330,91 @@ public int RegistrarPagoYHabilitarMembresia(
             return Convert.ToInt32(comando.ExecuteScalar());
         }
 
-
-        public int Anular(int idPago, int idUsuarioAnulador)
+   public int Anular(int idPago, int idUsuarioAnulador)
         {
             using var conexion = CrearConexion();
-
-            const string sql = @"
-                UPDATE pago
-                SET Estado = 0,
-                    IdUsuarioAnulador = @IdUsuarioAnulador
-                WHERE IdPago = @IdPago
-                  AND Estado = 1;";
-
-            using var comando = new MySqlCommand(sql, conexion);
-
-            comando.Parameters.AddWithValue(
-                "@IdUsuarioAnulador", idUsuarioAnulador);
-            comando.Parameters.AddWithValue("@IdPago", idPago);
-
             conexion.Open();
 
-            return comando.ExecuteNonQuery();
+            using var transaccion = conexion.BeginTransaction();
+
+            try
+            {
+                //  Bloquear el pago (si sigue activo) y obtener su membresía
+                int idMembresia;
+
+                using (var cmd = new MySqlCommand(@"
+                    SELECT IdMembresia
+                    FROM pago
+                    WHERE IdPago = @IdPago AND Estado = 1
+                    FOR UPDATE;", conexion, transaccion))
+                {
+                    cmd.Parameters.AddWithValue("@IdPago", idPago);
+
+                    var valor = cmd.ExecuteScalar();
+
+                    if (valor == null)
+                    {
+                        transaccion.Rollback();
+                        return 0;   // no existe o ya estaba anulado
+                    }
+
+                    idMembresia = Convert.ToInt32(valor);
+                }
+
+                //  Baja lógica: queda como anulado
+                using (var cmd = new MySqlCommand(@"
+                    UPDATE pago
+                    SET Estado = 0,
+                        IdUsuarioAnulador = @IdUsuarioAnulador
+                    WHERE IdPago = @IdPago AND Estado = 1;", conexion, transaccion))
+                {
+                    cmd.Parameters.AddWithValue("@IdUsuarioAnulador", idUsuarioAnulador);
+                    cmd.Parameters.AddWithValue("@IdPago", idPago);
+                    cmd.ExecuteNonQuery();
+                }
+
+                // verifico si  Queda algún pago activo posterior de la misma membresía
+                int posteriores;
+
+                using (var cmd = new MySqlCommand(@"
+                    SELECT COUNT(*)
+                    FROM pago
+                    WHERE IdMembresia = @IdMembresia
+                      AND Estado = 1
+                      AND IdPago > @IdPago;", conexion, transaccion))
+                {
+                    cmd.Parameters.AddWithValue("@IdMembresia", idMembresia);
+                    cmd.Parameters.AddWithValue("@IdPago", idPago);
+                    posteriores = Convert.ToInt32(cmd.ExecuteScalar());
+                }
+
+                // Si no queda ninguno, era el que habilitaba el período actual:
+                // la membresía vuelve a "pendiente de pago".
+                if (posteriores == 0)
+                {
+                    using var cmd = new MySqlCommand(@"
+                        UPDATE membresia
+                        SET Pagada = 0,
+                            FechaFin = DATE_SUB(FechaInicio, INTERVAL 1 DAY)
+                        WHERE IdMembresia = @IdMembresia;", conexion, transaccion);
+
+                    cmd.Parameters.AddWithValue("@IdMembresia", idMembresia);
+                    cmd.ExecuteNonQuery();
+                }
+
+                transaccion.Commit();
+
+                return 1;
+            }
+            catch
+            {
+                try { transaccion.Rollback(); } catch { }
+                throw;
+            }
         }
+
+
+
 
         private static Pago Mapear(MySqlDataReader reader)
         {

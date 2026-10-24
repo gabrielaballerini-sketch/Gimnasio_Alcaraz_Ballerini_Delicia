@@ -3,7 +3,6 @@ using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
 
 namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
 {
-    // Situación de un socio frente al acceso: qué plan tiene y cuánto usó
 
 
     public class AsistenciaService
@@ -46,11 +45,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
                 return acceso;
             }
 
-
-
-
             var membresia = _repo.ObtenerMembresiaVigente(
-       idSocio, DateTime.Today);
+                idSocio, DateTime.Today);
 
             if (membresia == null)
             {
@@ -70,24 +66,16 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
 
             acceso.IdMembresia = membresia.IdMembresia;
             acceso.Plan = membresia.Plan.Nombre;
+            acceso.VigenteDesde = membresia.FechaInicio;
             acceso.VenceEl = membresia.FechaFin;
             acceso.Ilimitado = !tieneLimite;
             acceso.Limite = tieneLimite ? membresia.Plan.UtilizacionesMensuales : null;
 
-
-            var inicioMes = new DateTime(
-                DateTime.Today.Year,
-                DateTime.Today.Month,
-                1);
-
-            var inicioMesSiguiente = inicioMes.AddMonths(1);
-
+      
             acceso.Usadas = _repo.ContarEnPeriodo(
                 idSocio,
-                inicioMes,
-                inicioMesSiguiente);
-
-
+                membresia.FechaInicio.Date,
+                membresia.FechaFin.Date.AddDays(1));
 
             if (tieneLimite && acceso.Usadas >= acceso.Limite)
             {
@@ -198,12 +186,15 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             if (tamPagina < 1)
                 tamPagina = 10;
 
+           
+            var hastaExclusivo = hasta?.Date.AddDays(1);
+
             return new ResultadoPaginado<Asistencia>
             {
-                Items = _repo.Listar(desde, hasta, idSocio, pagina, tamPagina),
+                Items = _repo.Listar(desde, hastaExclusivo, idSocio, pagina, tamPagina),
                 Pagina = pagina,
                 TamPagina = tamPagina,
-                Total = _repo.Contar(desde, hasta, idSocio)
+                Total = _repo.Contar(desde, hastaExclusivo, idSocio)
             };
         }
     }

@@ -1,4 +1,3 @@
-
 using Gimnasio_Alcaraz_Ballerini_Delicia.DAO;
 using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
 using System.Text.RegularExpressions;
@@ -21,7 +20,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             _repoPlan = repoPlan;
         }
 
-        // Una renovación es una membresía ya pagada cuyo período venció.
+   
         public static bool EsRenovacion(Membresia membresia)
         {
             return membresia.Pagada &&
@@ -68,8 +67,6 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
                     "Ingresá un DNI válido de entre 7 y 10 dígitos.");
             }
 
-            // Antes se buscaba solo una membresía "pagada y vigente", por eso
-            // nunca aparecía una membresía nueva (pendiente de pago) ni una vencida.
             var membresia = _repoMembresia.ObtenerParaCobroPorDni(dni.Trim());
 
             if (membresia == null)
@@ -176,6 +173,64 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
                 fechaFin);
 
             return pago;
+        }
+
+               public void Anular(int idPago, int idUsuarioAnulador)
+        {
+            if (idPago <= 0)
+            {
+                throw new ReglaNegocioException(
+                    "El pago indicado no es válido.");
+            }
+
+            if (idUsuarioAnulador <= 0)
+            {
+                throw new ReglaNegocioException( "No se pudo identificar al usuario que anula el pago.");
+            }
+
+            var pago = _repoPago.ObtenerPorId(idPago) ?? throw new ReglaNegocioException("No se encontró el pago.");
+
+            if (!pago.Estado)
+            { throw new ReglaNegocioException("El pago ya está anulado.");
+            }
+
+            if (_repoPago.Anular(idPago, idUsuarioAnulador) == 0)
+            {
+                throw new ReglaNegocioException("No se pudo anular el pago.");
+            }
+        }
+
+        // Todos los pagos (activos y anulados) para Administrador y Empleado.
+        public ResultadoPaginado<Pago> Listar(int pagina = 1, int tamPagina = 10)
+        {
+            if (pagina < 1)
+                pagina = 1;
+
+            if (tamPagina < 1)
+                tamPagina = 10;
+
+            return new ResultadoPaginado<Pago>
+            {
+                Items = _repoPago.ObtenerTodos(pagina, tamPagina),
+                Pagina = pagina,
+                TamPagina = tamPagina,
+                Total = _repoPago.ObtenerCantidad(null)   
+            };
+        }
+
+        // Pagos del socio logueado (se busca por IdUsuario).
+        public IList<Pago> ListarDeUsuario(
+            int idUsuario,
+            int pagina = 1,
+            int tamPagina = 100)
+        {
+            if (pagina < 1)
+                pagina = 1;
+
+            if (tamPagina < 1)
+                tamPagina = 10;
+
+            return _repoPago.ObtenerPorSocio(idUsuario, pagina, tamPagina);
         }
     }
 }

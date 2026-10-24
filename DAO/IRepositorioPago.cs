@@ -13,6 +13,10 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
 
         Pago? ObtenerPorId(int id);
 
+        IList<Pago> ObtenerTodos(
+            int pagina = 1,
+            int tamPagina = 10);
+
         IList<Pago> ObtenerPorSocio(
             int idUsuario,
             int pagina = 1,

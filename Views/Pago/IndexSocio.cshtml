@@ -19,7 +19,6 @@
                     <tr>
                         <th>N.º</th>
                         <th>Membresía</th>
-                        <th>Concepto</th>
                         <th>Fecha</th>
                         <th>Importe</th>
                         <th>Medio de pago</th>
@@ -28,13 +27,13 @@
                 </thead>
                 <tbody>
                     <tr v-if="cargando">
-                        <td colspan="7" class="text-center py-4">
+                        <td colspan="6" class="text-center py-4">
                             Cargando pagos...
                         </td>
                     </tr>
 
                     <tr v-else-if="pagos.length === 0">
-                        <td colspan="7" class="text-center py-4">
+                        <td colspan="6" class="text-center py-4">
                             Todavía no tenés pagos registrados.
                         </td>
                     </tr>
@@ -42,7 +41,6 @@
                     <tr v-for="p in pagos" :key="p.idPago">
                         <td>{{ p.idPago }}</td>
                         <td>{{ p.idMembresia }}</td>
-                        <td>{{ p.concepto }}</td>
                         <td>{{ fecha(p.fecha) }}</td>
                         <td>{{ moneda(p.importe) }}</td>
                         <td>{{ medio(p.medioPago) }}</td>
@@ -59,6 +57,7 @@
 </div>
 
 @section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script>
         const { createApp } = Vue;
 

@@ -17,5 +17,10 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Models
         public bool Ilimitado { get; set; }
         public int? Limite { get; set; }
         public int Usadas { get; set; }
+
+
+        // para q el socio pueda ver el periodo vigente de mi membresia
+        public DateTime? VigenteDesde { get; set; }  
+
     }
 }
