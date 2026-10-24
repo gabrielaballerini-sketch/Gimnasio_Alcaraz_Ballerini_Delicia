@@ -84,6 +84,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
                 m.IdPlan,
                 m.FechaInicio,
                 m.FechaFin,
+                m.Pagada,
 
                 p.Nombre                 AS Plan_Nombre,
                 p.UtilizacionesMensuales AS Plan_Utilizaciones,
@@ -96,6 +97,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
 
             WHERE m.IdSocio = @IdSocio
               AND m.Estado = 1
+              AND m.Pagada = 1
               AND m.FechaInicio <= @Fecha
               AND m.FechaFin >= @Fecha
 
@@ -120,6 +122,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
                 IdPlan = r.GetInt32("IdPlan"),
                 FechaInicio = r.GetDateTime("FechaInicio"),
                 FechaFin = r.GetDateTime("FechaFin"),
+                Pagada = r.GetBoolean("Pagada"),
                 Plan = new Plan
                 {
                     IdPlan = r.GetInt32("IdPlan"),

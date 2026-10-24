@@ -37,6 +37,142 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             return pago.IdPago;
         }
 
+      
+public int RegistrarPagoYHabilitarMembresia(
+    Pago pago,
+    DateTime fechaInicio,
+    DateTime fechaFin)
+{
+    using var conexion = CrearConexion();
+    conexion.Open();
+
+    using var transaccion = conexion.BeginTransaction();
+
+    try
+    {
+        const string sqlBloqueo = @" SELECT Estado, Pagada, FechaInicio, FechaFin
+            FROM membresia
+            WHERE IdMembresia = @IdMembresia
+            FOR UPDATE;";
+
+        bool estado;
+        bool pagada;
+        DateTime inicioActual;
+        DateTime finActual;
+
+        using (var comando = new MySqlCommand(
+            sqlBloqueo, conexion, transaccion))
+        {
+            comando.Parameters.AddWithValue( "@IdMembresia", pago.IdMembresia);
+
+            using var reader = comando.ExecuteReader();
+
+            if (!reader.Read())
+                throw new InvalidOperationException(
+                    "No se encontró la membresía.");
+
+            estado = reader.GetBoolean("Estado");
+            pagada = reader.GetBoolean("Pagada");
+            inicioActual = reader.GetDateTime("FechaInicio");
+            finActual = reader.GetDateTime("FechaFin");
+        }
+
+        if (!estado)
+            throw new InvalidOperationException( "No se puede cobrar una membresía dada de baja.");
+
+        bool vigente =
+            inicioActual.Date <= DateTime.Today && finActual.Date >= DateTime.Today;
+
+        if (pagada && vigente)
+            throw new InvalidOperationException(
+                "La membresía ya está pagada y vigente.");
+
+        const string sqlPago = @"
+            INSERT INTO pago
+            (
+                IdMembresia,
+                Fecha,
+                Importe,
+                MedioPago,
+                Estado,
+                IdUsuarioCreador,
+                IdUsuarioAnulador
+            )
+            VALUES
+            (
+                @IdMembresia,
+                @Fecha,
+                @Importe,
+                @MedioPago,
+                1,
+                @IdUsuarioCreador,
+                NULL
+            );
+
+            SELECT LAST_INSERT_ID();";
+
+        using (var comando = new MySqlCommand(
+            sqlPago, conexion, transaccion))
+        {
+            comando.Parameters.AddWithValue( "@IdMembresia", pago.IdMembresia);
+            comando.Parameters.AddWithValue("@Fecha", pago.Fecha);
+            comando.Parameters.AddWithValue("@Importe", pago.Importe);
+            comando.Parameters.AddWithValue( "@MedioPago", (int)pago.MedioPago);
+            comando.Parameters.AddWithValue( "@IdUsuarioCreador", pago.IdUsuarioCreador);
+
+            pago.IdPago = Convert.ToInt32(
+                comando.ExecuteScalar());
+        }
+
+        const string sqlMembresia = @"  UPDATE membresia
+            SET FechaInicio = @FechaInicio,
+                FechaFin = @FechaFin,
+                PrecioContratado = @Importe,
+                Pagada = 1
+            WHERE IdMembresia = @IdMembresia AND Estado = 1;";
+
+        using (var comando = new MySqlCommand(
+            sqlMembresia, conexion, transaccion))
+        {
+            comando.Parameters.AddWithValue(
+                "@FechaInicio", fechaInicio.Date);
+            comando.Parameters.AddWithValue(
+                "@FechaFin", fechaFin.Date);
+
+            // En una renovación, el precio contratado pasa a ser el del nuevo período.
+            comando.Parameters.AddWithValue(
+                "@Importe", pago.Importe);
+            comando.Parameters.AddWithValue(
+                "@IdMembresia", pago.IdMembresia);
+
+            int filas = comando.ExecuteNonQuery();
+
+            if (filas != 1)
+                throw new InvalidOperationException( "No se pudo habilitar la membresía.");
+        }
+
+        transaccion.Commit();
+
+        pago.Estado = true;
+
+        return pago.IdPago;
+    }
+    catch
+    {
+        try
+        {
+            transaccion.Rollback();
+        }
+        catch
+        {
+            // Conservamos la excepción original.
+        }
+
+        throw;
+    }
+}
+
+
         public Pago? ObtenerPorId(int id)
         {
             using var conexion = CrearConexion();
@@ -245,6 +381,9 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
                     }
                 }
             };
+        
+
         }
+
     }
 }

@@ -41,6 +41,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
                     m.FechaInicio,
                     m.FechaFin,
                     m.PrecioContratado,
+                    m.Pagada,
                     Plan = new
                     {
                         m.Plan.IdPlan,

@@ -5,7 +5,7 @@
 <div class="container mt-4 mb-5" id="appPagos">
     <div class="mb-4">
         <h1 class="mb-1"><i class="bi bi-cash-stack me-2"></i>Registrar pago</h1>
-        <p class="text-muted mb-0">Buscá al socio por DNI. El sistema identifica su membresía vigente y calcula el importe automáticamente.</p>
+        <p class="text-muted mb-0">Buscá al socio por DNI. El sistema identifica su membresía (pendiente de pago, vencida o vigente) y calcula el importe automáticamente.</p>
     </div>
 
     <div v-if="mensaje" class="alert alert-success alert-dismissible" role="alert">
@@ -58,11 +58,21 @@
                 </div>
                 <div class="col-md-6">
                     <div class="border rounded p-3 h-100">
-                        <div class="small text-muted mb-1">Membresía vigente</div>
+                        <div class="small text-muted mb-1">
+                            Membresía
+                            <span v-if="resultado.membresia.vigente" class="badge bg-success ms-1">Pagada y vigente</span>
+                            <span v-else-if="resultado.membresia.pagada" class="badge bg-danger ms-1">Vencida</span>
+                            <span v-else class="badge bg-warning text-dark ms-1">Pendiente de pago</span>
+                        </div>
                         <div class="fs-5 fw-semibold">{{ resultado.membresia.plan }}</div>
-                        <div class="text-muted">Vigencia: {{ fecha(resultado.membresia.fechaInicio) }} al {{ fecha(resultado.membresia.fechaFin) }}</div>
+                        <div v-if="resultado.membresia.pagada" class="text-muted">Vigencia: {{ fecha(resultado.membresia.fechaInicio) }} al {{ fecha(resultado.membresia.fechaFin) }}</div>
+                        <div v-else class="text-muted">Sin vigencia: se habilita al registrar el pago.</div>
                     </div>
                 </div>
+            </div>
+
+            <div v-if="!resultado.membresia.requiereCobro" class="alert alert-info">
+                Esta membresía ya está pagada y vigente hasta el {{ fecha(resultado.membresia.fechaFin) }}. No hay nada para cobrar.
             </div>
 
             <form @@submit.prevent="registrarPago">
@@ -71,9 +81,9 @@
                         <label for="importe" class="form-label">Importe a registrar</label>
                         <div class="input-group input-group-lg">
                             <span class="input-group-text">$</span>
-                            <input id="importe" class="form-control fw-semibold" :value="moneda(resultado.membresia.precioContratado)" readonly />
+                            <input id="importe" class="form-control fw-semibold" :value="moneda(resultado.membresia.importeACobrar)" readonly />
                         </div>
-                        <div class="form-text">Importe tomado de la membresía contratada; no se puede editar desde el formulario.</div>
+                        <div class="form-text">Primer pago: precio contratado. Renovación: precio actual del plan. No se puede editar.</div>
                     </div>
                     <div class="col-md-5">
                         <label for="medioPago" class="form-label">Medio de pago</label>
@@ -85,7 +95,7 @@
                         </select>
                     </div>
                     <div class="col-md-2 d-grid">
-                        <button type="submit" class="btn btn-success btn-lg" :disabled="registrando">
+                        <button type="submit" class="btn btn-success btn-lg" :disabled="registrando || !resultado.membresia.requiereCobro">
                             <span v-if="registrando" class="spinner-border spinner-border-sm me-1" role="status"></span>
                             {{ registrando ? 'Guardando...' : 'Registrar' }}
                         </button>
@@ -97,7 +107,7 @@
 
     <div v-else-if="!buscando" class="text-center text-muted py-4">
         <i class="bi bi-person-vcard fs-1 d-block mb-2"></i>
-        Ingresá el DNI y buscá al socio para consultar su membresía vigente.
+        Ingresá el DNI y buscá al socio para consultar su membresía.
     </div>
 </div>
 
@@ -152,9 +162,9 @@
                     }
                     this.buscando = true;
                     try {
-                        const respuesta = await this.peticionApi(`/api/pagos/membresia-vigente?dni=${encodeURIComponent(this.dni)}`);
+                        const respuesta = await this.peticionApi(`/api/pagos/membresia-cobro?dni=${encodeURIComponent(this.dni)}`);
                         const datos = await respuesta.json();
-                        if (!respuesta.ok) throw new Error(datos.mensaje || 'No se encontró una membresía vigente para ese DNI.');
+                        if (!respuesta.ok) throw new Error(datos.mensaje || 'No se encontró una membresía para ese DNI.');
                         this.resultado = datos;
                         this.medioPago = 1;
                     } catch (e) {
@@ -169,10 +179,11 @@
                     this.mensaje = '';
                     this.registrando = true;
                     try {
-                        const respuesta = await this.peticionApi('/api/pagos', {
+                        // Antes se enviaba a '/api/pagos', una ruta que no existe en la API.
+                        const respuesta = await this.peticionApi(`/api/pagos/membresia/${this.resultado.membresia.idMembresia}`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ dni: this.resultado.socio.dni, medioPago: this.medioPago })
+                            body: JSON.stringify({ medioPago: this.medioPago })
                         });
                         const datos = await respuesta.json();
                         if (!respuesta.ok) throw new Error(datos.mensaje || 'No se pudo registrar el pago.');

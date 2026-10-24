@@ -82,7 +82,7 @@
                         <div class="text-muted mb-3">{{ principal.detalle }}</div>
 
                         <div class="progress" style="height:10px"
-                             v-if="principal.estadoVigencia !== 'proxima'">
+                             v-if="principal.estadoVigencia !== 'proxima' && principal.estadoVigencia !== 'pendiente'">
                             <div class="progress-bar"
                                  v-bind:class="'bg-' + principal.color"
                                  v-bind:style="{ width: principal.porcentaje + '%' }"></div>
@@ -151,7 +151,14 @@
 
             let r;
 
-            if (inicio > hoy) {
+            if (!m.pagada) {
+                // Recién creada o sin pagar: todavía no tiene período habilitado.
+                r = {
+                    estadoVigencia: 'pendiente', color: 'warning', etiqueta: 'Pendiente de pago',
+                    titulo: 'Estado', grande: 'Sin pagar',
+                    detalle: 'Se habilita cuando se registre el pago en recepción'
+                };
+            } else if (inicio > hoy) {
                 const diasParaInicio = Math.round((inicio - hoy) / DIA);
                 r = {
                     estadoVigencia: 'proxima', color: 'info', etiqueta: 'Próxima',

@@ -1,3 +1,4 @@
+
 using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
 using Gimnasio_Alcaraz_Ballerini_Delicia.Service;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -10,28 +11,58 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
 {
     [ApiController]
     [Route("api/pagos")]
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "Administrador,Empleado")]
+    [Authorize(
+        AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+        Roles = "Administrador,Empleado")]
     public class PagoApiController : ControllerBase
     {
         private readonly PagoService _service;
-        public PagoApiController(PagoService service) => _service = service;
 
-        [HttpGet("membresia-vigente")]
-        public IActionResult BuscarMembresiaVigente([FromQuery] string dni)
+        public PagoApiController(PagoService service)
+        {
+            _service = service;
+        }
+
+        // Busca la membresía del socio que corresponde cobrar
+        // (pendiente de pago, vencida o vigente).
+        [HttpGet("membresia-cobro")]
+        public IActionResult BuscarMembresiaParaCobro(
+            [FromQuery] string dni)
         {
             try
             {
-                var m = _service.ObtenerMembresiaVigentePorDni(dni);
+                var membresia =
+                    _service.ObtenerMembresiaParaCobroPorDni(dni);
+
+                var hoy = DateTime.Today;
+                bool vigente =
+                    membresia.Pagada &&
+                    membresia.FechaInicio.Date <= hoy &&
+                    membresia.FechaFin.Date >= hoy;
+
                 return Ok(new
                 {
-                    socio = new { m.Socio.IdSocio, m.Socio.Nombre, m.Socio.Apellido, m.Socio.Dni },
+                    socio = new
+                    {
+                        membresia.Socio.IdSocio,
+                        membresia.Socio.Nombre,
+                        membresia.Socio.Apellido,
+                        membresia.Socio.Dni
+                    },
+
                     membresia = new
                     {
-                        m.IdMembresia,
-                        m.FechaInicio,
-                        m.FechaFin,
-                        m.PrecioContratado,
-                        plan = m.Plan.Nombre
+                        membresia.IdMembresia,
+                        membresia.FechaInicio,
+                        membresia.FechaFin,
+                        membresia.PrecioContratado,
+                        membresia.Pagada,
+                        vigente,
+                        requiereCobro = !vigente,
+                        importeACobrar = vigente
+                            ? membresia.PrecioContratado
+                            : _service.ObtenerImporteACobrar(membresia),
+                        plan = membresia.Plan.Nombre
                     }
                 });
             }
@@ -41,41 +72,60 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             }
         }
 
-        [HttpPost]
-        public IActionResult Registrar([FromBody] RegistrarPagoRequest request)
+        // Registra el pago inicial o la renovación.
+        [HttpPost("membresia/{idMembresia:int}")]
+        public IActionResult RegistrarPorMembresia(
+            int idMembresia,
+            [FromBody] RegistrarPagoMembresiaRequest request)
         {
             if (!ModelState.IsValid)
-                return BadRequest(new { mensaje = "Revisá el DNI y el medio de pago ingresados." });
+            {
+                return BadRequest(new
+                {
+                    mensaje = "Seleccioná un medio de pago válido."
+                });
+            }
 
-            if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var idUsuario))
-                return Unauthorized(new { mensaje = "Token inválido: no se pudo identificar al usuario." });
+            if (!int.TryParse(
+                User.FindFirstValue(ClaimTypes.NameIdentifier),
+                out var idUsuario))
+            {
+                return Unauthorized(new
+                {
+                    mensaje = "Token inválido: no se pudo identificar al usuario."
+                });
+            }
 
             try
             {
-                var pago = _service.Registrar(request.Dni, request.MedioPago, idUsuario);
+                var pago = _service.Registrar(
+                    idMembresia,
+                    request.MedioPago,
+                    idUsuario);
+
                 return Ok(new
                 {
                     mensaje = "Pago registrado correctamente.",
                     pago.IdPago,
+                    pago.IdMembresia,
                     pago.Fecha,
                     pago.Importe,
-                    medioPago = (int)pago.MedioPago,
-                    pago.IdMembresia
+                    medioPago = (int)pago.MedioPago
                 });
             }
             catch (ReglaNegocioException ex)
             {
                 return BadRequest(new { mensaje = ex.Message });
             }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { mensaje = ex.Message });
+            }
         }
     }
 
-    public class RegistrarPagoRequest
+    public class RegistrarPagoMembresiaRequest
     {
-        [Required]
-        [RegularExpression(@"^\d{7,10}$", ErrorMessage = "El DNI debe tener entre 7 y 10 dígitos.")]
-        public string Dni { get; set; } = string.Empty;
-
         [Range(1, 4, ErrorMessage = "Seleccioná un medio de pago válido.")]
         public MedioPago MedioPago { get; set; } = MedioPago.Efectivo;
     }

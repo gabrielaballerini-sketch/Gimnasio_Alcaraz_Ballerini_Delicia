@@ -4,8 +4,11 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
 {
     public interface IRepositorioMembresia : IRepositorio<Membresia>
     {
-        Membresia? ObtenerVigentePorDni(string dni, DateTime fecha);
+        Membresia? ObtenerParaCobroPorDni(string dni);
 
+
+        bool ExistePorSocio(int idSocio);
+        
         IList<Membresia> ObtenerActivosPorSocio(
             int idSocio,
             int pagina = 1,

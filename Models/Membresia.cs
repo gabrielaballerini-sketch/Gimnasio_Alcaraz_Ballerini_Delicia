@@ -1,4 +1,6 @@
+
 using System.ComponentModel.DataAnnotations;
+
 namespace Gimnasio_Alcaraz_Ballerini_Delicia.Models
 {
     public class Membresia
@@ -12,17 +14,20 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Models
         public Plan Plan { get; set; } = null!;
 
         [Required(ErrorMessage = "Debe seleccionar una fecha de inicio")]
-
         public DateTime FechaInicio { get; set; }
 
         public DateTime FechaFin { get; set; }
 
         public decimal PrecioContratado { get; set; }
+
+        // Baja lógica administrativa.
         public bool Estado { get; set; } = true;
 
+        // Indica si el período habilitado fue abonado.
+        public bool Pagada { get; set; } = false;
 
         public int IdUsuarioCreador { get; set; }
 
-        public Usuario? Usuario { get; set; } = null;
+        public Usuario? Usuario { get; set; } = null!;
     }
 }

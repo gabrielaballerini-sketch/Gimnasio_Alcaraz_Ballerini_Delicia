@@ -5,7 +5,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
 {
     public class RepositorioMembresia : RepositorioBase, IRepositorioMembresia
     {
-        public RepositorioMembresia(IConfiguration configuration) : base(configuration)
+        public RepositorioMembresia(IConfiguration configuration)
+            : base(configuration)
         {
         }
 
@@ -13,121 +14,110 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
         {
             using var conexion = CrearConexion();
 
-            var sql = @"
+            const string sql = @"
                 INSERT INTO membresia
-                    (
-                        IdSocio,
-                        IdPlan,
-                        FechaInicio,
-                        FechaFin,
-                        PrecioContratado,
-                        Estado,
-                        IdUsuarioCreador
-                    )
+                (
+                    IdSocio,
+                    IdPlan,
+                    FechaInicio,
+                    FechaFin,
+                    PrecioContratado,
+                    Estado,
+                    Pagada,
+                    IdUsuarioCreador
+                )
                 VALUES
-                    (
-                        @IdSocio,
-                        @IdPlan,
-                        @FechaInicio,
-                        @FechaFin,
-                        @PrecioContratado,
-                        @Estado,
-                        @IdUsuarioCreador
-                    );
+                (
+                    @IdSocio,
+                    @IdPlan,
+                    @FechaInicio,
+                    @FechaFin,
+                    @PrecioContratado,
+                    @Estado,
+                    @Pagada,
+                    @IdUsuarioCreador
+                );
 
                 SELECT LAST_INSERT_ID();";
 
-            using var comand =
-                new MySqlCommand(sql, conexion);
+            using var comando = new MySqlCommand(sql, conexion);
 
-            CargarParametros(comand, membresia);
+            CargarParametros(comando, membresia);
 
             conexion.Open();
 
-            var id = Convert.ToInt32(
-                comand.ExecuteScalar()
-            );
+            membresia.IdMembresia =
+                Convert.ToInt32(comando.ExecuteScalar());
 
-            membresia.IdMembresia = id;
-
-            return id;
+            return membresia.IdMembresia;
         }
 
         public int Modificacion(Membresia membresia)
         {
             using var conexion = CrearConexion();
 
-            var sql = @"
+            const string sql = @"
                 UPDATE membresia
                 SET IdSocio = @IdSocio,
                     IdPlan = @IdPlan,
                     FechaInicio = @FechaInicio,
                     FechaFin = @FechaFin,
-                    PrecioContratado = @PrecioContratado
+                    PrecioContratado = @PrecioContratado,
+                    Estado = @Estado,
+                    Pagada = @Pagada
                 WHERE IdMembresia = @IdMembresia;";
 
-            using var comand =
-                new MySqlCommand(sql, conexion);
+            using var comando = new MySqlCommand(sql, conexion);
 
-            CargarParametros(comand, membresia);
-
-            comand.Parameters.AddWithValue("@Idmembresia", membresia.IdMembresia);
+            CargarParametros(comando, membresia);
+            comando.Parameters.AddWithValue(
+                "@IdMembresia", membresia.IdMembresia);
 
             conexion.Open();
 
-            return comand.ExecuteNonQuery();
+            return comando.ExecuteNonQuery();
         }
 
         public int Baja(int id)
         {
             using var conexion = CrearConexion();
 
-            var sql = @"
+            const string sql = @"
                 UPDATE membresia
                 SET Estado = 0
                 WHERE IdMembresia = @IdMembresia;";
 
-            using var comand =
-                new MySqlCommand(sql, conexion);
-
-            comand.Parameters.AddWithValue(
-                "@IdMembresia",
-                id
-            );
+            using var comando = new MySqlCommand(sql, conexion);
+            comando.Parameters.AddWithValue("@IdMembresia", id);
 
             conexion.Open();
 
-            return comand.ExecuteNonQuery();
+            return comando.ExecuteNonQuery();
         }
 
         public int Reactivar(int id)
         {
             using var conexion = CrearConexion();
 
-            var sql = @"
+            const string sql = @"
                 UPDATE membresia
                 SET Estado = 1
                 WHERE IdMembresia = @IdMembresia
                   AND Estado = 0;";
 
-            using var comand =
-                new MySqlCommand(sql, conexion);
-
-            comand.Parameters.AddWithValue(
-                "@IdMembresia",
-                id
-            );
+            using var comando = new MySqlCommand(sql, conexion);
+            comando.Parameters.AddWithValue("@IdMembresia", id);
 
             conexion.Open();
 
-            return comand.ExecuteNonQuery();
+            return comando.ExecuteNonQuery();
         }
 
         public Membresia? ObtenerPorId(int id)
         {
             using var conexion = CrearConexion();
 
-            var sql = @"
+            const string sql = @"
                 SELECT
                     m.IdMembresia,
                     m.IdSocio,
@@ -136,6 +126,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
                     m.FechaFin,
                     m.PrecioContratado,
                     m.Estado,
+                    m.Pagada,
                     m.IdUsuarioCreador,
 
                     s.IdSocio AS Socio_IdSocio,
@@ -149,46 +140,32 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
                     p.UtilizacionesMensuales AS Plan_UtilizacionesMensuales
 
                 FROM membresia m
-
-                INNER JOIN socio s
-                    ON s.IdSocio = m.IdSocio
-
-                INNER JOIN plan p
-                    ON p.IdPlan = m.IdPlan
-
+                INNER JOIN socio s ON s.IdSocio = m.IdSocio
+                INNER JOIN plan p ON p.IdPlan = m.IdPlan
                 WHERE m.IdMembresia = @IdMembresia;";
 
-            using var comand =
-                new MySqlCommand(sql, conexion);
-
-            comand.Parameters.AddWithValue(
-                "@IdMembresia",
-                id
-            );
+            using var comando = new MySqlCommand(sql, conexion);
+            comando.Parameters.AddWithValue("@IdMembresia", id);
 
             conexion.Open();
 
-            using var read = comand.ExecuteReader();
+            using var reader = comando.ExecuteReader();
 
-            return read.Read() ? Mapear(read) : null;
+            return reader.Read() ? Mapear(reader) : null;
         }
 
         public IList<Membresia> ObtenerActivos(
             int pagina = 1,
             int tamPagina = 10)
         {
-            if (pagina < 1)
-                pagina = 1;
+            pagina = Math.Max(1, pagina);
+            tamPagina = Math.Max(1, tamPagina);
 
-            if (tamPagina < 1)
-                tamPagina = 10;
-
-            IList<Membresia> lista =
-                new List<Membresia>();
+            var lista = new List<Membresia>();
 
             using var conexion = CrearConexion();
 
-            var sql = @"
+            const string sql = @"
                 SELECT
                     m.IdMembresia,
                     m.IdSocio,
@@ -197,6 +174,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
                     m.FechaFin,
                     m.PrecioContratado,
                     m.Estado,
+                    m.Pagada,
                     m.IdUsuarioCreador,
 
                     s.IdSocio AS Socio_IdSocio,
@@ -210,43 +188,23 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
                     p.UtilizacionesMensuales AS Plan_UtilizacionesMensuales
 
                 FROM membresia m
-
-                INNER JOIN socio s
-                    ON s.IdSocio = m.IdSocio
-
-                INNER JOIN plan p
-                    ON p.IdPlan = m.IdPlan
-
+                INNER JOIN socio s ON s.IdSocio = m.IdSocio
+                INNER JOIN plan p ON p.IdPlan = m.IdPlan
                 WHERE m.Estado = 1
-
                 ORDER BY m.FechaInicio DESC, m.IdMembresia DESC
+                LIMIT @TamPagina OFFSET @Desplazamiento;";
 
-                LIMIT @tamPagina
-                OFFSET @desplazamiento;";
-
-            using var comand = new MySqlCommand(sql, conexion);
-
-            comand.Parameters.AddWithValue(
-                "@tamPagina",
-                tamPagina
-            );
-
-            comand.Parameters.AddWithValue(
-                "@desplazamiento",
-                (pagina - 1) * tamPagina
-            );
+            using var comando = new MySqlCommand(sql, conexion);
+            comando.Parameters.AddWithValue("@TamPagina", tamPagina);
+            comando.Parameters.AddWithValue(
+                "@Desplazamiento", (pagina - 1) * tamPagina);
 
             conexion.Open();
 
-            using var read =
-                comand.ExecuteReader();
+            using var reader = comando.ExecuteReader();
 
-            while (read.Read())
-            {
-                lista.Add(
-                    Mapear(read)
-                );
-            }
+            while (reader.Read())
+                lista.Add(Mapear(reader));
 
             return lista;
         }
@@ -255,18 +213,14 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             int pagina = 1,
             int tamPagina = 10)
         {
-            if (pagina < 1)
-                pagina = 1;
+            pagina = Math.Max(1, pagina);
+            tamPagina = Math.Max(1, tamPagina);
 
-            if (tamPagina < 1)
-                tamPagina = 10;
-
-            IList<Membresia> lista =
-                new List<Membresia>();
+            var lista = new List<Membresia>();
 
             using var conexion = CrearConexion();
 
-            var sql = @"
+            const string sql = @"
                 SELECT
                     m.IdMembresia,
                     m.IdSocio,
@@ -275,6 +229,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
                     m.FechaFin,
                     m.PrecioContratado,
                     m.Estado,
+                    m.Pagada,
                     m.IdUsuarioCreador,
 
                     s.IdSocio AS Socio_IdSocio,
@@ -288,108 +243,108 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
                     p.UtilizacionesMensuales AS Plan_UtilizacionesMensuales
 
                 FROM membresia m
-
-                INNER JOIN socio s
-                    ON s.IdSocio = m.IdSocio
-
-                INNER JOIN plan p
-                    ON p.IdPlan = m.IdPlan
-
+                INNER JOIN socio s ON s.IdSocio = m.IdSocio
+                INNER JOIN plan p ON p.IdPlan = m.IdPlan
                 WHERE m.Estado = 0
-
                 ORDER BY m.FechaInicio DESC, m.IdMembresia DESC
+                LIMIT @TamPagina OFFSET @Desplazamiento;";
 
-                LIMIT @tamPagina
-                OFFSET @desplazamiento;";
-
-            using var comand =
-                new MySqlCommand(sql, conexion);
-
-            comand.Parameters.AddWithValue(
-                "@tamPagina",
-                tamPagina
-            );
-
-            comand.Parameters.AddWithValue(
-                "@desplazamiento",
-                (pagina - 1) * tamPagina
-            );
+            using var comando = new MySqlCommand(sql, conexion);
+            comando.Parameters.AddWithValue("@TamPagina", tamPagina);
+            comando.Parameters.AddWithValue(
+                "@Desplazamiento", (pagina - 1) * tamPagina);
 
             conexion.Open();
 
-            using var read =
-                comand.ExecuteReader();
+            using var reader = comando.ExecuteReader();
 
-            while (read.Read())
-            {
-                lista.Add(
-                    Mapear(read)
-                );
-            }
+            while (reader.Read())
+                lista.Add(Mapear(reader));
 
             return lista;
         }
 
-        public int ObtenerCantidad(
-            bool? soloActivos = true)
+        public int ObtenerCantidad(bool? soloActivos = true)
         {
             using var conexion = CrearConexion();
 
-            var sql = @"
+            const string sql = @"
                 SELECT COUNT(*)
                 FROM membresia
-                WHERE
-                    (@Estado IS NULL
-                    OR Estado = @Estado);";
+                WHERE (@Estado IS NULL OR Estado = @Estado);";
 
-            using var comand =
-                new MySqlCommand(sql, conexion);
-
-            comand.Parameters.AddWithValue(
+            using var comando = new MySqlCommand(sql, conexion);
+            comando.Parameters.AddWithValue(
                 "@Estado",
-                ValorODbNull(soloActivos)
-            );
+                soloActivos.HasValue
+                    ? (object)(soloActivos.Value ? 1 : 0)
+                    : DBNull.Value);
 
             conexion.Open();
 
-            return Convert.ToInt32(
-                comand.ExecuteScalar()
-            );
+            return Convert.ToInt32(comando.ExecuteScalar());
         }
 
-        public Membresia? ObtenerVigentePorDni(string dni, DateTime fecha)
+        public bool ExistePorSocio(int idSocio)
         {
             using var conexion = CrearConexion();
-            var sql = @"
+
+            const string sql = @"
+                SELECT COUNT(*)
+                FROM membresia
+                WHERE IdSocio = @IdSocio;";
+
+            using var comando = new MySqlCommand(sql, conexion);
+            comando.Parameters.AddWithValue("@IdSocio", idSocio);
+
+            conexion.Open();
+
+            return Convert.ToInt32(comando.ExecuteScalar()) > 0;
+        }
+
+        public Membresia? ObtenerParaCobroPorDni(string dni)
+        {
+            using var conexion = CrearConexion();
+
+            const string sql = @"
                 SELECT
-                    m.IdMembresia, m.IdSocio, m.IdPlan,
-                    m.FechaInicio, m.FechaFin, m.PrecioContratado,
-                    m.Estado, m.IdUsuarioCreador,
+                    m.IdMembresia,
+                    m.IdSocio,
+                    m.IdPlan,
+                    m.FechaInicio,
+                    m.FechaFin,
+                    m.PrecioContratado,
+                    m.Estado,
+                    m.Pagada,
+                    m.IdUsuarioCreador,
+
                     s.IdSocio AS Socio_IdSocio,
                     s.Nombre AS Socio_Nombre,
                     s.Apellido AS Socio_Apellido,
                     s.Dni AS Socio_Dni,
+
                     p.IdPlan AS Plan_IdPlan,
                     p.Nombre AS Plan_Nombre,
                     p.Precio AS Plan_Precio,
                     p.UtilizacionesMensuales AS Plan_UtilizacionesMensuales
+
                 FROM membresia m
                 INNER JOIN socio s ON s.IdSocio = m.IdSocio
                 INNER JOIN plan p ON p.IdPlan = m.IdPlan
                 WHERE s.Dni = @Dni
                   AND s.Estado = 1
                   AND m.Estado = 1
-                  AND m.FechaInicio <= @Fecha
-                  AND m.FechaFin >= @Fecha
                 ORDER BY m.FechaInicio DESC, m.IdMembresia DESC
                 LIMIT 1;";
 
-            using var comand = new MySqlCommand(sql, conexion);
-            comand.Parameters.AddWithValue("@Dni", dni.Trim());
-            comand.Parameters.AddWithValue("@Fecha", fecha.Date);
+            using var comando = new MySqlCommand(sql, conexion);
+            comando.Parameters.AddWithValue("@Dni", dni.Trim());
+
             conexion.Open();
-            using var read = comand.ExecuteReader();
-            return read.Read() ? Mapear(read) : null;
+
+            using var reader = comando.ExecuteReader();
+
+            return reader.Read() ? Mapear(reader) : null;
         }
 
         public IList<Membresia> ObtenerActivosPorSocio(
@@ -397,18 +352,14 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             int pagina = 1,
             int tamPagina = 10)
         {
-            if (pagina < 1)
-                pagina = 1;
+            pagina = Math.Max(1, pagina);
+            tamPagina = Math.Max(1, tamPagina);
 
-            if (tamPagina < 1)
-                tamPagina = 10;
-
-            IList<Membresia> lista =
-                new List<Membresia>();
+            var lista = new List<Membresia>();
 
             using var conexion = CrearConexion();
 
-            var sql = @"
+            const string sql = @"
                 SELECT
                     m.IdMembresia,
                     m.IdSocio,
@@ -417,6 +368,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
                     m.FechaFin,
                     m.PrecioContratado,
                     m.Estado,
+                    m.Pagada,
                     m.IdUsuarioCreador,
 
                     s.IdSocio AS Socio_IdSocio,
@@ -430,159 +382,79 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
                     p.UtilizacionesMensuales AS Plan_UtilizacionesMensuales
 
                 FROM membresia m
-
-                INNER JOIN socio s
-                    ON s.IdSocio = m.IdSocio
-
-                INNER JOIN plan p
-                    ON p.IdPlan = m.IdPlan
-
+                INNER JOIN socio s ON s.IdSocio = m.IdSocio
+                INNER JOIN plan p ON p.IdPlan = m.IdPlan
                 WHERE m.Estado = 1
                   AND m.IdSocio = @IdSocio
-
                 ORDER BY m.FechaInicio DESC, m.IdMembresia DESC
+                LIMIT @TamPagina OFFSET @Desplazamiento;";
 
-                LIMIT @tamPagina
-                OFFSET @desplazamiento;";
-
-            using var comand =
-                new MySqlCommand(sql, conexion);
-
-            comand.Parameters.AddWithValue(
-                "@IdSocio",
-                idSocio
-            );
-
-            comand.Parameters.AddWithValue(
-                "@tamPagina",
-                tamPagina
-            );
-
-            comand.Parameters.AddWithValue(
-                "@desplazamiento",
-                (pagina - 1) * tamPagina
-            );
+            using var comando = new MySqlCommand(sql, conexion);
+            comando.Parameters.AddWithValue("@IdSocio", idSocio);
+            comando.Parameters.AddWithValue("@TamPagina", tamPagina);
+            comando.Parameters.AddWithValue(
+                "@Desplazamiento", (pagina - 1) * tamPagina);
 
             conexion.Open();
 
-            using var read =
-                comand.ExecuteReader();
+            using var reader = comando.ExecuteReader();
 
-            while (read.Read())
-            {
-                lista.Add(
-                    Mapear(read)
-                );
-            }
+            while (reader.Read())
+                lista.Add(Mapear(reader));
 
             return lista;
         }
 
-        private static Membresia Mapear(
-            MySqlDataReader r)
+        private static Membresia Mapear(MySqlDataReader reader)
         {
             return new Membresia
             {
-                IdMembresia =
-                    r.GetInt32("IdMembresia"),
-
-                IdSocio =
-                    r.GetInt32("IdSocio"),
-
-                IdPlan =
-                    r.GetInt32("IdPlan"),
-
-                FechaInicio =
-                    r.GetDateTime("FechaInicio"),
-
-                FechaFin =
-                    r.GetDateTime("FechaFin"),
-
-                PrecioContratado =
-                    r.GetDecimal("PrecioContratado"),
-
-                Estado =
-                    r.GetBoolean("Estado"),
-
-                IdUsuarioCreador =
-                    r.GetInt32("IdUsuarioCreador"),
+                IdMembresia = reader.GetInt32("IdMembresia"),
+                IdSocio = reader.GetInt32("IdSocio"),
+                IdPlan = reader.GetInt32("IdPlan"),
+                FechaInicio = reader.GetDateTime("FechaInicio"),
+                FechaFin = reader.GetDateTime("FechaFin"),
+                PrecioContratado = reader.GetDecimal("PrecioContratado"),
+                Estado = reader.GetBoolean("Estado"),
+                Pagada = reader.GetBoolean("Pagada"),
+                IdUsuarioCreador = reader.GetInt32("IdUsuarioCreador"),
 
                 Socio = new Socio
                 {
-                    IdSocio =
-                        r.GetInt32("Socio_IdSocio"),
-
-                    Nombre =
-                        r.GetString("Socio_Nombre"),
-
-                    Apellido =
-                        r.GetString("Socio_Apellido"),
-
-                    Dni =
-                        r.GetString("Socio_Dni")
+                    IdSocio = reader.GetInt32("Socio_IdSocio"),
+                    Nombre = reader.GetString("Socio_Nombre"),
+                    Apellido = reader.GetString("Socio_Apellido"),
+                    Dni = reader.GetString("Socio_Dni")
                 },
 
                 Plan = new Plan
                 {
-                    IdPlan =
-                        r.GetInt32("Plan_IdPlan"),
-
-                    Nombre =
-                        r.GetString("Plan_Nombre"),
-
-                    Precio =
-                        r.GetDecimal("Plan_Precio"),
-
+                    IdPlan = reader.GetInt32("Plan_IdPlan"),
+                    Nombre = reader.GetString("Plan_Nombre"),
+                    Precio = reader.GetDecimal("Plan_Precio"),
                     UtilizacionesMensuales =
-                        r.IsDBNull(
-                            r.GetOrdinal(
-                                "Plan_UtilizacionesMensuales"
-                            )
-                        )
+                        reader.IsDBNull(
+                            reader.GetOrdinal("Plan_UtilizacionesMensuales"))
                             ? null
-                            : r.GetInt32(
-                                "Plan_UtilizacionesMensuales"
-                            )
+                            : reader.GetInt32("Plan_UtilizacionesMensuales")
                 }
             };
         }
 
-        private static void CargarParametros(MySqlCommand cmd, Membresia membresia)
+        private static void CargarParametros(
+            MySqlCommand comando,
+            Membresia membresia)
         {
-            cmd.Parameters.AddWithValue(
-                "@IdSocio",
-                membresia.IdSocio
-            );
-
-            cmd.Parameters.AddWithValue(
-                "@IdPlan",
-                membresia.IdPlan
-            );
-
-            cmd.Parameters.AddWithValue(
-                "@FechaInicio",
-                membresia.FechaInicio
-            );
-
-            cmd.Parameters.AddWithValue(
-                "@FechaFin",
-                membresia.FechaFin
-            );
-
-            cmd.Parameters.AddWithValue(
-                "@PrecioContratado",
-                membresia.PrecioContratado
-            );
-
-            cmd.Parameters.AddWithValue(
-                "@Estado",
-                membresia.Estado
-            );
-
-            cmd.Parameters.AddWithValue(
-                "@IdUsuarioCreador",
-                membresia.IdUsuarioCreador
-            );
+            comando.Parameters.AddWithValue("@IdSocio", membresia.IdSocio);
+            comando.Parameters.AddWithValue("@IdPlan", membresia.IdPlan);
+            comando.Parameters.AddWithValue("@FechaInicio", membresia.FechaInicio);
+            comando.Parameters.AddWithValue("@FechaFin", membresia.FechaFin);
+            comando.Parameters.AddWithValue(
+                "@PrecioContratado", membresia.PrecioContratado);
+            comando.Parameters.AddWithValue("@Estado", membresia.Estado);
+            comando.Parameters.AddWithValue("@Pagada", membresia.Pagada);
+            comando.Parameters.AddWithValue(
+                "@IdUsuarioCreador", membresia.IdUsuarioCreador);
         }
     }
 }

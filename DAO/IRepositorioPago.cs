@@ -6,6 +6,11 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
     {
         int Alta(Pago pago);
 
+        int RegistrarPagoYHabilitarMembresia(
+            Pago pago,
+            DateTime fechaInicio,
+            DateTime fechaFin);
+
         Pago? ObtenerPorId(int id);
 
         IList<Pago> ObtenerPorSocio(

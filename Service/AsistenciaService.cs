@@ -46,11 +46,22 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
                 return acceso;
             }
 
-            var membresia = _repo.ObtenerMembresiaVigente(idSocio, DateTime.Today);
+
+
+
+            var membresia = _repo.ObtenerMembresiaVigente(
+       idSocio, DateTime.Today);
 
             if (membresia == null)
             {
-                acceso.Motivo = "El socio no tiene una membresía vigente.";
+                acceso.Motivo =
+                    "El socio no tiene una membresía vigente.";
+                return acceso;
+            }
+
+            if (!membresia.Pagada)
+            {
+                acceso.Motivo = "El período de la membresía está pendiente de pago.";
                 return acceso;
             }
 
