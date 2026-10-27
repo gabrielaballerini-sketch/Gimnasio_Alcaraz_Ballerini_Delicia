@@ -125,7 +125,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
         // Quién registr / anuló el pago 
 
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-            Roles = "Administrador,Empleado")]
+            Roles = "Administrador")]
         [HttpGet]
         public IActionResult Listar(
             [FromQuery] int pagina = 1,
