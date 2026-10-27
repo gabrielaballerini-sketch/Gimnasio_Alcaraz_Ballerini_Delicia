@@ -29,7 +29,7 @@
         </div>
     </div>
 
-    <div v-if="mensaje"
+    <div v-if="mensaje" v-cloak
          class="alert"
          v-bind:class="error ? 'alert-danger' : 'alert-info'">
         {{ mensaje }}
@@ -205,14 +205,19 @@
                     filtros: {
                         desde: '',
                         hasta: '',
-                        idSocio: ''
+                        idSocio: '',
+                        token: '',
                     }
                 };
             },
 
-            mounted() {
-                this.buscar();
-            },
+           async mounted() {
+            await this.obtenerToken();
+
+            if (this.token) {
+                await this.buscar();
+            }
+        },
 
             methods: {
                 async buscar() {
@@ -252,12 +257,15 @@
 
                     try {
                         const response = await fetch(
-                            `${url}?${params.toString()}`,
-                            {
-                                headers: { 'Accept': 'application/json' },
-                                credentials: 'same-origin'
-                            }
-                        );
+    `${url}?${params.toString()}`,
+    {
+        headers: {
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${this.token}`
+        },
+        credentials: 'same-origin'
+    }
+);
 
                         const texto = await response.text();
                         let data = {};
@@ -325,7 +333,27 @@
                     if (Number.isNaN(valor.getTime())) return '-';
 
                     return valor.toLocaleString('es-AR');
-                }
+                },
+
+                async obtenerToken() {
+    try {
+        const respuesta = await fetch('/Cuenta/Token', {
+            credentials: 'same-origin'
+        });
+
+        if (!respuesta.ok) {
+            this.mensaje = 'No se pudo obtener el token. Volvé a iniciar sesión.';
+            this.error = true;
+            return;
+        }
+
+        const datos = await respuesta.json();
+        this.token = datos.token;
+    } catch (e) {
+        this.mensaje = 'No se pudo conectar con el servidor.';
+        this.error = true;
+    }
+},
             },
 
             watch: {

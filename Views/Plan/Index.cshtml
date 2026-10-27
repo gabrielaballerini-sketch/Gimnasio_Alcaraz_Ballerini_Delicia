@@ -10,7 +10,7 @@
     <div class="toast-container position-fixed top-0 end-0 p-3"
          style="z-index:1100">
 
-        <div v-if="aviso.texto"
+        <div v-if="aviso.texto" v-cloak
              class="toast show align-items-center text-white border-0"
              v-bind:class="aviso.tipo === 'ok'
                  ? 'bg-success'
@@ -124,7 +124,7 @@
 
         <div class="card-body">
 
-            <div v-if="mensaje"
+            <div v-if="mensaje" v-cloak
                  class="alert alert-danger">
 
                 <div>

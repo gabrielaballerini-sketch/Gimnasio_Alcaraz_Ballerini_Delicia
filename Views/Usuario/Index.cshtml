@@ -15,7 +15,7 @@
  
     </div>
 
-    <div v-if="mensaje" class="alert alert-dismissible fade show"
+    <div v-if="mensaje" v-cloak class="alert alert-dismissible fade show"
          :class="mensajeTipo === 'ok' ? 'alert-success' : 'alert-danger'" role="alert">
         {{ mensaje }}
         <button type="button" class="btn-close" @@click="mensaje = ''" aria-label="Cerrar"></button>
@@ -38,7 +38,7 @@
                             Completá los datos personales del socio.
                         </p>
 
-                        <div v-if="errorModal" class="alert alert-danger">
+                        <div v-if="errorModal" v-cloak class="alert alert-danger">
                             <div>{{ errorModal }}</div>
                             <ul class="mb-0" v-if="erroresModal.length">
                                 <li v-for="e in erroresModal" :key="e">{{ e }}</li>

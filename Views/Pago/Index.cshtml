@@ -17,11 +17,11 @@
         }
     </div>
 
-    <div v-if="mensaje" class="alert alert-success alert-dismissible" role="alert">
+    <div v-if="mensaje" v-cloak class="alert alert-success alert-dismissible" role="alert">
         {{ mensaje }}
         <button type="button" class="btn-close" @@click="mensaje = ''" aria-label="Cerrar"></button>
     </div>
-    <div v-if="error" class="alert alert-danger alert-dismissible" role="alert">
+    <div v-if="error" v-cloak class="alert alert-danger alert-dismissible" role="alert">
         {{ error }}
         <button type="button" class="btn-close" @@click="error = ''" aria-label="Cerrar"></button>
     </div>

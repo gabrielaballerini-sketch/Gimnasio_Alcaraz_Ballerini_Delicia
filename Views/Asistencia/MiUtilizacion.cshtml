@@ -19,7 +19,7 @@
         </a>
     </div>
 
-    <div v-if="mensaje" class="alert alert-danger">{{ mensaje }}</div>
+    <div v-if="mensaje" v-cloak class="alert alert-danger">{{ mensaje }}</div>
 
     <!-- Resumen del plan -->
     <div v-if="resumen" class="card border-0 shadow-sm mb-4">

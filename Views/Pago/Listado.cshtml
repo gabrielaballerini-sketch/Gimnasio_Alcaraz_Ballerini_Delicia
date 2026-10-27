@@ -18,12 +18,12 @@
         </a>
     </div>
 
-    <div v-if="mensaje" class="alert alert-success alert-dismissible" role="alert">
+    <div v-if="mensaje" v-cloak class="alert alert-success alert-dismissible" role="alert">
         {{ mensaje }}
         <button type="button" class="btn-close" v-on:click="mensaje = ''" aria-label="Cerrar"></button>
     </div>
 
-    <div v-if="error" class="alert alert-danger alert-dismissible" role="alert">
+    <div v-if="error" v-cloak class="alert alert-danger alert-dismissible" role="alert">
         {{ error }}
         <button type="button" class="btn-close" v-on:click="error = ''" aria-label="Cerrar"></button>
     </div>
@@ -71,8 +71,7 @@
                             </td>
                         </tr>
 
-                        <tr v-for="p in pagos" v-bind:key="p.idPago"
-                            v-bind:class="p.estado ? '' : 'text-muted'">
+                        <tr v-for="p in pagos" v-bind:key="p.idPago" v-bind:class="p.estado ? '' : 'text-muted'">
                             <td>{{ p.idPago }}</td>
                             <td>{{ fechaHora(p.fecha) }}</td>
                             <td>
@@ -82,8 +81,7 @@
                             <td>{{ moneda(p.importe) }}</td>
                             <td>{{ medio(p.medioPago) }}</td>
                             <td>
-                                <span class="badge"
-                                      v-bind:class="p.estado ? 'text-bg-success' : 'text-bg-secondary'">
+                                <span class="badge" v-bind:class="p.estado ? 'text-bg-success' : 'text-bg-secondary'">
                                     {{ p.estado ? 'Activo' : 'Anulado' }}
                                 </span>
                             </td>
@@ -93,13 +91,9 @@
                                 <td>{{ p.idUsuarioCreador ? 'Usuario #' + p.idUsuarioCreador : '-' }}</td>
                                 <td>{{ p.idUsuarioAnulador ? 'Usuario #' + p.idUsuarioAnulador : '-' }}</td>
                                 <td class="text-end">
-                                    <button v-if="p.estado"
-                                            type="button"
-                                            class="btn btn-sm btn-outline-danger"
-                                            v-bind:disabled="anulando === p.idPago"
-                                            v-on:click="anular(p)">
-                                        <span v-if="anulando === p.idPago"
-                                              class="spinner-border spinner-border-sm"></span>
+                                    <button v-if="p.estado" type="button" class="btn btn-sm btn-outline-danger"
+                                        v-bind:disabled="anulando === p.idPago" v-on:click="anular(p)">
+                                        <span v-if="anulando === p.idPago" class="spinner-border spinner-border-sm"></span>
                                         <i v-else class="bi bi-x-circle"></i>
                                         Anular
                                     </button>
@@ -117,15 +111,13 @@
                 </span>
 
                 <div class="d-flex gap-2 align-items-center">
-                    <button class="btn btn-outline-secondary btn-sm"
-                            v-on:click="irPagina(pagina - 1)"
-                            v-bind:disabled="pagina <= 1 || cargando">
+                    <button class="btn btn-outline-secondary btn-sm" v-on:click="irPagina(pagina - 1)"
+                        v-bind:disabled="pagina <= 1 || cargando">
                         <i class="bi bi-chevron-left"></i> Anterior
                     </button>
 
-                    <button class="btn btn-outline-secondary btn-sm"
-                            v-on:click="irPagina(pagina + 1)"
-                            v-bind:disabled="pagina >= totalPaginas || cargando">
+                    <button class="btn btn-outline-secondary btn-sm" v-on:click="irPagina(pagina + 1)"
+                        v-bind:disabled="pagina >= totalPaginas || cargando">
                         Siguiente <i class="bi bi-chevron-right"></i>
                     </button>
                 </div>

@@ -11,7 +11,7 @@
 
     <!-- Aviso (toast) -->
     <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1100">
-        <div v-if="aviso.texto" class="toast show align-items-center text-white border-0"
+        <div v-if="aviso.texto" v-cloak class="toast show align-items-center text-white border-0"
              v-bind:class="aviso.tipo === 'ok' ? 'bg-success' : 'bg-danger'">
             <div class="d-flex">
                 <div class="toast-body">{{ aviso.texto }}</div>
@@ -66,7 +66,7 @@
 
                     <div class="modal-body">
 
-                        <div v-if="errorModal" class="alert alert-danger">
+                        <div v-if="errorModal" v-cloak class="alert alert-danger">
                             <div>{{ errorModal }}</div>
                             <ul class="mb-0" v-if="erroresModal.length">
                                 <li v-for="e in erroresModal" v-bind:key="e">{{ e }}</li>

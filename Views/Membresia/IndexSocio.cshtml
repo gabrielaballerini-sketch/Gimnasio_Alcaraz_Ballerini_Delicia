@@ -6,7 +6,7 @@
 
     <!-- AVISOS -->
     <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1100">
-        <div v-if="aviso.texto"
+        <div v-if="aviso.texto" v-cloak
              class="toast show text-white border-0 bg-danger">
             <div class="d-flex">
                 <div class="toast-body">{{ aviso.texto }}</div>

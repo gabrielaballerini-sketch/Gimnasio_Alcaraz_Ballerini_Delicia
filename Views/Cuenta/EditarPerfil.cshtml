@@ -13,7 +13,7 @@
             <div class="card-body">
 
                 <!-- MENSAJES -->
-                <div v-if="mensaje"
+                <div v-if="mensaje" v-cloak
                      class="alert"
                      v-bind:class="tipo === 'ok' ? 'alert-success' : 'alert-danger'">
                     {{ mensaje }}

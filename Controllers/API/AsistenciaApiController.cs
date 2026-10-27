@@ -3,6 +3,7 @@
 using Gimnasio_Alcaraz_Ballerini_Delicia.DAO;
 using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
 using Gimnasio_Alcaraz_Ballerini_Delicia.Service;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -115,8 +116,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             }
         }
 
-        // GET api/asistencias?desde=2026-10-01&hasta=2026-10-31&idSocio=1&pagina=1&tamPagina=10
-        [Authorize(Roles = "Administrador,Empleado")]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+        Roles = "Administrador")]
         [HttpGet]
         public IActionResult Listar(
             [FromQuery] DateTime? desde,
@@ -156,17 +157,18 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
 
             return Ok(resultado);
         }
-    
 
- 
- [Authorize(Roles = "Socio")]
+
+
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+        Roles = "Socio")]
         [HttpGet("mia")]
         public IActionResult ObtenerMias(
-            [FromQuery] DateTime? desde,
-            [FromQuery] DateTime? hasta,
-            [FromQuery] bool periodoActual = true,
-            [FromQuery] int pagina = 1,
-            [FromQuery] int tamPagina = 10)
+                  [FromQuery] DateTime? desde,
+                  [FromQuery] DateTime? hasta,
+                  [FromQuery] bool periodoActual = true,
+                  [FromQuery] int pagina = 1,
+                  [FromQuery] int tamPagina = 10)
         {
             if (!int.TryParse(User.FindFirst("IdSocio")?.Value, out var idSocio))
             {
@@ -247,7 +249,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
         }
 
 
- 
+
 
         private IActionResult ErroresDeModelo()
         {

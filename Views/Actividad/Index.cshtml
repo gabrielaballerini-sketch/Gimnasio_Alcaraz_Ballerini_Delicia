@@ -10,7 +10,7 @@
     <!-- AVISOS -->
     <div class="toast-container position-fixed top-0 end-0 p-3"
          style="z-index:1100">
-        <div v-if="aviso.texto"
+        <div v-if="aviso.texto" v-cloak
              class="toast show text-white border-0"
              v-bind:class="aviso.tipo === 'ok' ? 'bg-success' : 'bg-danger'">
             <div class="d-flex">
@@ -72,7 +72,7 @@
 
         <div class="card-body">
 
-            <div v-if="mensaje" class="alert alert-danger">
+            <div v-if="mensaje" v-cloak class="alert alert-danger">
                 {{ mensaje }}
                 <ul v-if="errores.length" class="mb-0">
                     <li v-for="(error, i) in errores" v-bind:key="i">

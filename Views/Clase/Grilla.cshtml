@@ -7,7 +7,7 @@
 
     <!-- AVISOS -->
     <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1100">
-        <div v-if="aviso.texto"
+        <div v-if="aviso.texto" v-cloak
              class="toast show text-white border-0 bg-danger">
             <div class="d-flex">
                 <div class="toast-body">{{ aviso.texto }}</div>
@@ -32,7 +32,7 @@
     </div>
 
     <!-- Actividades de acceso libre -->
-    <div class="alert alert-info" v-if="libres.length">
+    <div class="alert alert-info" v-cloak v-if="libres.length">
         <i class="bi bi-info-circle me-1"></i>
         <strong>Acceso libre, sin clase programada:</strong>
         {{ libres.map(a => a.nombre).join(', ') }}.

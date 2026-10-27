@@ -18,12 +18,12 @@
         </button>
     </div>
 
-    <div v-if="mensaje" class="alert alert-success alert-dismissible fade show">
+    <div v-if="mensaje" v-cloak class="alert alert-success alert-dismissible fade show">
         {{ mensaje }}
         <button type="button" class="btn-close" @@click="mensaje = ''"></button>
     </div>
 
-    <div v-if="error" class="alert alert-danger alert-dismissible fade show">
+    <div v-if="error" v-cloak class="alert alert-danger alert-dismissible fade show">
         {{ error }}
         <button type="button" class="btn-close" @@click="error = ''"></button>
     </div>
@@ -216,7 +216,7 @@
 
                 <div class="modal-body">
 
-                    <div v-if="errorModal" class="alert alert-danger">
+                    <div v-if="errorModal" v-cloak class="alert alert-danger">
                         {{ errorModal }}
                     </div>
 
@@ -375,7 +375,7 @@
                     <h5 class="modal-title">Registrar pago de membresía</h5>
                 </div>
                 <div class="modal-body">
-                    <div v-if="errorPago" class="alert alert-danger">
+                    <div v-if="errorPago" v-cloak class="alert alert-danger">
                         {{ errorPago }}
                     </div>
                     <p>Para habilitar la membresía, primero debe registrarse el pago.</p>
@@ -395,10 +395,11 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"
-                            :disabled="procesandoPago">
+                  <button type="button" class="btn btn-secondary"
+                        @@click="cobrarDespues"
+                        :disabled="procesandoPago">
                         Cobrar después
-                    </button>
+                  </button>
                     <button type="button" class="btn btn-primary"
                             @@click="confirmarPago" :disabled="procesandoPago">
                         {{ procesandoPago ? 'Registrando pago...' : 'Confirmar pago' }}
@@ -876,6 +877,19 @@
                         this.errorModal =
                             'No se pudo conectar con el servidor. Verificá si la membresía se creó antes de volver a intentarlo.';
                     }
+                },
+
+                async cobrarDespues() {
+                    bootstrap.Modal.getInstance(
+                        document.getElementById('modalPagoInicial')
+                    )?.hide();
+
+                    this.idMembresiaPago = null;
+                    this.importePago = 0;
+
+                    this.mensaje = 'La membresía se registró correctamente. El pago quedó pendiente.';
+
+                    await this.cargarMembresias();
                 },
 
                 async confirmarPago() {

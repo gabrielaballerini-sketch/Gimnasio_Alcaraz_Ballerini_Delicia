@@ -24,7 +24,7 @@
     </div>
 
     <!-- Mensajes -->
-    <div v-if="mensaje.texto"
+    <div v-if="mensaje.texto" v-cloak
          class="alert d-flex align-items-start gap-2"
          v-bind:class="'alert-' + mensaje.tipo"
          role="alert">
