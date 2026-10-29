@@ -1,4 +1,5 @@
 using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
+using Gimnasio_Alcaraz_Ballerini_Delicia.Service;
 using MySql.Data.MySqlClient;
 
 namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
@@ -147,7 +148,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             return Convert.ToInt32(comando.ExecuteScalar()) > 0;
         }
 
-        public IList<Usuario> ObtenerActivos(int pagina = 1, int tamPagina = 10)
+        public IList<Usuario> ObtenerActivos(  int pagina = PaginacionParametros.PaginaPredeterminada,
+             int tamPagina = PaginacionParametros.TamPaginaPredeterminado)
         {
             return ObtenerPorEstado(true, pagina, tamPagina);
         }
@@ -159,11 +161,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
 
         private IList<Usuario> ObtenerPorEstado(bool estado, int pagina, int tamPagina)
         {
-            if (pagina < 1)
-                pagina = 1;
-
-            if (tamPagina < 1)
-                tamPagina = 10;
+           (pagina, tamPagina) =PaginacionParametros.Normalizar(pagina, tamPagina);
 
             IList<Usuario> lista = new List<Usuario>();
 

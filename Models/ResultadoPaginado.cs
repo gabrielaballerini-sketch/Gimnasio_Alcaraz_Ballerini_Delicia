@@ -1,3 +1,4 @@
+namespace Gimnasio_Alcaraz_Ballerini_Delicia.Models{
 public class ResultadoPaginado<T>
 {
     public IList<T> Items { get; set; } = new List<T>();
@@ -7,4 +8,4 @@ public class ResultadoPaginado<T>
 
     // Siempre al menos 1, para mostrar "Página 1 de 1" cuando no hay registros
     public int TotalPaginas => Math.Max(1, (int)Math.Ceiling(Total / (double)TamPagina));
-}
+}}

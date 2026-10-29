@@ -13,14 +13,10 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
         }
 
         public ResultadoPaginado<Plan> ObtenerActivos(
-            int pagina = 1,
-            int tamPagina = 10)
+           int pagina = PaginacionParametros.PaginaPredeterminada,
+             int tamPagina = PaginacionParametros.TamPaginaPredeterminado)
         {
-            if (pagina < 1)
-                pagina = 1;
-
-            if (tamPagina < 1)
-                tamPagina = 10;
+            (pagina, tamPagina) =PaginacionParametros.Normalizar(pagina, tamPagina);
 
             return new ResultadoPaginado<Plan>
             {
@@ -38,14 +34,10 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
         }
 
         public ResultadoPaginado<Plan> ObtenerInactivos(
-            int pagina = 1,
-            int tamPagina = 10)
+          int pagina = PaginacionParametros.PaginaPredeterminada,
+             int tamPagina = PaginacionParametros.TamPaginaPredeterminado)
         {
-            if (pagina < 1)
-                pagina = 1;
-
-            if (tamPagina < 1)
-                tamPagina = 10;
+       (pagina, tamPagina) =PaginacionParametros.Normalizar(pagina, tamPagina);
 
             return new ResultadoPaginado<Plan>
             {

@@ -1,4 +1,5 @@
 using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
+using Gimnasio_Alcaraz_Ballerini_Delicia.Service;
 using MySql.Data.MySqlClient;
 
 namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
@@ -191,11 +192,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             int pagina,
             int tamPagina)
         {
-            if (pagina < 1)
-                pagina = 1;
+             (pagina, tamPagina) =PaginacionParametros.Normalizar(pagina, tamPagina);
 
-            if (tamPagina < 1)
-                tamPagina = 10;
 
             IList<Clase> lista = new List<Clase>();
 

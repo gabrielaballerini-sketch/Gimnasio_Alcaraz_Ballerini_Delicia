@@ -14,31 +14,39 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             _usuarioService = usuarioService;
         }
 
-        public ResultadoPaginado<Socio> ObtenerActivos(int pagina = 1, int tamPagina = 10)
+        public ResultadoPaginado<Socio> ObtenerActivos(
+             int pagina = PaginacionParametros.PaginaPredeterminada,
+             int tamPagina = PaginacionParametros.TamPaginaPredeterminado)
         {
-            if (pagina < 1) pagina = 1;
-            if (tamPagina < 1) tamPagina = 10;
+            (pagina, tamPagina) =
+                PaginacionParametros.Normalizar(pagina, tamPagina);
+
+            int total = _repo.ObtenerCantidad(true);
 
             return new ResultadoPaginado<Socio>
             {
                 Items = _repo.ObtenerActivos(pagina, tamPagina),
                 Pagina = pagina,
                 TamPagina = tamPagina,
-                Total = _repo.ObtenerCantidad(true)
+                Total = total
             };
         }
 
-        public ResultadoPaginado<Socio> ObtenerInactivos(int pagina = 1, int tamPagina = 10)
+        public ResultadoPaginado<Socio> ObtenerInactivos(
+            int pagina = PaginacionParametros.PaginaPredeterminada,
+            int tamPagina = PaginacionParametros.TamPaginaPredeterminado)
         {
-            if (pagina < 1) pagina = 1;
-            if (tamPagina < 1) tamPagina = 10;
+            (pagina, tamPagina) =
+                PaginacionParametros.Normalizar(pagina, tamPagina);
+
+            int total = _repo.ObtenerCantidad(false);
 
             return new ResultadoPaginado<Socio>
             {
                 Items = _repo.ObtenerInactivos(pagina, tamPagina),
                 Pagina = pagina,
                 TamPagina = tamPagina,
-                Total = _repo.ObtenerCantidad(false)
+                Total = total
             };
         }
 
@@ -47,7 +55,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             return _repo.ObtenerPorId(id);
         }
 
-      
+
         // Crea el socio y su usuario juntos: sin cuenta no se crea el socio
         public Socio CrearConUsuario(Socio socio)
         {

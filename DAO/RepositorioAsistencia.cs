@@ -1,4 +1,5 @@
 using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
+using Gimnasio_Alcaraz_Ballerini_Delicia.Service;
 using MySql.Data.MySqlClient;
 
 
@@ -215,9 +216,10 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             DateTime? desde,
             DateTime? hasta,
             int? idSocio,
-            int pagina,
-            int tamPagina)
+             int pagina = PaginacionParametros.PaginaPredeterminada,
+             int tamPagina = PaginacionParametros.TamPaginaPredeterminado)
         {
+            
             IList<Asistencia> lista = new List<Asistencia>();
 
             using var conexion = CrearConexion();

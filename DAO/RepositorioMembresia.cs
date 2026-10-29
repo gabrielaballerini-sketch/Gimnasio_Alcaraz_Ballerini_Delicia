@@ -1,4 +1,5 @@
 using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
+using Gimnasio_Alcaraz_Ballerini_Delicia.Service;
 using MySql.Data.MySqlClient;
 
 namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
@@ -158,8 +159,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             int pagina = 1,
             int tamPagina = 10)
         {
-            pagina = Math.Max(1, pagina);
-            tamPagina = Math.Max(1, tamPagina);
+            (pagina, tamPagina) = PaginacionParametros.Normalizar(pagina, tamPagina);
+
 
             var lista = new List<Membresia>();
 
@@ -213,8 +214,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             int pagina = 1,
             int tamPagina = 10)
         {
-            pagina = Math.Max(1, pagina);
-            tamPagina = Math.Max(1, tamPagina);
+            (pagina, tamPagina) = PaginacionParametros.Normalizar(pagina, tamPagina);
 
             var lista = new List<Membresia>();
 
@@ -352,8 +352,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             int pagina = 1,
             int tamPagina = 10)
         {
-            pagina = Math.Max(1, pagina);
-            tamPagina = Math.Max(1, tamPagina);
+            (pagina, tamPagina) = PaginacionParametros.Normalizar(pagina, tamPagina);
 
             var lista = new List<Membresia>();
 
@@ -415,8 +414,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
                 FechaInicio = reader.GetDateTime("FechaInicio"),
                 FechaFin = reader.GetDateTime("FechaFin"),
                 PrecioContratado = reader.GetDecimal("PrecioContratado"),
-                Estado = reader.GetBoolean("Estado"),
-                Pagada = reader.GetBoolean("Pagada"),
+                Estado = !reader.IsDBNull(reader.GetOrdinal("Estado"))&& reader.GetBoolean("Estado"),
+                Pagada = !reader.IsDBNull(reader.GetOrdinal("Pagada"))&& reader.GetBoolean("Pagada"),
                 IdUsuarioCreador = reader.GetInt32("IdUsuarioCreador"),
 
                 Socio = new Socio

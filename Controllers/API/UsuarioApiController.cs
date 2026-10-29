@@ -25,18 +25,9 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             [FromQuery] int pagina = 1,
             [FromQuery] int tamPagina = 10)
         {
-            var resultado = _service.ObtenerActivos(
-                pagina,
-                tamPagina
-            );
+            
 
-            return Ok(new
-            {
-                resultado.Pagina,
-                resultado.TamPagina,
-                resultado.Total,
-                Items = resultado.Items.Select(RespuestaUsuario)
-            });
+            return Ok(_service.ObtenerActivos(pagina, tamPagina));
         }
 
         [HttpGet("inactivos")]
@@ -44,18 +35,9 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             [FromQuery] int pagina = 1,
             [FromQuery] int tamPagina = 10)
         {
-            var resultado = _service.ObtenerInactivos(
-                pagina,
-                tamPagina
-            );
+           
 
-            return Ok(new
-            {
-                resultado.Pagina,
-                resultado.TamPagina,
-                resultado.Total,
-                Items = resultado.Items.Select(RespuestaUsuario)
-            });
+            return Ok(_service.ObtenerInactivos(pagina, tamPagina));
         }
 
         [HttpGet("{id:int}")]

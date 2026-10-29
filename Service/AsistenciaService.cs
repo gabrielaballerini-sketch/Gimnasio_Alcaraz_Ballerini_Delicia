@@ -177,14 +177,11 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             DateTime? desde,
             DateTime? hasta,
             int? idSocio,
-            int pagina = 1,
-            int tamPagina = 10)
+            int pagina = PaginacionParametros.PaginaPredeterminada,
+             int tamPagina = PaginacionParametros.TamPaginaPredeterminado)
         {
-            if (pagina < 1)
-                pagina = 1;
+              (pagina, tamPagina) =PaginacionParametros.Normalizar(pagina, tamPagina);
 
-            if (tamPagina < 1)
-                tamPagina = 10;
 
            
             var hastaExclusivo = hasta?.Date.AddDays(1);

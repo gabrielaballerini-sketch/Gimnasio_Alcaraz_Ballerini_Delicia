@@ -23,14 +23,10 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
       
 
         public ResultadoPaginado<Membresia> ObtenerActivos(
-            int pagina = 1,
-            int tamPagina = 10)
+            int pagina = PaginacionParametros.PaginaPredeterminada,
+             int tamPagina = PaginacionParametros.TamPaginaPredeterminado)
         {
-            if (pagina < 1)
-                pagina = 1;
-
-            if (tamPagina < 1)
-                tamPagina = 10;
+              (pagina, tamPagina) =PaginacionParametros.Normalizar(pagina, tamPagina);
 
             return new ResultadoPaginado<Membresia>
             {
@@ -44,14 +40,10 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
    
 
         public ResultadoPaginado<Membresia> ObtenerInactivos(
-            int pagina = 1,
-            int tamPagina = 10)
+          int pagina = PaginacionParametros.PaginaPredeterminada,
+             int tamPagina = PaginacionParametros.TamPaginaPredeterminado)
         {
-            if (pagina < 1)
-                pagina = 1;
-
-            if (tamPagina < 1)
-                tamPagina = 10;
+              (pagina, tamPagina) =PaginacionParametros.Normalizar(pagina, tamPagina);
 
             return new ResultadoPaginado<Membresia>
             {
@@ -190,12 +182,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             // El precio y el plan del período pagado se conservan.
             // Si el período está vencido, se puede preparar una renovación.
 
-            if (cambioPlan && existente.Pagada && !periodoVencido)
-            {
-                throw new ReglaNegocioException(
-                    "No se puede cambiar el plan de un período ya pagado. " +
-                    "El cambio se realizará al renovar la membresía.");
-            }
+           
 
             if (cambioPlan && !plan.Estado)
             {

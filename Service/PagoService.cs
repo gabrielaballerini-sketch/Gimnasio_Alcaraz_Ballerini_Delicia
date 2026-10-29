@@ -201,13 +201,10 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
         }
 
         // Todos los pagos (activos y anulados) para Administrador y Empleado.
-        public ResultadoPaginado<Pago> Listar(int pagina = 1, int tamPagina = 10)
+        public ResultadoPaginado<Pago> Listar(int pagina = PaginacionParametros.PaginaPredeterminada,
+             int tamPagina = PaginacionParametros.TamPaginaPredeterminado)
         {
-            if (pagina < 1)
-                pagina = 1;
-
-            if (tamPagina < 1)
-                tamPagina = 10;
+           (pagina, tamPagina) =PaginacionParametros.Normalizar(pagina, tamPagina);
 
             return new ResultadoPaginado<Pago>
             {

@@ -131,8 +131,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             [FromQuery] int pagina = 1,
             [FromQuery] int tamPagina = 10)
         {
-            if (tamPagina > 100)
-                tamPagina = 100;
+         (pagina, tamPagina) =PaginacionParametros.Normalizar(pagina, tamPagina);
+
 
             var resultado = _service.Listar(pagina, tamPagina);
             bool esAdmin = User.IsInRole("Administrador");
@@ -152,7 +152,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
         [HttpGet("mios")]
         public IActionResult Mios(
             [FromQuery] int pagina = 1,
-            [FromQuery] int tamPagina = 100)
+            [FromQuery] int tamPagina = 10)
         {
             if (!int.TryParse(
                 User.FindFirstValue(ClaimTypes.NameIdentifier),
@@ -160,9 +160,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             {
                 return Unauthorized(new { mensaje = "Token inválido." });
             }
+         (pagina, tamPagina) =PaginacionParametros.Normalizar(pagina, tamPagina);
 
-            if (tamPagina > 100)
-                tamPagina = 100;
 
             var pagos = _service.ListarDeUsuario(idUsuario, pagina, tamPagina);
 

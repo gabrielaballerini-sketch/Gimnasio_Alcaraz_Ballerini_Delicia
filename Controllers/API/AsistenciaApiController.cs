@@ -143,14 +143,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
                 });
             }
 
-            if (pagina < 1)
-                pagina = 1;
+            (pagina, tamPagina) =PaginacionParametros.Normalizar(pagina, tamPagina);
 
-            if (tamPagina < 1)
-                tamPagina = 10;
-
-            if (tamPagina > 100)
-                tamPagina = 100;
 
             var resultado = _service.Listar(
                 desde, hasta, idSocio, pagina, tamPagina);
@@ -186,10 +180,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
                     mensaje = "La fecha inicial no puede ser posterior a la fecha final."
                 });
             }
+                (pagina, tamPagina) =PaginacionParametros.Normalizar(pagina, tamPagina);
 
-            if (pagina < 1) pagina = 1;
-            if (tamPagina < 1) tamPagina = 10;
-            if (tamPagina > 100) tamPagina = 100;
 
             try
             {

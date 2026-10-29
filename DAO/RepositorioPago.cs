@@ -1,4 +1,5 @@
 using Gimnasio_Alcaraz_Ballerini_Delicia.Models;
+using Gimnasio_Alcaraz_Ballerini_Delicia.Service;
 using MySql.Data.MySqlClient;
 
 namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
@@ -72,7 +73,7 @@ public int RegistrarPagoYHabilitarMembresia(
                     "No se encontró la membresía.");
 
             estado = reader.GetBoolean("Estado");
-            pagada = reader.GetBoolean("Pagada");
+          pagada = !reader.IsDBNull(reader.GetOrdinal("Pagada")) && reader.GetBoolean("Pagada");
             inicioActual = reader.GetDateTime("FechaInicio");
             finActual = reader.GetDateTime("FechaFin");
         }
@@ -211,8 +212,8 @@ public int RegistrarPagoYHabilitarMembresia(
             int pagina = 1,
             int tamPagina = 10)
         {
-            pagina = Math.Max(1, pagina);
-            tamPagina = Math.Max(1, tamPagina);
+            (pagina, tamPagina) =PaginacionParametros.Normalizar(pagina, tamPagina);
+
 
             var lista = new List<Pago>();
 
@@ -261,8 +262,7 @@ public int RegistrarPagoYHabilitarMembresia(
             int pagina = 1,
             int tamPagina = 10)
         {
-            pagina = Math.Max(1, pagina);
-            tamPagina = Math.Max(1, tamPagina);
+              (pagina, tamPagina) =PaginacionParametros.Normalizar(pagina, tamPagina);
 
             var lista = new List<Pago>();
 
@@ -427,10 +427,7 @@ public int RegistrarPagoYHabilitarMembresia(
                 MedioPago = (MedioPago)reader.GetInt32("MedioPago"),
                 Estado = reader.GetBoolean("Estado"),
                 IdUsuarioCreador = reader.GetInt32("IdUsuarioCreador"),
-                IdUsuarioAnulador = reader.IsDBNull(
-                    reader.GetOrdinal("IdUsuarioAnulador"))
-                        ? null
-                        : reader.GetInt32("IdUsuarioAnulador"),
+                IdUsuarioAnulador = reader.IsDBNull(reader.GetOrdinal("IdUsuarioAnulador"))? null: reader.GetInt32("IdUsuarioAnulador"),
 
                 Membresia = new Membresia
                 {
