@@ -1,0 +1,364 @@
+
+@{
+    ViewData["Title"] = "Membresías próximas a vencer";
+}
+
+<div id="app" class="container mt-4">
+
+    <div class="mb-4">
+        <h1 class="mb-1">Membresías próximas a vencer</h1>
+        <p class="text-muted">
+            Consultá los socios cuyas membresías están próximas a finalizar.
+        </p>
+    </div>
+
+    <div v-if="error" class="alert alert-danger">
+        {{ error }}
+    </div>
+
+    <!-- FILTRO -->
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+
+            <div class="row align-items-end">
+
+                <div class="col-md-4">
+
+                    <label class="form-label">
+                        Próximos días
+                    </label>
+
+                    <input type="number"
+                           class="form-control"
+                           v-model.number="dias"
+                           min="1"
+                           max="365"
+                           @@keyup.enter="buscar">
+
+                </div>
+
+                <div class="col-md-3">
+
+                    <button class="btn btn-primary w-100"
+                            @@click="buscar"
+                            :disabled="cargando">
+
+                        <i class="bi bi-search me-1"></i>
+                        Buscar
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- RESULTADOS -->
+
+    <div class="card shadow-sm border-0">
+
+        <div class="card-body">
+
+            <div v-if="cargando" class="text-center py-4">
+
+                <div class="spinner-border"></div>
+
+                <p class="mt-2 mb-0">Cargando...</p>
+
+            </div>
+
+            <div v-else-if="membresias.length === 0"
+                 class="text-center text-muted py-5">
+
+                <i class="bi bi-calendar-check fs-1"></i>
+
+                <p class="mt-3">
+                    No hay membresías próximas a vencer
+                    dentro del período seleccionado.
+                </p>
+
+            </div>
+
+            <div v-else>
+
+                <div class="d-flex justify-content-between mb-3">
+
+                    <h5 class="mb-0">
+                        Resultados encontrados
+                    </h5>
+
+                    <span class="badge bg-primary">
+                        {{ membresias.length }} membresías
+                    </span>
+
+                </div>
+
+                <div class="table-responsive">
+
+                    <table class="table table-hover align-middle">
+
+                        <thead>
+                            <tr>
+                                <th>Socio</th>
+                                <th>DNI</th>
+                                <th>Plan</th>
+                                <th>Fecha inicio</th>
+                                <th>Vencimiento</th>
+                                <th>Precio</th>
+                                <th>Situación</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+
+                            <tr v-for="m in membresias"
+                                :key="m.idMembresia">
+
+                                <td>
+                                    <strong>
+                                        {{ m.socio?.apellido }},
+                                        {{ m.socio?.nombre }}
+                                    </strong>
+                                </td>
+
+                                <td>
+                                    {{ m.socio?.dni }}
+                                </td>
+
+                                <td>
+                                    {{ m.plan?.nombre }}
+                                </td>
+
+                                <td>
+                                    {{ formatearFecha(m.fechaInicio) }}
+                                </td>
+
+                                <td>
+                                    {{ formatearFecha(m.fechaFin) }}
+                                </td>
+
+                                <td>
+                                    {{ formatearPrecio(m.precioContratado) }}
+                                </td>
+
+                                <td>
+
+                                    <span class="badge"
+                                          :class="diasRestantes(m.fechaFin) === 0
+                                            ? 'bg-danger'
+                                            : 'bg-warning text-dark'">
+
+                                        {{ textoVencimiento(m.fechaFin) }}
+
+                                    </span>
+
+                                </td>
+
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <div class="mt-3">
+
+        <a asp-controller="Membresia"
+           asp-action="Index"
+           class="btn btn-outline-secondary">
+
+            <i class="bi bi-arrow-left me-1"></i>
+            Volver a membresías
+
+        </a>
+
+    </div>
+
+</div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+
+<script>
+
+    const { createApp } = Vue;
+
+    createApp({
+
+        data() {
+            return {
+                token: '',
+                dias: 15,
+                membresias: [],
+                cargando: false,
+                error: ''
+            };
+        },
+
+        async mounted() {
+            await this.iniciar();
+        },
+
+        methods: {
+
+            async iniciar() {
+
+                try {
+
+                    const response = await fetch(
+                        '/Cuenta/Token',
+                        { credentials: 'same-origin' }
+                    );
+
+                    if (!response.ok) {
+                        throw new Error(
+                            'No se pudo obtener el token. Volvé a iniciar sesión.'
+                        );
+                    }
+
+                    const datos = await response.json();
+
+                    this.token = datos.token;
+
+                    await this.buscar();
+
+                }
+                catch (e) {
+                    this.error = e.message;
+                }
+
+            },
+
+            async peticionApi(url) {
+
+                return fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${this.token}`
+                    },
+                    credentials: 'same-origin'
+                });
+
+            },
+
+            async buscar() {
+
+                this.error = '';
+
+                if (!Number.isInteger(this.dias) ||
+                    this.dias < 1 ||
+                    this.dias > 365) {
+
+                    this.error =
+                        'Ingresá una cantidad de días entre 1 y 365.';
+
+                    return;
+                }
+
+                this.cargando = true;
+
+                try {
+
+                    const response = await this.peticionApi(
+                        `/api/membresias/proximas-vencer?dias=${this.dias}`
+                    );
+
+                    const datos = await response.json();
+
+                    if (!response.ok) {
+
+                        throw new Error(
+                            datos.mensaje ||
+                            'No se pudieron obtener las membresías.'
+                        );
+
+                    }
+
+                    this.membresias = Array.isArray(datos)
+                        ? datos
+                        : [];
+
+                }
+                catch (e) {
+
+                    this.error = e.message;
+                    this.membresias = [];
+
+                }
+                finally {
+
+                    this.cargando = false;
+
+                }
+
+            },
+
+            formatearFecha(fecha) {
+
+                if (!fecha)
+                    return '-';
+
+                const partes = fecha.substring(0, 10).split('-');
+
+                return `${partes[2]}/${partes[1]}/${partes[0]}`;
+
+            },
+
+            formatearPrecio(precio) {
+
+                return new Intl.NumberFormat('es-AR', {
+                    style: 'currency',
+                    currency: 'ARS'
+                }).format(precio);
+
+            },
+
+            diasRestantes(fecha) {
+
+                if (!fecha)
+                    return -1;
+
+                const partes = fecha.substring(0, 10).split('-');
+
+                const vencimiento = new Date(
+                    Number(partes[0]),
+                    Number(partes[1]) - 1,
+                    Number(partes[2])
+                );
+
+                const hoy = new Date();
+
+                hoy.setHours(0, 0, 0, 0);
+
+                return Math.round(
+                    (vencimiento - hoy) / (1000 * 60 * 60 * 24)
+                );
+
+            },
+
+            textoVencimiento(fecha) {
+
+                const dias = this.diasRestantes(fecha);
+
+                if (dias === 0)
+                    return 'Vence hoy';
+
+                if (dias === 1)
+                    return 'Vence mañana';
+
+                return `Vence en ${dias} días`;
+
+            }
+
+        }
+
+    }).mount('#app');
+
+</script>

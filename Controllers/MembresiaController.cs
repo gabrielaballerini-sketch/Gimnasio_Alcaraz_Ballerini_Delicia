@@ -15,5 +15,23 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Controllers
 
             return View();
         }
-    }
-}
+
+
+        [Authorize(Roles = "Administrador, Empleado")]
+        [HttpGet]
+        public IActionResult ProximasAVencer()
+
+        {
+            return View();
+        }
+
+        [Authorize(Roles = "Administrador, Empleado")]
+         public IActionResult VigentesEnFecha()
+        {
+         return View();
+         }
+
+
+           }
+           }
+ 

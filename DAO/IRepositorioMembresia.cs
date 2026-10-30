@@ -13,5 +13,14 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             int idSocio,
             int pagina = 1,
             int tamPagina = 10);
+
+       IList<Membresia> ObtenerProximasAVencer(
+           DateTime hoy,
+           DateTime fechaLimite);
+
+
+       IList<Membresia> ObtenerVigentesEnFecha(DateTime fecha);
+
+
     }
 }

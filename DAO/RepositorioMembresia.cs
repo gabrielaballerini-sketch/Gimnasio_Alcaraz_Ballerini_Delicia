@@ -455,5 +455,143 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             comando.Parameters.AddWithValue(
                 "@IdUsuarioCreador", membresia.IdUsuarioCreador);
         }
+
+          public IList<Membresia> ObtenerProximasAVencer(
+             DateTime hoy,
+             DateTime fechaLimite)
+       {
+    var lista = new List<Membresia>();
+
+    using var conexion = CrearConexion();
+
+    const string sql = @"
+        SELECT
+            m.IdMembresia,
+            m.IdSocio,
+            m.IdPlan,
+            m.FechaInicio,
+            m.FechaFin,
+            m.PrecioContratado,
+            m.Estado,
+            m.Pagada,
+            m.IdUsuarioCreador,
+
+            s.IdSocio AS Socio_IdSocio,
+            s.Nombre AS Socio_Nombre,
+            s.Apellido AS Socio_Apellido,
+            s.Dni AS Socio_Dni,
+
+            p.IdPlan AS Plan_IdPlan,
+            p.Nombre AS Plan_Nombre,
+            p.Precio AS Plan_Precio,
+            p.UtilizacionesMensuales AS Plan_UtilizacionesMensuales
+
+        FROM membresia m
+
+        INNER JOIN socio s
+            ON s.IdSocio = m.IdSocio
+
+        INNER JOIN plan p
+            ON p.IdPlan = m.IdPlan
+
+        WHERE m.Estado = 1
+          AND m.Pagada = 1
+          AND m.FechaFin >= @Hoy
+          AND m.FechaFin <= @FechaLimite
+
+        ORDER BY m.FechaFin ASC, s.Apellido ASC;";
+
+    using var comando = new MySqlCommand(sql, conexion);
+
+    comando.Parameters.AddWithValue("@Hoy", hoy.Date);
+
+    comando.Parameters.AddWithValue(
+        "@FechaLimite",
+        fechaLimite.Date);
+
+    conexion.Open();
+
+    using var reader = comando.ExecuteReader();
+
+    while (reader.Read())
+    {
+        lista.Add(Mapear(reader));
+    }
+
+    return lista;
+}
+
+
+public IList<Membresia> ObtenerVigentesEnFecha(DateTime fecha)
+{
+    var lista = new List<Membresia>();
+
+    using var conexion = CrearConexion();
+
+    const string sql = @"
+        SELECT
+            m.IdMembresia,
+            m.IdSocio,
+            m.IdPlan,
+            m.FechaInicio,
+            m.FechaFin,
+            m.PrecioContratado,
+            m.Estado,
+            m.Pagada,
+            m.IdUsuarioCreador,
+
+            s.IdSocio AS Socio_IdSocio,
+            s.Nombre AS Socio_Nombre,
+            s.Apellido AS Socio_Apellido,
+            s.Dni AS Socio_Dni,
+
+            p.IdPlan AS Plan_IdPlan,
+            p.Nombre AS Plan_Nombre,
+            p.Precio AS Plan_Precio,
+            p.UtilizacionesMensuales AS Plan_UtilizacionesMensuales
+
+        FROM membresia m
+
+        INNER JOIN socio s
+            ON s.IdSocio = m.IdSocio
+
+        INNER JOIN plan p
+            ON p.IdPlan = m.IdPlan
+
+        WHERE m.Estado = 1
+          AND m.Pagada = 1
+          AND m.FechaInicio <= @Fecha
+          AND m.FechaFin >= @Fecha
+
+        ORDER BY s.Apellido ASC, s.Nombre ASC;";
+
+    using var comando = new MySqlCommand(sql, conexion);
+
+    comando.Parameters.AddWithValue("@Fecha", fecha.Date);
+
+    conexion.Open();
+
+    using var reader = comando.ExecuteReader();
+
+    while (reader.Read())
+    {
+        lista.Add(Mapear(reader));
+    }
+
+    return lista;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
     }
 }

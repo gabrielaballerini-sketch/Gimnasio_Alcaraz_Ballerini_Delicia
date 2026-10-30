@@ -294,5 +294,63 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
                 }
             );
         }
+
+
+[Authorize(
+    AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+    Roles = "Administrador, Empleado")]
+[HttpGet("proximas-vencer")]
+public IActionResult ObtenerProximasAVencer(
+    [FromQuery] int dias = 15)
+{
+    try
+    {
+        var membresias =
+            _service.ObtenerProximasAVencer(dias);
+
+        return Ok(membresias);
+    }
+    catch (ReglaNegocioException ex)
+    {
+        return BadRequest(new
+        {
+            mensaje = ex.Message
+        });
+    }
+}
+
+
+[Authorize(
+    AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+    Roles = "Administrador, Empleado")]
+[HttpGet("vigentes-en-fecha")]
+public IActionResult ObtenerVigentesEnFecha(
+    [FromQuery] DateTime? fecha)
+{
+    if (!fecha.HasValue)
+    {
+        return BadRequest(new
+        {
+            mensaje = "Debe seleccionar una fecha."
+        });
+    }
+
+    try
+    {
+        var membresias =
+            _service.ObtenerVigentesEnFecha(fecha.Value);
+
+        return Ok(membresias);
+    }
+    catch (ReglaNegocioException ex)
+    {
+        return BadRequest(new
+        {
+            mensaje = ex.Message
+        });
+    }
+}
+
+
     }
 }

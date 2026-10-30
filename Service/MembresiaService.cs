@@ -267,5 +267,39 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
                 pagina,
                 tamPagina);
         }
+
+
+         public IList<Membresia> ObtenerProximasAVencer(int dias)
+
+        {
+        if (dias < 1 || dias > 365)
+
+        {
+        throw new ReglaNegocioException(
+            "La cantidad de días debe estar entre 1 y 365.");
+         }
+
+          DateTime hoy = DateTime.Today;
+
+          DateTime fechaLimite = hoy.AddDays(dias);
+
+         return _repo.ObtenerProximasAVencer(
+           hoy,
+            fechaLimite);
+} 
+
+public IList<Membresia> ObtenerVigentesEnFecha(DateTime fecha)
+{
+    if (fecha == DateTime.MinValue)
+    {
+        throw new ReglaNegocioException(
+            "Debe seleccionar una fecha.");
+    }
+
+    return _repo.ObtenerVigentesEnFecha(fecha.Date);
+}
+
+
+
     }
 }

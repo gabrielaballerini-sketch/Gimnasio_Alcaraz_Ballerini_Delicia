@@ -1,0 +1,320 @@
+
+@{
+    ViewData["Title"] = "Membresías vigentes a una fecha";
+}
+
+<div id="app" class="container mt-4">
+
+    <div class="mb-4">
+        <h1 class="mb-1">Membresías vigentes</h1>
+        <p class="text-muted">
+            Consultá qué socios tenían una membresía vigente
+            en una fecha determinada.
+        </p>
+    </div>
+
+    <div v-if="error" class="alert alert-danger">
+        {{ error }}
+    </div>
+
+    <!-- FILTRO POR FECHA -->
+
+    <div class="card shadow-sm border-0 mb-4">
+
+        <div class="card-body">
+
+            <div class="row align-items-end">
+
+                <div class="col-md-4">
+
+                    <label class="form-label">
+                        Fecha de consulta
+                    </label>
+
+                    <input type="date"
+                           class="form-control"
+                           v-model="fecha">
+
+                </div>
+
+                <div class="col-md-3">
+
+                    <button class="btn btn-primary w-100"
+                            @@click="buscar"
+                            :disabled="cargando">
+
+                        <i class="bi bi-search me-1"></i>
+                        Consultar
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- RESULTADOS -->
+
+    <div class="card shadow-sm border-0">
+
+        <div class="card-body">
+
+            <div v-if="cargando" class="text-center py-4">
+
+                <div class="spinner-border"></div>
+
+                <p class="mt-2 mb-0">
+                    Consultando membresías...
+                </p>
+
+            </div>
+
+            <div v-else-if="consultado && membresias.length === 0"
+                 class="text-center text-muted py-5">
+
+                <i class="bi bi-calendar-x fs-1"></i>
+
+                <p class="mt-3 mb-0">
+                    No hay socios con membresías vigentes
+                    para la fecha seleccionada.
+                </p>
+
+            </div>
+
+            <div v-else-if="membresias.length > 0">
+
+                <div class="d-flex justify-content-between align-items-center mb-3">
+
+                    <h5 class="mb-0">
+                        Socios con membresía vigente
+                    </h5>
+
+                    <span class="badge bg-success">
+                        {{ membresias.length }} resultados
+                    </span>
+
+                </div>
+
+                <div class="table-responsive">
+
+                    <table class="table table-hover align-middle">
+
+                        <thead>
+                            <tr>
+                                <th>Socio</th>
+                                <th>DNI</th>
+                                <th>Plan</th>
+                                <th>Fecha inicio</th>
+                                <th>Fecha vencimiento</th>
+                                <th>Precio contratado</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+
+                            <tr v-for="m in membresias"
+                                :key="m.idMembresia">
+
+                                <td>
+                                    <strong>
+                                        {{ m.socio?.apellido }},
+                                        {{ m.socio?.nombre }}
+                                    </strong>
+                                </td>
+
+                                <td>
+                                    {{ m.socio?.dni }}
+                                </td>
+
+                                <td>
+                                    {{ m.plan?.nombre }}
+                                </td>
+
+                                <td>
+                                    {{ formatearFecha(m.fechaInicio) }}
+                                </td>
+
+                                <td>
+                                    {{ formatearFecha(m.fechaFin) }}
+                                </td>
+
+                                <td>
+                                    {{ formatearPrecio(m.precioContratado) }}
+                                </td>
+
+                                <td>
+                                    <span class="badge bg-success">
+                                        Vigente
+                                    </span>
+                                </td>
+
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="mt-3">
+
+        <a asp-controller="Membresia"
+           asp-action="Index"
+           class="btn btn-outline-secondary">
+
+            <i class="bi bi-arrow-left me-1"></i>
+            Volver a membresías
+
+        </a>
+
+    </div>
+
+</div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+
+<script>
+
+    const { createApp } = Vue;
+
+    createApp({
+
+        data() {
+            return {
+                token: '',
+                fecha: '@DateTime.Today.ToString("yyyy-MM-dd")',
+                membresias: [],
+                cargando: false,
+                consultado: false,
+                error: ''
+            };
+        },
+
+        async mounted() {
+            await this.iniciar();
+        },
+
+        methods: {
+
+            async iniciar() {
+
+                try {
+
+                    const response = await fetch(
+                        '/Cuenta/Token',
+                        { credentials: 'same-origin' }
+                    );
+
+                    if (!response.ok) {
+                        throw new Error(
+                            'No se pudo obtener el token. Volvé a iniciar sesión.'
+                        );
+                    }
+
+                    const datos = await response.json();
+
+                    this.token = datos.token;
+
+                    await this.buscar();
+
+                }
+                catch (e) {
+                    this.error = e.message;
+                }
+
+            },
+
+            async buscar() {
+
+                this.error = '';
+
+                if (!this.fecha) {
+
+                    this.error =
+                        'Debés seleccionar una fecha.';
+
+                    return;
+                }
+
+                this.cargando = true;
+                this.consultado = false;
+
+                try {
+
+                    const response = await fetch(
+                        `/api/membresias/vigentes-en-fecha?fecha=${this.fecha}`,
+                        {
+                            headers: {
+                                'Authorization': `Bearer ${this.token}`
+                            },
+                            credentials: 'same-origin'
+                        }
+                    );
+
+                    const datos = await response.json();
+
+                    if (!response.ok) {
+
+                        throw new Error(
+                            datos.mensaje ||
+                            'No se pudieron consultar las membresías.'
+                        );
+
+                    }
+
+                    this.membresias = Array.isArray(datos)
+                        ? datos
+                        : [];
+
+                    this.consultado = true;
+
+                }
+                catch (e) {
+
+                    this.error = e.message;
+                    this.membresias = [];
+
+                }
+                finally {
+
+                    this.cargando = false;
+
+                }
+
+            },
+
+            formatearFecha(fecha) {
+
+                if (!fecha)
+                    return '-';
+
+                const partes = fecha.substring(0, 10).split('-');
+
+                return `${partes[2]}/${partes[1]}/${partes[0]}`;
+
+            },
+
+            formatearPrecio(precio) {
+
+                return new Intl.NumberFormat('es-AR', {
+                    style: 'currency',
+                    currency: 'ARS'
+                }).format(precio);
+
+            }
+
+        }
+
+    }).mount('#app');
+
+</script>
