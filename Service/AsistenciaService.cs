@@ -22,6 +22,22 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
         }
 
 
+        // Una clase se habilita para registrar el ingreso desde X minutos antes
+        // de que empiece y hasta que termina. Es la única regla de horario:
+        // la usan tanto el listado de clases disponibles como el registro.
+        public const int MinutosAnticipacionClase = 30;
+
+        public static bool ClaseHabilitadaParaIngreso(Clase clase, TimeSpan ahora)
+        {
+            var desde = clase.HoraInicio - TimeSpan.FromMinutes(MinutosAnticipacionClase);
+
+            // Una clase muy temprano no se habilita el día anterior.
+            if (desde < TimeSpan.Zero)
+                desde = TimeSpan.Zero;
+
+            return ahora >= desde && ahora < clase.HoraFin;
+        }
+
         public EstadoAccesoAsistencia ObtenerAcceso(int idSocio)
         {
             var socio = _repoSocio.ObtenerPorId(idSocio);
@@ -123,11 +139,10 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
                         "La clase seleccionada no se dicta hoy.");
                 }
 
-                if (ahora.TimeOfDay < claseSeleccionada.HoraInicio ||
-                    ahora.TimeOfDay >= claseSeleccionada.HoraFin)
+                if (!ClaseHabilitadaParaIngreso(claseSeleccionada, ahora.TimeOfDay))
                 {
                     throw new ReglaNegocioException(
-                        "La clase no está en horario. Solo se puede registrar el ingreso mientras se dicta.");
+                        $"La clase no está habilitada. Se puede registrar el ingreso desde {MinutosAnticipacionClase} minutos antes de que empiece y hasta que termina.");
                 }
 
                 if (_repo.ExisteSuperposicion(

@@ -6,6 +6,7 @@ using Gimnasio_Alcaraz_Ballerini_Delicia.Service;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.RegularExpressions;
 
 namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
 {
@@ -123,6 +124,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             [FromQuery] DateTime? desde,
             [FromQuery] DateTime? hasta,
             [FromQuery] int? idSocio,
+            [FromQuery] string? dni,
             [FromQuery] int pagina = 1,
             [FromQuery] int tamPagina = 10)
         {
@@ -133,6 +135,33 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
                 {
                     mensaje = "La fecha inicial no puede ser posterior a la fecha final."
                 });
+            }
+
+            // Búsqueda por DNI: se resuelve al socio y se filtra por su id.
+            // No se exige que esté activo para poder consultar su historial.
+            if (!string.IsNullOrWhiteSpace(dni))
+            {
+                dni = dni.Trim();
+
+                if (!Regex.IsMatch(dni, @"^\d{7,10}$"))
+                {
+                    return BadRequest(new
+                    {
+                        mensaje = "El DNI debe tener entre 7 y 10 dígitos."
+                    });
+                }
+
+                var socio = _repoSocio.ObtenerPorDni(dni);
+
+                if (socio == null)
+                {
+                    return NotFound(new
+                    {
+                        mensaje = "No existe un socio con ese DNI."
+                    });
+                }
+
+                idSocio = socio.IdSocio;
             }
 
             if (idSocio.HasValue && idSocio.Value <= 0)
@@ -270,8 +299,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
                 .Where(c =>
                     c.Estado &&
                     c.Dia == hoy &&
-                    c.HoraInicio <= ahora.TimeOfDay &&
-                    c.HoraFin > ahora.TimeOfDay &&
+                    AsistenciaService.ClaseHabilitadaParaIngreso(c, ahora.TimeOfDay) &&
                     c.Actividad != null &&
                     !c.Actividad.AccesoLibre)
                 .OrderBy(c => c.HoraInicio)
@@ -281,7 +309,13 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
                     actividad = c.Actividad.Nombre,
                     profesor = c.Profesor.Nombre + " " + c.Profesor.Apellido,
                     horaInicio = c.HoraInicio.ToString(@"hh\:mm"),
-                    horaFin = c.HoraFin.ToString(@"hh\:mm")
+                    horaFin = c.HoraFin.ToString(@"hh\:mm"),
+
+                    // Para que en pantalla se vea si ya empezó o cuánto falta.
+                    enCurso = c.HoraInicio <= ahora.TimeOfDay,
+                    minutosParaInicio = c.HoraInicio <= ahora.TimeOfDay
+                        ? 0
+                        : (int)Math.Ceiling((c.HoraInicio - ahora.TimeOfDay).TotalMinutes)
                 })
                 .ToList();
 

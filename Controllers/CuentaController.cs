@@ -149,11 +149,14 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Controllers
                 signingKey,
                 SecurityAlgorithms.HmacSha256);
 
+
+            var minutos = _configuration.GetValue<int?>("Jwt:ExpiraMinutos") ?? 30;
+
             var jwt = new JwtSecurityToken(
                 issuer: issuer,
                 audience: audience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(30),
+                expires: DateTime.UtcNow.AddMinutes(minutos),
                 signingCredentials: credenciales
             );
 

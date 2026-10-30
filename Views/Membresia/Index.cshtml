@@ -135,7 +135,7 @@
                                 </button>
 
                                 <button v-if="mostrarActivos" class="btn btn-sm btn-outline-danger"
-                                    @@click="darDeBaja(m)">
+                                    @@click="pedirBaja(m)">
                                     <i class="bi bi-trash"></i>
                                 </button>
 
@@ -366,6 +366,38 @@
 
     </div>
 
+    <!-- MODAL DE CONFIRMACIÓN (baja) -->
+    <div class="modal fade" tabindex="-1" ref="modalConfirmar">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-body text-center p-4">
+
+                    <div class="mx-auto mb-3 rounded-circle d-flex align-items-center justify-content-center fs-2 bg-danger-subtle text-danger"
+                         style="width:64px;height:64px">
+                        !
+                    </div>
+
+                    <h5 class="mb-2">{{ confirmacion.titulo }}</h5>
+                    <p class="text-muted mb-3">{{ confirmacion.mensaje }}</p>
+
+                    <div v-if="confirmacion.membresia" class="bg-light rounded p-2 mb-3">
+                        <div class="fw-semibold">
+                            {{ confirmacion.membresia.socio?.apellido }}, {{ confirmacion.membresia.socio?.nombre }}
+                        </div>
+                        <small class="text-muted">{{ confirmacion.membresia.plan?.nombre }}</small>
+                    </div>
+
+                    <div class="d-flex gap-2 justify-content-center">
+                        <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-danger px-4"
+                                @@click="confirmar">{{ confirmacion.textoBoton }}</button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL DE PAGO INICIAL: forma parte de esta misma vista Index.cshtml -->
     <div class="modal fade" id="modalPagoInicial" tabindex="-1"
          data-bs-backdrop="static" data-bs-keyboard="false">
@@ -450,6 +482,14 @@
                     medioPago: '1',
                     errorPago: '',
                     procesandoPago: false,
+                    modalConfirmar: null,
+                    confirmacion: {
+                        titulo: '',
+                        mensaje: '',
+                        textoBoton: '',
+                        membresia: null,
+                        accion: null
+                    },
                     editando: false,
                     idEditando: null,
                     form: {
@@ -487,6 +527,8 @@
                 }
             },
             async mounted() {
+                this.modalConfirmar = new bootstrap.Modal(this.$refs.modalConfirmar);
+
                 await this.iniciar();
             },
             methods: {
@@ -940,12 +982,25 @@
                     }
                 },
 
-                async darDeBaja(m) {
+                // ---------- Confirmación de baja ----------
+                pedirBaja(m) {
+                    this.confirmacion = {
+                        titulo: 'Dar de baja la membresía',
+                        mensaje: 'Pasará a la lista de inactivas y el socio no podrá ingresar. Podés reactivarla cuando quieras.',
+                        textoBoton: 'Dar de baja',
+                        membresia: m,
+                        accion: () => this.ejecutarBaja(m)
+                    };
+                    this.modalConfirmar.show();
+                },
 
-                    if (!confirm(
-                        `¿Está seguro de dar de baja la membresía de ${m.socio?.nombre} ${m.socio?.apellido}?`
-                    ))
-                        return;
+                async confirmar() {
+                    const accion = this.confirmacion.accion;
+                    this.modalConfirmar.hide();
+                    if (accion) await accion();
+                },
+
+                async ejecutarBaja(m) {
 
                     const response =
                         await this.peticionApi(

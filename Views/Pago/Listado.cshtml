@@ -92,7 +92,7 @@
                                 <td>{{ p.idUsuarioAnulador ? 'Usuario #' + p.idUsuarioAnulador : '-' }}</td>
                                 <td class="text-end">
                                     <button v-if="p.estado" type="button" class="btn btn-sm btn-outline-danger"
-                                        v-bind:disabled="anulando === p.idPago" v-on:click="anular(p)">
+                                        v-bind:disabled="anulando === p.idPago" v-on:click="pedirAnular(p)">
                                         <span v-if="anulando === p.idPago" class="spinner-border spinner-border-sm"></span>
                                         <i v-else class="bi bi-x-circle"></i>
                                         Anular
@@ -125,6 +125,40 @@
 
         </div>
     </div>
+
+    <!-- MODAL DE CONFIRMACIÓN (anular pago) -->
+    <div class="modal fade" tabindex="-1" ref="modalConfirmar">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-body text-center p-4">
+
+                    <div class="mx-auto mb-3 rounded-circle d-flex align-items-center justify-content-center fs-2 bg-danger-subtle text-danger"
+                         style="width:64px;height:64px">
+                        !
+                    </div>
+
+                    <h5 class="mb-2">{{ confirmacion.titulo }}</h5>
+                    <p class="text-muted mb-3">{{ confirmacion.mensaje }}</p>
+
+                    <div v-if="confirmacion.pago" class="bg-light rounded p-2 mb-3">
+                        <div class="fw-semibold">
+                            {{ confirmacion.pago.socio ? confirmacion.pago.socio.apellido + ', ' + confirmacion.pago.socio.nombre : 'Socio' }}
+                        </div>
+                        <small class="text-muted">
+                            Pago N.º {{ confirmacion.pago.idPago }} · {{ moneda(confirmacion.pago.importe) }}
+                        </small>
+                    </div>
+
+                    <div class="d-flex gap-2 justify-content-center">
+                        <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-danger px-4"
+                                v-on:click="confirmar">{{ confirmacion.textoBoton }}</button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
@@ -140,6 +174,14 @@
                     tamPagina: 10,
                     cargando: true,
                     anulando: null,
+                    modal: null,
+                    confirmacion: {
+                        titulo: '',
+                        mensaje: '',
+                        textoBoton: '',
+                        pago: null,
+                        accion: null
+                    },
                     mensaje: '',
                     error: ''
                 };
@@ -152,6 +194,8 @@
             },
 
             async mounted() {
+                this.modal = new bootstrap.Modal(this.$refs.modalConfirmar);
+
                 try {
                     const respuesta = await fetch('/Cuenta/Token', { credentials: 'same-origin' });
 
@@ -204,18 +248,24 @@
                     }
                 },
 
+                pedirAnular(pago) {
+                    this.confirmacion = {
+                        titulo: 'Anular el pago',
+                        mensaje: 'Si es el último pago de la membresía, quedará pendiente de pago y el socio no podrá ingresar hasta que se registre otro.',
+                        textoBoton: 'Anular pago',
+                        pago,
+                        accion: () => this.anular(pago)
+                    };
+                    this.modal.show();
+                },
+
+                async confirmar() {
+                    const accion = this.confirmacion.accion;
+                    this.modal.hide();
+                    if (accion) await accion();
+                },
+
                 async anular(pago) {
-                    const socio = pago.socio
-                        ? `${pago.socio.apellido}, ${pago.socio.nombre}`
-                        : 'el socio';
-
-                    const confirmado = confirm(
-                        `¿Anular el pago N.º ${pago.idPago} de ${socio} por ${this.moneda(pago.importe)}?\n\n` +
-                        'Si es el último pago de la membresía, quedará pendiente de pago ' +
-                        'y el socio no podrá ingresar hasta que se registre otro pago.'
-                    );
-
-                    if (!confirmado) return;
 
                     this.error = '';
                     this.mensaje = '';

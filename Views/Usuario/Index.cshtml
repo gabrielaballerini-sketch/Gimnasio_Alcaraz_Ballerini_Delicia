@@ -21,6 +21,34 @@
         <button type="button" class="btn-close" @@click="mensaje = ''" aria-label="Cerrar"></button>
     </div>
 
+    <!-- Modal de confirmación (baja) -->
+    <div class="modal fade" tabindex="-1" ref="modalConfirmar">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-body text-center p-4">
+                    <div class="mx-auto mb-3 rounded-circle d-flex align-items-center justify-content-center fs-2 bg-danger-subtle text-danger"
+                         style="width:64px;height:64px">
+                        !
+                    </div>
+
+                    <h5 class="mb-2">{{ confirmacion.titulo }}</h5>
+                    <p class="text-muted mb-3">{{ confirmacion.mensaje }}</p>
+
+                    <div v-if="confirmacion.usuario" class="bg-light rounded p-2 mb-3">
+                        <div class="fw-semibold">{{ confirmacion.usuario.email }}</div>
+                        <small class="text-muted">{{ nombreRol(confirmacion.usuario.roles) }}</small>
+                    </div>
+
+                    <div class="d-flex gap-2 justify-content-center">
+                        <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-danger px-4"
+                                @@click="confirmar">{{ confirmacion.textoBoton }}</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal: convertir en socio (solo si nunca tuvo ficha) -->
     <div class="modal fade" tabindex="-1" ref="modalSocio" data-bs-backdrop="static">
         <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -237,7 +265,7 @@
                                         </button>
                                         <button v-if="pestana === 'activos'" type="button"
                                                 class="btn btn-sm btn-outline-danger me-1" title="Dar de baja"
-                                            @@click="darDeBaja(usuario)">
+                                            @@click="pedirBaja(usuario)">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                         <button v-else type="button" class="btn btn-sm btn-outline-success" title="Reactivar"
@@ -318,11 +346,20 @@
                             errorModal: '',
                             erroresModal: [],
                             convirtiendo: false,
+                            modalConfirmar: null,
+                            confirmacion: {
+                                titulo: '',
+                                mensaje: '',
+                                textoBoton: '',
+                                usuario: null,
+                                accion: null
+                            },
                         };
                     },
 
                     async mounted() {
                         this.modalSocio = new bootstrap.Modal(this.$refs.modalSocio);
+                        this.modalConfirmar = new bootstrap.Modal(this.$refs.modalConfirmar);
                         await this.iniciar();
                     },
 
@@ -646,14 +683,28 @@
 
                         // DAR DE BAJA A UN USUARIO
           
-                        async darDeBaja(usuario) {
-                            const confirmar = confirm(
-                                `¿Dar de baja al usuario ${usuario.email}?`
-                            );
+                        nombreRol(rol) {
+                            return ({ 1: 'Socio', 2: 'Empleado', 3: 'Administrador' })[rol] ?? '';
+                        },
 
-                            if (!confirmar)
-                                return;
+                        pedirBaja(usuario) {
+                            this.confirmacion = {
+                                titulo: 'Dar de baja al usuario',
+                                mensaje: 'Pasará a la lista de inactivos y no podrá iniciar sesión. Podés reactivarlo cuando quieras.',
+                                textoBoton: 'Dar de baja',
+                                usuario,
+                                accion: () => this.ejecutarBaja(usuario)
+                            };
+                            this.modalConfirmar.show();
+                        },
 
+                        async confirmar() {
+                            const accion = this.confirmacion.accion;
+                            this.modalConfirmar.hide();
+                            if (accion) await accion();
+                        },
+
+                        async ejecutarBaja(usuario) {
                             try {
                                 const resp = await this.peticionApi(
                                     `${API}/${usuario.idUsuario}`,

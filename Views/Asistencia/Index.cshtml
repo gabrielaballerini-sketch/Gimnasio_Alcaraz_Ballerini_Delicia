@@ -17,10 +17,13 @@
             </p>
         </div>
 
-        <a href="/Asistencia/Historial" class="btn btn-outline-primary">
-            <i class="bi bi-clock-history me-1"></i>
-            Historial
-        </a>
+        @if (!User.IsInRole("Empleado"))
+        {
+            <a href="/Asistencia/Historial" class="btn btn-outline-primary">
+                <i class="bi bi-clock-history me-1"></i>
+                Historial
+            </a>
+        }
     </div>
 
     <!-- Mensajes -->
@@ -208,6 +211,9 @@
                                         {{ clase.actividad }}
                                         — {{ clase.horaInicio }} a {{ clase.horaFin }}
                                         — Prof. {{ clase.profesor }}
+                                        — {{ clase.enCurso
+                                            ? 'En curso'
+                                            : 'Empieza en ' + clase.minutosParaInicio + ' min' }}
                                     </option>
 
                                 </select>
@@ -227,8 +233,8 @@
                                 </button>
 
                                 <small class="text-muted d-block mt-2">
-                                    Se muestran las clases que se están dictando
-                                    en el horario actual.
+                                    Se muestran las clases en curso y las que
+                                    empiezan en los próximos 30 minutos.
                                 </small>
 
                             </div>
@@ -593,7 +599,7 @@
 
                         if (this.clases.length === 0) {
                             this.mostrarMensaje(
-                                'No hay clases programadas en este horario.',
+                                'No hay clases en curso ni por comenzar en los próximos 30 minutos.',
                                 'warning'
                             );
                         } else {

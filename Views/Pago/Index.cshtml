@@ -140,22 +140,34 @@
             },
             async mounted() {
                 try {
-                    const respuesta = await fetch('/Cuenta/Token', { credentials: 'same-origin' });
-                    if (!respuesta.ok) {
-                        this.error = 'No se pudo obtener el token de acceso. Volvé a iniciar sesión.';
-                        return;
-                    }
-                    const datos = await respuesta.json();
-                    this.token = datos.token;
-                } catch {
-                    this.error = 'No se pudo conectar con el servidor.';
+                    await this.obtenerToken();
+                } catch (e) {
+                    this.error = e.message || 'No se pudo conectar con el servidor.';
                 }
             },
             methods: {
+                async obtenerToken() {
+                    const r = await fetch('/Cuenta/Token', { credentials: 'same-origin' });
+                    if (!r.ok) throw new Error('Tu sesión venció. Volvé a iniciar sesión.');
+                    const datos = await r.json();
+                    this.token = datos.token ?? datos;
+                },
                 async peticionApi(url, opciones = {}) {
-                    const headers = new Headers(opciones.headers || {});
-                    headers.set('Authorization', `Bearer ${this.token}`);
-                    return fetch(url, { ...opciones, headers, credentials: 'same-origin' });
+                    const enviar = () => {
+                        const headers = new Headers(opciones.headers || {});
+                        headers.set('Authorization', `Bearer ${this.token}`);
+                        return fetch(url, { ...opciones, headers, credentials: 'same-origin' });
+                    };
+
+                    let respuesta = await enviar();
+
+                    // El JWT dura 30 min: si venció, pedimos uno nuevo y reintentamos una vez.
+                    // Un 401 significa que no se procesó nada, así que reintentar el POST es seguro.
+                    if (respuesta.status === 401) {
+                        await this.obtenerToken();
+                        respuesta = await enviar();
+                    }
+                    return respuesta;
                 },
                 async buscarSocio() {
                     this.error = '';
@@ -172,7 +184,9 @@
                     this.buscando = true;
                     try {
                         const respuesta = await this.peticionApi(`/api/pagos/membresia-cobro?dni=${encodeURIComponent(this.dni)}`);
-                        const datos = await respuesta.json();
+                        const datos = await respuesta.json().catch(() => ({}));
+                        if (respuesta.status === 401) throw new Error('Tu sesión venció. Volvé a iniciar sesión.');
+                        if (respuesta.status === 403) throw new Error('No tenés permisos para esta acción.');
                         if (!respuesta.ok) throw new Error(datos.mensaje || 'No se encontró una membresía para ese DNI.');
                         this.resultado = datos;
                         this.medioPago = 1;
@@ -193,7 +207,9 @@
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ medioPago: this.medioPago })
                         });
-                        const datos = await respuesta.json();
+                        const datos = await respuesta.json().catch(() => ({}));
+                        if (respuesta.status === 401) throw new Error('Tu sesión venció. Volvé a iniciar sesión.');
+                        if (respuesta.status === 403) throw new Error('No tenés permisos para esta acción.');
                         if (!respuesta.ok) throw new Error(datos.mensaje || 'No se pudo registrar el pago.');
                         this.mensaje = `${datos.mensaje} N.º ${datos.idPago}. Importe: ${this.moneda(datos.importe)}.`;
                         this.resultado = null;

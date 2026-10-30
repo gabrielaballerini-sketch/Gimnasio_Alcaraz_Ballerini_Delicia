@@ -13,8 +13,8 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Controllers
             return View();
         }
 
-        // Historial completo: el personal ve todo; el socio solo lo suyo (lo resuelve la API).
-        [Authorize(Roles = "Administrador,Empleado,Socio")]
+        
+        [Authorize(Roles = "Administrador,Socio")]
         [HttpGet]
         public IActionResult Historial()
         {

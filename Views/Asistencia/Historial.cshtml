@@ -38,7 +38,7 @@
     <!-- Filtros -->
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-body">
-            <form v-on:submit.prevent="buscar">
+            <form v-on:submit.prevent="nuevaBusqueda">
                 <div class="row g-3 align-items-end">
 
                     <div class="col-md-3">
@@ -51,11 +51,12 @@
                         <input type="date" class="form-control" v-model="filtros.hasta">
                     </div>
 
-                    <!-- Solo lo ve el personal -->
+                    <!-- Solo lo ve el administrador -->
                     <div class="col-md-2" v-if="!esSocio">
-                        <label class="form-label">ID de socio</label>
-                        <input type="number" min="1" class="form-control"
-                               v-model="filtros.idSocio" placeholder="Todos">
+                        <label class="form-label">DNI del socio</label>
+                        <input type="text" inputmode="numeric" maxlength="10"
+                               class="form-control" autocomplete="off"
+                               v-model.trim="filtros.dni" placeholder="Sin puntos">
                     </div>
 
                     <div class="col-md-2">
@@ -90,13 +91,56 @@
         </div>
     </div>
 
+    <!-- Período vigente (solo socio) -->
+    <div v-if="esSocio && modoPeriodo" v-cloak
+         class="alert alert-info d-flex flex-wrap align-items-center gap-3">
+        <i class="bi bi-calendar-check fs-4"></i>
+
+        <div class="flex-grow-1">
+            <template v-if="resumen && resumen.tienePeriodoVigente">
+                Mostrando solo tu período vigente:
+                <strong>{{ fechaCorta(resumen.vigenteDesde) }} al {{ fechaCorta(resumen.venceEl) }}</strong>
+                <span v-if="resumen.plan"> · {{ resumen.plan }}</span>.
+                <div class="small mt-1">
+                    Utilizaciones en este período:
+                    <strong>{{ resumen.utilizadas }}</strong>
+                    <span v-if="!resumen.ilimitado && resumen.permitidas != null">de {{ resumen.permitidas }}</span>
+                    <span v-else>(plan ilimitado)</span>
+                </div>
+            </template>
+            <template v-else>
+                No tenés un período vigente en este momento.
+                <span v-if="resumen && resumen.motivo">{{ resumen.motivo }}</span>
+            </template>
+        </div>
+
+        <button type="button" class="btn btn-sm btn-outline-primary"
+                v-on:click="verHistorialCompleto" v-bind:disabled="cargando">
+            Ver historial completo
+        </button>
+    </div>
+
+    <div v-else-if="esSocio" v-cloak
+         class="alert alert-secondary d-flex flex-wrap align-items-center gap-3">
+        <i class="bi bi-funnel fs-4"></i>
+        <div class="flex-grow-1">
+            {{ filtros.desde || filtros.hasta
+                ? 'Mostrando los ingresos según las fechas elegidas.'
+                : 'Mostrando todo tu historial.' }}
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-primary"
+                v-on:click="limpiarFiltros" v-bind:disabled="cargando">
+            Volver a mi período vigente
+        </button>
+    </div>
+
     <!-- Tabla -->
     <div class="card border-0 shadow-sm">
         <div class="card-body">
 
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 class="mb-0">Ingresos registrados</h5>
-                <span class="badge text-bg-secondary">
+                <span class="badge text-bg-secondary" v-if="esSocio || buscado">
                     Total: {{ total }}
                 </span>
             </div>
@@ -147,7 +191,11 @@
                         <tr v-if="!cargando && asistencias.length === 0">
                             <td colspan="5" class="text-center text-muted py-5">
                                 <i class="bi bi-inbox display-6 d-block mb-2"></i>
-                                No hay asistencias para los filtros seleccionados.
+                                {{ !esSocio && !buscado
+                                    ? 'Buscá por DNI y/o fechas para ver las asistencias.'
+                                    : esSocio && modoPeriodo
+                                        ? 'Todavía no registraste ingresos en tu período vigente.'
+                                        : 'No hay asistencias para los filtros seleccionados.' }}
                             </td>
                         </tr>
 
@@ -162,7 +210,8 @@
             </div>
 
             <!-- Paginación -->
-            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mt-3">
+            <div v-if="esSocio || buscado"
+                 class="d-flex flex-wrap justify-content-between align-items-center gap-3 mt-3">
                 <span class="text-muted small">
                     Página {{ pagina }} de {{ totalPaginas }}
                 </span>
@@ -202,19 +251,40 @@
                     cargando: false,
                     mensaje: '',
                     error: false,
+                    token: '',
+                    resumen: null,
+
+                    // Administrador: no se carga nada hasta que busca.
+                    buscado: false,
+
+                    // Socio: por defecto solo el período vigente.
+                    // Con ?todo=1 (o el botón) se ve el historial completo.
+                    verTodo: new URLSearchParams(window.location.search).get('todo') === '1',
+
                     filtros: {
                         desde: '',
                         hasta: '',
-                        idSocio: '',
-                        token: '',
+                        dni: ''
                     }
                 };
+            },
+
+            computed: {
+                // Período vigente = el socio no pidió ver todo ni eligió fechas.
+                modoPeriodo() {
+                    return this.esSocio &&
+                        !this.verTodo &&
+                        !this.filtros.desde &&
+                        !this.filtros.hasta;
+                }
             },
 
            async mounted() {
             await this.obtenerToken();
 
-            if (this.token) {
+            // El socio ve su período vigente al entrar.
+            // El administrador no: tiene que buscar por DNI y/o fechas.
+            if (this.token && this.esSocio) {
                 await this.buscar();
             }
         },
@@ -228,7 +298,24 @@
                         return;
                     }
 
+                    if (!this.esSocio) {
+                        const dni = (this.filtros.dni || '').trim();
+
+                        if (!dni && !this.filtros.desde && !this.filtros.hasta) {
+                            this.mensaje = 'Ingresá un DNI y/o un rango de fechas para buscar.';
+                            this.error = false;
+                            return;
+                        }
+
+                        if (dni && !/^\d{7,10}$/.test(dni)) {
+                            this.mensaje = 'Ingresá un DNI válido de entre 7 y 10 dígitos.';
+                            this.error = true;
+                            return;
+                        }
+                    }
+
                     this.cargando = true;
+                    this.buscado = true;
                     this.mensaje = '';
                     this.error = false;
 
@@ -244,11 +331,12 @@
                         params.set('hasta', this.filtros.hasta);
 
                     if (this.esSocio) {
-                        // Historial completo: no limitar al período actual
-                        params.set('periodoActual', 'false');
-                    } else if (this.filtros.idSocio) {
-                        // El socio nunca manda un id: la API lo toma de su sesión
-                        params.set('idSocio', this.filtros.idSocio);
+                        // Por defecto solo el período vigente. Si el socio eligió
+                        // fechas o "ver historial completo", se busca sin limitar.
+                        params.set('periodoActual', this.modoPeriodo ? 'true' : 'false');
+                    } else if (this.filtros.dni) {
+                        // El socio nunca manda un DNI: la API lo toma de su sesión
+                        params.set('dni', this.filtros.dni.trim());
                     }
 
                     const url = this.esSocio
@@ -292,6 +380,7 @@
 
                         this.asistencias = data.items || [];
                         this.total = data.total || 0;
+                        this.resumen = data.resumen || null;
                         this.pagina = data.pagina || this.pagina;
                         this.tamPagina = data.tamPagina || this.tamPagina;
                         this.totalPaginas = Math.max(
@@ -315,14 +404,51 @@
                     this.buscar();
                 },
 
+                nuevaBusqueda() {
+                    this.pagina = 1;
+                    this.buscar();
+                },
+
+                // Para el socio, limpiar vuelve a la vista por defecto: el período vigente.
                 limpiarFiltros() {
                     this.filtros = {
                         desde: '',
                         hasta: '',
-                        idSocio: ''
+                        dni: ''
                     };
+                    this.verTodo = false;
+                    this.pagina = 1;
+
+                    if (!this.esSocio) {
+                        // Administrador: vuelve a la pantalla sin resultados.
+                        this.asistencias = [];
+                        this.total = 0;
+                        this.totalPaginas = 1;
+                        this.buscado = false;
+                        this.mensaje = '';
+                        this.error = false;
+                        return;
+                    }
+
+                    this.buscar();
+                },
+
+                verHistorialCompleto() {
+                    this.filtros.desde = '';
+                    this.filtros.hasta = '';
+                    this.verTodo = true;
                     this.pagina = 1;
                     this.buscar();
+                },
+
+                fechaCorta(fecha) {
+                    if (!fecha) return '-';
+
+                    const valor = new Date(fecha);
+
+                    return Number.isNaN(valor.getTime())
+                        ? '-'
+                        : valor.toLocaleDateString('es-AR');
                 },
 
                 formatearFechaHora(fecha) {
@@ -358,6 +484,8 @@
 
             watch: {
                 tamPagina() {
+                    if (!this.esSocio && !this.buscado) return;
+
                     this.pagina = 1;
                     this.buscar();
                 }
