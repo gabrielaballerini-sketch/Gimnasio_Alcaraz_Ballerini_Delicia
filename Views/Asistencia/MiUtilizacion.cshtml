@@ -13,10 +13,7 @@
                 Cuántas utilizaciones de tu plan usaste en el período actual.
             </p>
         </div>
-
-        <a asp-controller="Asistencia" asp-action="Historial" asp-route-todo="1" class="btn btn-outline-primary">
-            <i class="bi bi-clock-history me-1"></i> Ver historial completo
-        </a>
+      
     </div>
 
     <div v-if="mensaje" v-cloak class="alert alert-danger">{{ mensaje }}</div>

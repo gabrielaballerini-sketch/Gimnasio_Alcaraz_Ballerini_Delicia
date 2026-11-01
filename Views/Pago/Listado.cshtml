@@ -88,8 +88,8 @@
 
                             @if (esAdmin)
                             {
-                                <td>{{ p.idUsuarioCreador ? 'Usuario #' + p.idUsuarioCreador : '-' }}</td>
-                                <td>{{ p.idUsuarioAnulador ? 'Usuario #' + p.idUsuarioAnulador : '-' }}</td>
+                                <td>{{ email(p.idUsuarioCreador) }}</td>
+                                <td>{{ email(p.idUsuarioAnulador) }}</td>
                                 <td class="text-end">
                                     <button v-if="p.estado" type="button" class="btn btn-sm btn-outline-danger"
                                         v-bind:disabled="anulando === p.idPago" v-on:click="pedirAnular(p)">
@@ -174,6 +174,7 @@
                     tamPagina: 10,
                     cargando: true,
                     anulando: null,
+                     emails: {},  
                     modal: null,
                     confirmacion: {
                         titulo: '',
@@ -223,6 +224,31 @@
 
                     return fetch(url, { ...opciones, headers, credentials: 'same-origin' });
                 },
+        
+             async cargarEmails() {
+                    const ids = new Set();
+
+                    this.pagos.forEach(p => {
+                        if (p.idUsuarioCreador) ids.add(p.idUsuarioCreador);
+                        if (p.idUsuarioAnulador) ids.add(p.idUsuarioAnulador);
+                    });
+
+                    const faltan = [...ids].filter(id => !(id in this.emails));
+
+                    await Promise.all(faltan.map(async id => {
+                        try {
+                            const r = await this.peticionApi(`/api/usuarios/${id}`);
+                            if (r.ok) this.emails[id] = (await r.json()).email;
+                        } catch { /* queda "Usuario #id" */ }
+                    }));
+                },
+
+                email(id) {
+                    return id ? (this.emails[id] || 'Usuario #' + id) : '-';
+                },
+
+         
+
 
                 async cargar() {
                     this.cargando = true;
@@ -239,9 +265,12 @@
 
                         this.pagos = datos.items || [];
                         this.total = datos.total || 0;
+
+                        await this.cargarEmails();
                     } catch (e) {
                         this.pagos = [];
                         this.total = 0;
+                  
                         this.error = e.message;
                     } finally {
                         this.cargando = false;

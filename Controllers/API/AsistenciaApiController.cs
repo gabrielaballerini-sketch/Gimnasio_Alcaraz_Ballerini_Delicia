@@ -172,7 +172,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
                 });
             }
 
-            (pagina, tamPagina) =PaginacionParametros.Normalizar(pagina, tamPagina);
+            (pagina, tamPagina) = PaginacionParametros.Normalizar(pagina, tamPagina);
 
 
             var resultado = _service.Listar(
@@ -209,7 +209,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
                     mensaje = "La fecha inicial no puede ser posterior a la fecha final."
                 });
             }
-                (pagina, tamPagina) =PaginacionParametros.Normalizar(pagina, tamPagina);
+            (pagina, tamPagina) = PaginacionParametros.Normalizar(pagina, tamPagina);
 
 
             try
@@ -321,6 +321,88 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
 
             return Ok(clases);
         }
+
+        // ASISTENCIAS POR ACTIVIDAD en un período (administrador )
+        
+
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+            Roles = "Administrador")]
+        [HttpGet("por-actividad")]
+        public IActionResult PorActividad(
+            [FromQuery] DateTime? desde,
+            [FromQuery] DateTime? hasta)
+        {
+            try
+            {
+                var filas = _service.PorActividad(desde, hasta);
+                var total = filas.Sum(x => x.Cantidad);
+
+                return Ok(new
+                {
+                    total,
+                    items = filas.Select(x => new
+                    {
+                        x.Actividad,
+                        x.Cantidad,
+                        porcentaje = total > 0 ? Math.Round(x.Cantidad * 100m / total, 1) : 0m
+                    })
+                });
+            }
+            catch (ReglaNegocioException ex)
+            {
+                return BadRequest(new { mensaje = ex.Message });
+            }
+        }
+
+        // UTILIZACIÓN DEL PLAN por socio activo.
+        
+       
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+            Roles = "Administrador")]
+        [HttpGet("utilizacion")]
+        public IActionResult Utilizacion(
+            [FromQuery] int pagina = 1,
+            [FromQuery] int tamPagina = 10)
+        {
+            (pagina, tamPagina) = PaginacionParametros.Normalizar(pagina, tamPagina);
+
+            var socios = _repoSocio.ObtenerActivos(pagina, tamPagina);
+
+            var items = socios.Select(s =>
+            {
+                var acceso = _service.ObtenerAcceso(s.IdSocio);
+
+                return new
+                {
+                    s.IdSocio,
+                    s.Apellido,
+                    s.Nombre,
+                    s.Dni,
+                    conMembresia = acceso.IdMembresia.HasValue,
+                    plan = acceso.Plan,
+                    desde = acceso.VigenteDesde,
+                    hasta = acceso.VenceEl,
+                    ilimitado = acceso.Ilimitado,
+                    permitidas = acceso.Limite,
+                    utilizadas = acceso.Usadas,
+                    disponibles = acceso.Limite.HasValue
+                        ? Math.Max(0, acceso.Limite.Value - acceso.Usadas)
+                        : (int?)null,
+                    motivo = acceso.IdMembresia.HasValue ? null : acceso.Motivo
+                };
+            });
+
+            return Ok(new
+            {
+                items,
+                total = _repoSocio.ObtenerCantidad(true),
+                pagina,
+                tamPagina
+            });
+        }
+
+
+
 
     }
 

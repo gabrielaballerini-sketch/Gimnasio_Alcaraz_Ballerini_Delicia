@@ -1,0 +1,258 @@
+@{
+    ViewData["Title"] = "Recaudación";
+}
+
+<div id="appRecaudacion" class="container mt-4 mb-5">
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h1 class="mb-1"><i class="bi bi-cash-coin me-2"></i>Recaudación</h1>
+            <p class="text-muted mb-0">
+                Lo recaudado en un período, por medio de pago y por plan. No incluye pagos anulados.
+            </p>
+        </div>
+
+        <a asp-controller="Pago" asp-action="Listado" class="btn btn-outline-primary">
+            <i class="bi bi-receipt me-1"></i> Ver pagos
+        </a>
+    </div>
+
+    <div v-if="error" v-cloak class="alert alert-danger">{{ error }}</div>
+
+    <!-- Filtros -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form v-on:submit.prevent="buscar">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label">Desde</label>
+                        <input type="date" class="form-control" v-model="filtros.desde">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Hasta</label>
+                        <input type="date" class="form-control" v-model="filtros.hasta">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Plan</label>
+                        <select class="form-select" v-model="filtros.idPlan">
+                            <option value="">Todos</option>
+                            <option v-for="p in planes" v-bind:key="p.idPlan" v-bind:value="p.idPlan">{{ p.nombre }}</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Medio de pago</label>
+                        <select class="form-select" v-model="filtros.medioPago">
+                            <option value="">Todos</option>
+                            <option v-for="m in medios" v-bind:key="m.id" v-bind:value="m.id">{{ m.nombre }}</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary flex-grow-1" v-bind:disabled="cargando">
+                            <span v-if="cargando" class="spinner-border spinner-border-sm"></span>
+                            <i v-else class="bi bi-search"></i> Buscar
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <template v-if="datos">
+
+        <!-- Resumen -->
+        <div class="row g-3 mb-4 text-center">
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100"><div class="card-body">
+                    <div class="small text-muted">Total recaudado</div>
+                    <div class="fs-3 fw-bold">{{ moneda(datos.resumen.total) }}</div>
+                </div></div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100"><div class="card-body">
+                    <div class="small text-muted">Cantidad de pagos</div>
+                    <div class="fs-3 fw-bold">{{ datos.resumen.cantidad }}</div>
+                </div></div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100"><div class="card-body">
+                    <div class="small text-muted">Pago promedio</div>
+                    <div class="fs-3 fw-bold">{{ moneda(datos.resumen.ticketPromedio) }}</div>
+                </div></div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+
+            <!-- Por medio de pago -->
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <h5 class="mb-3">Por medio de pago</h5>
+                        <div class="table-responsive">
+                            <table class="table align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr><th>Medio</th><th class="text-end">Pagos</th><th class="text-end">Total</th><th style="width:30%">%</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="f in datos.porMedio" v-bind:key="f.medio">
+                                        <td>{{ nombreMedio(f.medio) }}</td>
+                                        <td class="text-end">{{ f.cantidad }}</td>
+                                        <td class="text-end">{{ moneda(f.total) }}</td>
+                                        <td>
+                                            <div class="progress" style="height:.9rem;">
+                                                <div class="progress-bar" v-bind:style="{ width: f.porcentaje + '%' }"></div>
+                                            </div>
+                                            <span class="small text-muted">{{ f.porcentaje }}%</span>
+                                        </td>
+                                    </tr>
+                                    <tr v-if="datos.porMedio.length === 0">
+                                        <td colspan="4" class="text-center text-muted py-4">Sin pagos en el período.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Por plan -->
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <h5 class="mb-3">Por plan</h5>
+                        <div class="table-responsive">
+                            <table class="table align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr><th>Plan</th><th class="text-end">Pagos</th><th class="text-end">Total</th><th style="width:30%">%</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="f in datos.porPlan" v-bind:key="f.plan">
+                                        <td>{{ f.plan }}</td>
+                                        <td class="text-end">{{ f.cantidad }}</td>
+                                        <td class="text-end">{{ moneda(f.total) }}</td>
+                                        <td>
+                                            <div class="progress" style="height:.9rem;">
+                                                <div class="progress-bar bg-success" v-bind:style="{ width: f.porcentaje + '%' }"></div>
+                                            </div>
+                                            <span class="small text-muted">{{ f.porcentaje }}%</span>
+                                        </td>
+                                    </tr>
+                                    <tr v-if="datos.porPlan.length === 0">
+                                        <td colspan="4" class="text-center text-muted py-4">Sin pagos en el período.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </template>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script>
+        const hoy = new Date();
+        const iso = (d) => d.getFullYear() + '-' +
+            String(d.getMonth() + 1).padStart(2, '0') + '-' +
+            String(d.getDate()).padStart(2, '0');
+
+        Vue.createApp({
+            data() {
+                return {
+                    token: '',
+                    cargando: false,
+                    error: '',
+                    datos: null,
+                    planes: [],
+                    medios: [
+                        { id: 1, nombre: 'Efectivo' },
+                        { id: 2, nombre: 'Débito' },
+                        { id: 3, nombre: 'Crédito' },
+                        { id: 4, nombre: 'Transferencia' }
+                    ],
+                    filtros: {
+                        desde: iso(new Date(hoy.getFullYear(), hoy.getMonth(), 1)),
+                        hasta: iso(hoy),
+                        idPlan: '',
+                        medioPago: ''
+                    }
+                };
+            },
+
+            async mounted() {
+                try {
+                    const r = await fetch('/Cuenta/Token', { credentials: 'same-origin' });
+                    if (!r.ok) throw new Error();
+                    this.token = (await r.json()).token;
+                } catch {
+                    this.error = 'No se pudo obtener el token. Volvé a iniciar sesión.';
+                    return;
+                }
+
+                await this.cargarPlanes();
+                await this.buscar();
+            },
+
+            methods: {
+                headers() {
+                    return { 'Accept': 'application/json', 'Authorization': 'Bearer ' + this.token };
+                },
+
+                async cargarPlanes() {
+                    try {
+                        const r = await fetch('/api/planes/activos?pagina=1&tamPagina=100',
+                            { headers: this.headers(), credentials: 'same-origin' });
+                        if (r.ok) this.planes = (await r.json()).items || [];
+                    } catch { /* el filtro por plan queda solo con "Todos" */ }
+                },
+
+                async buscar() {
+                    if (this.filtros.desde && this.filtros.hasta && this.filtros.desde > this.filtros.hasta) {
+                        this.error = 'La fecha inicial no puede ser posterior a la fecha final.';
+                        return;
+                    }
+
+                    this.cargando = true;
+                    this.error = '';
+
+                    const params = new URLSearchParams();
+                    if (this.filtros.desde) params.set('desde', this.filtros.desde);
+                    if (this.filtros.hasta) params.set('hasta', this.filtros.hasta);
+                    if (this.filtros.idPlan) params.set('idPlan', this.filtros.idPlan);
+                    if (this.filtros.medioPago) params.set('medioPago', this.filtros.medioPago);
+
+                    try {
+                        const r = await fetch('/api/pagos/recaudacion?' + params.toString(),
+                            { headers: this.headers(), credentials: 'same-origin' });
+                        const texto = await r.text();
+                        const data = texto ? JSON.parse(texto) : {};
+
+                        if (!r.ok) {
+                            throw new Error(r.status === 401 || r.status === 403
+                                ? 'Necesitás iniciar sesión como administrador.'
+                                : (data.mensaje || 'No se pudo cargar la recaudación.'));
+                        }
+                        this.datos = data;
+                    } catch (e) {
+                        this.datos = null;
+                        this.error = e.message;
+                    } finally {
+                        this.cargando = false;
+                    }
+                },
+
+                nombreMedio(valor) {
+                    const m = this.medios.find(x => x.id === valor);
+                    return m ? m.nombre : 'Medio ' + valor;
+                },
+
+                moneda(valor) {
+                    return Number(valor || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+                }
+            }
+        }).mount('#appRecaudacion');
+    </script>
+}

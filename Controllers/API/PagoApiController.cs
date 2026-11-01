@@ -13,10 +13,12 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
     public class PagoApiController : ControllerBase
     {
         private readonly PagoService _service;
+        private readonly SocioService _socioService;
 
-        public PagoApiController(PagoService service)
+        public PagoApiController(PagoService service, SocioService socioService)
         {
             _service = service;
+            _socioService = socioService;
         }
 
         // Busca la membresía del socio que corresponde cobrar
@@ -131,7 +133,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             [FromQuery] int pagina = 1,
             [FromQuery] int tamPagina = 10)
         {
-         (pagina, tamPagina) =PaginacionParametros.Normalizar(pagina, tamPagina);
+            (pagina, tamPagina) = PaginacionParametros.Normalizar(pagina, tamPagina);
 
 
             var resultado = _service.Listar(pagina, tamPagina);
@@ -160,7 +162,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
             {
                 return Unauthorized(new { mensaje = "Token inválido." });
             }
-         (pagina, tamPagina) =PaginacionParametros.Normalizar(pagina, tamPagina);
+            (pagina, tamPagina) = PaginacionParametros.Normalizar(pagina, tamPagina);
 
 
             var pagos = _service.ListarDeUsuario(idUsuario, pagina, tamPagina);
@@ -194,6 +196,91 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
                 return BadRequest(new { mensaje = ex.Message });
             }
         }
+
+    // RECAUDACIÓN POR PERÍODO
+
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+    Roles = "Administrador")]
+
+[HttpGet("recaudacion")]
+
+public IActionResult Recaudacion(
+    [FromQuery] DateTime? desde,
+    [FromQuery] DateTime? hasta,
+    [FromQuery] int? idPlan,
+    [FromQuery] int? medioPago)
+{
+    try
+    {
+        var r = _service.Recaudacion(desde, hasta, idPlan, medioPago);
+
+        // El resumen sale de sumar el desglose por plan (mismos filtros)
+        var total = r.PorPlan.Sum(x => x.Total);
+        var cantidad = r.PorPlan.Sum(x => x.Cantidad);
+
+        return Ok(new
+        {
+            resumen = new
+            {
+                total,
+                cantidad,
+                ticketPromedio = cantidad > 0 ? Math.Round(total / cantidad, 2) : 0m
+            },
+            porPlan = r.PorPlan.Select(x => new
+            {
+                x.Plan,
+                x.Cantidad,
+                x.Total,
+                porcentaje = total > 0 ? Math.Round(x.Total * 100m / total, 1) : 0m
+            }),
+            porMedio = r.PorMedio.Select(x => new
+            {
+                x.Medio,
+                x.Cantidad,
+                x.Total,
+                porcentaje = total > 0 ? Math.Round(x.Total * 100m / total, 1) : 0m
+            })
+        });
+    }
+    catch (ReglaNegocioException ex)
+    {
+        return BadRequest(new { mensaje = ex.Message });
+    }
+}
+
+// PAGOS DE UN SOCIO (administrador )
+
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
+    Roles = "Administrador")]
+
+[HttpGet("socio/{idSocio:int}")]
+public IActionResult DeSocio(
+    int idSocio,
+    [FromQuery] int pagina = 1,
+    [FromQuery] int tamPagina = 10)
+{
+    var socio = _socioService.Obtener(idSocio);
+
+    if (socio == null)
+        return NotFound(new { mensaje = "Socio no encontrado." });
+
+    (pagina, tamPagina) = PaginacionParametros.Normalizar(pagina, tamPagina);
+
+    if (!socio.IdUsuario.HasValue)
+        return Ok(new { items = Array.Empty<object>(), total = 0, pagina, tamPagina });
+
+    var pagos = _service.ListarDeUsuario(socio.IdUsuario.Value, pagina, tamPagina);
+
+    return Ok(new
+    {
+        items = pagos.Select(p => Proyectar(p, false)),
+        total = _service.ContarDeUsuario(socio.IdUsuario.Value),
+        pagina,
+        tamPagina
+    });
+}
+
+
 
 
         // lo usamos en listar y mio ( para q salga solo lo q yo quiero)

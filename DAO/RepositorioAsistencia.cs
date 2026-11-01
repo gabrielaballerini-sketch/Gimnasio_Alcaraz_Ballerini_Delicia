@@ -311,5 +311,60 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
 
             return asistencia;
         }
+
+
+     public IList<(string Actividad, int Cantidad)> ObtenerCantidadPorActividad(
+    DateTime desde, DateTime hastaExclusivo)
+{
+    var lista = new List<(string Actividad, int Cantidad)>();
+
+    using var conexion = CrearConexion();
+
+    // Primera parte: actividades con clases (aparecen aunque tengan 0 asistencias, así se ven las vacías).
+    // Segunda parte: ingresos sin clase = Musculación.
+    const string sql = @"
+        SELECT Actividad, Cantidad
+        FROM (
+            SELECT ac.Nombre AS Actividad,
+                   COUNT(a.IdAsistencia) AS Cantidad
+            FROM actividad ac
+            LEFT JOIN clase c ON c.IdActividad = ac.IdActividad
+            LEFT JOIN asistencia a
+                   ON a.IdClase = c.IdClase
+                  AND a.FechaIngreso >= @Desde
+                  AND a.FechaIngreso < @Hasta
+            WHERE ac.AccesoLibre = 0
+            GROUP BY ac.IdActividad, ac.Nombre, ac.Estado
+            HAVING ac.Estado = 1 OR COUNT(a.IdAsistencia) > 0
+
+            UNION ALL
+
+            SELECT 'Musculación', COUNT(*)
+            FROM asistencia
+            WHERE IdClase IS NULL
+              AND FechaIngreso >= @Desde
+              AND FechaIngreso < @Hasta
+        ) t
+        ORDER BY Cantidad DESC, Actividad;";
+
+    using var comando = new MySqlCommand(sql, conexion);
+    comando.Parameters.AddWithValue("@Desde", desde);
+    comando.Parameters.AddWithValue("@Hasta", hastaExclusivo);
+
+    conexion.Open();
+
+    using var reader = comando.ExecuteReader();
+
+    while (reader.Read())
+    {
+        lista.Add((
+            reader.GetString("Actividad"),
+            Convert.ToInt32(reader["Cantidad"])));
+    }
+
+    return lista;
+}
+
+
     }
 }

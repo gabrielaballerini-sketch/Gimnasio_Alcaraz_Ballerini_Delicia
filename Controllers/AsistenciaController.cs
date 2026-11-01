@@ -14,7 +14,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Controllers
         }
 
         
-        [Authorize(Roles = "Administrador,Socio")]
+        [Authorize(Roles = "Administrador")]
         [HttpGet]
         public IActionResult Historial()
         {
@@ -28,5 +28,18 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Controllers
         {
             return View();
         }
+
+      
+        // Cantidad de asistencias por actividad (solo administrador)
+        
+        [Authorize(Roles = "Administrador")]
+        [HttpGet]
+        public IActionResult PorActividad()
+        {
+            return View();
+        }
+
+
+
     }
 }

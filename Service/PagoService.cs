@@ -20,7 +20,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             _repoPlan = repoPlan;
         }
 
-   
+
         public static bool EsRenovacion(Membresia membresia)
         {
             return membresia.Pagada &&
@@ -175,7 +175,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             return pago;
         }
 
-               public void Anular(int idPago, int idUsuarioAnulador)
+        public void Anular(int idPago, int idUsuarioAnulador)
         {
             if (idPago <= 0)
             {
@@ -185,13 +185,14 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
 
             if (idUsuarioAnulador <= 0)
             {
-                throw new ReglaNegocioException( "No se pudo identificar al usuario que anula el pago.");
+                throw new ReglaNegocioException("No se pudo identificar al usuario que anula el pago.");
             }
 
             var pago = _repoPago.ObtenerPorId(idPago) ?? throw new ReglaNegocioException("No se encontró el pago.");
 
             if (!pago.Estado)
-            { throw new ReglaNegocioException("El pago ya está anulado.");
+            {
+                throw new ReglaNegocioException("El pago ya está anulado.");
             }
 
             if (_repoPago.Anular(idPago, idUsuarioAnulador) == 0)
@@ -204,14 +205,14 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
         public ResultadoPaginado<Pago> Listar(int pagina = PaginacionParametros.PaginaPredeterminada,
              int tamPagina = PaginacionParametros.TamPaginaPredeterminado)
         {
-           (pagina, tamPagina) =PaginacionParametros.Normalizar(pagina, tamPagina);
+            (pagina, tamPagina) = PaginacionParametros.Normalizar(pagina, tamPagina);
 
             return new ResultadoPaginado<Pago>
             {
                 Items = _repoPago.ObtenerTodos(pagina, tamPagina),
                 Pagina = pagina,
                 TamPagina = tamPagina,
-                Total = _repoPago.ObtenerCantidad(null)   
+                Total = _repoPago.ObtenerCantidad(null)
             };
         }
 
@@ -229,5 +230,35 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
 
             return _repoPago.ObtenerPorSocio(idUsuario, pagina, tamPagina);
         }
+
+        public (IList<(string Plan, int Cantidad, decimal Total)> PorPlan,
+         IList<(int Medio, int Cantidad, decimal Total)> PorMedio)
+     Recaudacion(DateTime? desde, DateTime? hasta, int? idPlan, int? medioPago)
+        {
+            var hoy = DateTime.Today;
+            var d = (desde ?? new DateTime(hoy.Year, hoy.Month, 1)).Date;
+            var h = (hasta ?? hoy).Date;
+
+            if (d > h)
+                throw new ReglaNegocioException("La fecha 'desde' no puede ser posterior a 'hasta'.");
+
+            if (medioPago.HasValue && !Enum.IsDefined(typeof(MedioPago), medioPago.Value))
+                throw new ReglaNegocioException("El medio de pago no es válido.");
+
+            var hastaExclusivo = h.AddDays(1);
+
+            return (_repoPago.ObtenerRecaudacionPorPlan(d, hastaExclusivo, idPlan, medioPago),
+                _repoPago.ObtenerRecaudacionPorMedio(d, hastaExclusivo, idPlan, medioPago));
+        }
+
+
+
+        public int ContarDeUsuario(int idUsuario)
+        {
+            return _repoPago.ObtenerCantidadPorUsuario(idUsuario);
+        }
+
+
+
     }
 }

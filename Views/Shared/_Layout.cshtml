@@ -47,17 +47,6 @@
                             </li>
                         }
                         
-                        @if (User.IsInRole("Administrador") ||
-                             User.IsInRole("Socio"))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-controller="Asistencia" asp-action="Historial">
-                                    <i class="bi bi-clock-history me-1"></i>
-                                    Historial
-                                </a>
-                            </li>
-                        }
-
                         @if (User.IsInRole("Socio"))
                         {
                             <li class="nav-item">
@@ -123,34 +112,6 @@
                    
 
 
-
-                                @if (User.IsInRole("Administrador") ||
-                                User.IsInRole("Empleado"))
-                                {
-                                    <li class="nav-item">
-                                        <a class="nav-link text-dark" asp-controller="Membresia" asp-action="ProximasAVencer">
-
-                                            <i class="bi bi-calendar-event me-1"></i>
-                                            Próximos vencimientos
-
-                                        </a>
-                                    </li>
-                                }
-
-                                @if (User.IsInRole("Administrador") ||  User.IsInRole("Empleado"))
-                                {
-                                    <li class="nav-item">
-                                        <a class="nav-link text-dark" asp-controller="Membresia" asp-action="VigentesEnFecha">
-
-                                            <i class="bi bi-calendar-check me-1"></i>
-                                            Membresías vigentes
-
-                                        </a>
-                                    </li>
-                                }
-
-
-
                                 @if (User.IsInRole("Socio"))
                                 {
                                     <li class="nav-item">
@@ -181,6 +142,64 @@
                                     </a>
                                 </li>
                             }
+
+                             
+                                @if (User.IsInRole("Administrador") ||
+                                     User.IsInRole("Empleado"))
+                                {
+                                    <li class="nav-item dropdown">
+                                        <a class="nav-link dropdown-toggle text-dark" href="#" id="menuReportes"
+                                           role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="bi bi-bar-chart-line me-1"></i>
+                                            Reportes
+                                        </a>
+
+                                        <ul class="dropdown-menu" aria-labelledby="menuReportes">
+
+                                            @if (User.IsInRole("Administrador"))
+                                            {
+                                                <li>
+                                                    <a class="dropdown-item" asp-controller="Asistencia" asp-action="Historial">
+                                                        <i class="bi bi-clock-history me-2"></i>Historial de asistencias
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item" asp-controller="Asistencia" asp-action="PorActividad">
+                                                        <i class="bi bi-bar-chart me-2"></i>Asistencias por actividad
+                                                    </a>
+                                                </li>
+                                            }
+
+                                            <li>
+                                                <a class="dropdown-item" asp-controller="Membresia" asp-action="ProximasAVencer">
+                                                    <i class="bi bi-calendar-event me-2"></i>Próximos vencimientos
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" asp-controller="Membresia" asp-action="VigentesEnFecha">
+                                                    <i class="bi bi-calendar-check me-2"></i>Membresías vigentes
+                                                </a>
+                                            </li>
+
+                                            @if (User.IsInRole("Administrador"))
+                                            {
+                                                <li>
+                                                    <a class="dropdown-item" asp-controller="Pago" asp-action="Listado">
+                                                        <i class="bi bi-receipt me-2"></i>Ver pagos
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item" asp-controller="Pago" asp-action="Recaudacion">
+                                                        <i class="bi bi-cash-coin me-2"></i>Recaudación
+                                                    </a>
+                                                </li>
+                                            }
+                                        </ul>
+                                    </li>
+                                }
+
+
+
                         }
                     </ul>
 

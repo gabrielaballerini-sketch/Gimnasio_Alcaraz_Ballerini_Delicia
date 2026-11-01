@@ -87,7 +87,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             acceso.Ilimitado = !tieneLimite;
             acceso.Limite = tieneLimite ? membresia.Plan.UtilizacionesMensuales : null;
 
-      
+
             acceso.Usadas = _repo.ContarEnPeriodo(
                 idSocio,
                 membresia.FechaInicio.Date,
@@ -195,10 +195,10 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
             int pagina = PaginacionParametros.PaginaPredeterminada,
              int tamPagina = PaginacionParametros.TamPaginaPredeterminado)
         {
-              (pagina, tamPagina) =PaginacionParametros.Normalizar(pagina, tamPagina);
+            (pagina, tamPagina) = PaginacionParametros.Normalizar(pagina, tamPagina);
 
 
-           
+
             var hastaExclusivo = hasta?.Date.AddDays(1);
 
             return new ResultadoPaginado<Asistencia>
@@ -209,5 +209,20 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
                 Total = _repo.Contar(desde, hastaExclusivo, idSocio)
             };
         }
+
+        public IList<(string Actividad, int Cantidad)> PorActividad(DateTime? desde, DateTime? hasta)
+        {
+            var hoy = DateTime.Today;
+            var d = (desde ?? new DateTime(hoy.Year, hoy.Month, 1)).Date;
+            var h = (hasta ?? hoy).Date;
+
+            if (d > h)
+                throw new ReglaNegocioException("La fecha 'desde' no puede ser posterior a 'hasta'.");
+
+            return _repo.ObtenerCantidadPorActividad(d, h.AddDays(1));
+        }
+
+
+
     }
 }

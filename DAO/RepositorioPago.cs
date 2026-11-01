@@ -445,5 +445,111 @@ public int RegistrarPagoYHabilitarMembresia(
 
         }
 
+// Filtro común de la recaudación: solo pagos activos, fecha de pago en [desde, hasta)
+private static string FiltroRecaudacion(int? idPlan, int? medioPago) =>
+    @"
+    FROM pago p
+    INNER JOIN membresia m ON m.IdMembresia = p.IdMembresia
+    INNER JOIN plan pl ON pl.IdPlan = m.IdPlan
+    WHERE p.Estado = 1
+      AND p.Fecha >= @Desde
+      AND p.Fecha < @Hasta"
+    + (idPlan.HasValue ? " AND m.IdPlan = @IdPlan" : "")
+    + (medioPago.HasValue ? " AND p.MedioPago = @MedioPago" : "");
+
+private static void CargarParametrosRecaudacion(
+    MySqlCommand comando, DateTime desde, DateTime hastaExclusivo,
+    int? idPlan, int? medioPago)
+{
+    comando.Parameters.AddWithValue("@Desde", desde);
+    comando.Parameters.AddWithValue("@Hasta", hastaExclusivo);
+
+    if (idPlan.HasValue)
+        comando.Parameters.AddWithValue("@IdPlan", idPlan.Value);
+
+    if (medioPago.HasValue)
+        comando.Parameters.AddWithValue("@MedioPago", medioPago.Value);
+}
+
+public IList<(string Plan, int Cantidad, decimal Total)> ObtenerRecaudacionPorPlan(
+    DateTime desde, DateTime hastaExclusivo, int? idPlan, int? medioPago)
+{
+    var lista = new List<(string Plan, int Cantidad, decimal Total)>();
+
+    using var conexion = CrearConexion();
+
+    var sql = @" SELECT pl.Nombre AS Plan, COUNT(*) AS Cantidad, SUM(p.Importe) AS Total "
+        + FiltroRecaudacion(idPlan, medioPago)
+        + @" GROUP BY pl.IdPlan, pl.Nombre
+        ORDER BY Total DESC;";
+
+    using var comando = new MySqlCommand(sql, conexion);
+    CargarParametrosRecaudacion(comando, desde, hastaExclusivo, idPlan, medioPago);
+
+    conexion.Open();
+
+    using var reader = comando.ExecuteReader();
+
+    while (reader.Read())
+    {
+        lista.Add(( reader.GetString("Plan"),
+            Convert.ToInt32(reader["Cantidad"]),
+            Convert.ToDecimal(reader["Total"])));
+    }
+
+    return lista;
+}
+
+public IList<(int Medio, int Cantidad, decimal Total)> ObtenerRecaudacionPorMedio( DateTime desde, DateTime hastaExclusivo, int? idPlan, int? medioPago)
+{
+    var lista = new List<(int Medio, int Cantidad, decimal Total)>();
+
+    using var conexion = CrearConexion();
+
+    var sql = @"SELECT p.MedioPago AS Medio, COUNT(*) AS Cantidad, SUM(p.Importe) AS Total "
+        + FiltroRecaudacion(idPlan, medioPago)
+        + @" GROUP BY p.MedioPago
+        ORDER BY Total DESC;";
+
+    using var comando = new MySqlCommand(sql, conexion);
+    CargarParametrosRecaudacion(comando, desde, hastaExclusivo, idPlan, medioPago);
+
+    conexion.Open();
+
+    using var reader = comando.ExecuteReader();
+
+    while (reader.Read())
+    {
+        lista.Add((
+            Convert.ToInt32(reader["Medio"]),
+            Convert.ToInt32(reader["Cantidad"]),
+            Convert.ToDecimal(reader["Total"])));
+    }
+
+    return lista;
+}
+
+
+public int ObtenerCantidadPorUsuario(int idUsuario)
+{
+    using var conexion = CrearConexion();
+
+    const string sql = @"
+        SELECT COUNT(*)
+        FROM pago p
+        INNER JOIN membresia m ON m.IdMembresia = p.IdMembresia
+        INNER JOIN socio s ON s.IdSocio = m.IdSocio
+        WHERE s.IdUsuario = @IdUsuario;";
+
+    using var comando = new MySqlCommand(sql, conexion);
+    comando.Parameters.AddWithValue("@IdUsuario", idUsuario);
+
+    conexion.Open();
+
+    return Convert.ToInt32(comando.ExecuteScalar());
+}
+
+
+
     }
 }
