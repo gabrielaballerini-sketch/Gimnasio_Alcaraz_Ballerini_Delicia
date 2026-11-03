@@ -60,8 +60,15 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
         [HttpGet("activos")]
         public IActionResult ObtenerActivos(
             [FromQuery] int pagina = 1,
-            [FromQuery] int tamPagina = 10)
+            [FromQuery] int tamPagina = 10,
+            [FromQuery] string? dni = null)
         {
+            // Con DNI: busca por DNI en vez de listar todo.
+            if (!string.IsNullOrWhiteSpace(dni))
+            {
+                return Ok(_service.BuscarPorDni(dni, true, pagina, tamPagina));
+            }
+
             return Ok(
                 _service.ObtenerActivos(
                     pagina,
@@ -77,8 +84,15 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
         [HttpGet("inactivos")]
         public IActionResult ObtenerInactivos(
             [FromQuery] int pagina = 1,
-            [FromQuery] int tamPagina = 10)
+            [FromQuery] int tamPagina = 10,
+            [FromQuery] string? dni = null)
         {
+            // Con DNI: busca por DNI en vez de listar todo.
+            if (!string.IsNullOrWhiteSpace(dni))
+            {
+                return Ok(_service.BuscarPorDni(dni, false, pagina, tamPagina));
+            }
+
             return Ok(
                 _service.ObtenerInactivos(
                     pagina,
@@ -298,7 +312,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
 
 [Authorize(
     AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-    Roles = "Administrador, Empleado")]
+    Roles = "Administrador")]
 [HttpGet("proximas-vencer")]
 public IActionResult ObtenerProximasAVencer(
     [FromQuery] int dias = 15)
@@ -322,7 +336,7 @@ public IActionResult ObtenerProximasAVencer(
 
 [Authorize(
     AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-    Roles = "Administrador, Empleado")]
+    Roles = "Administrador")]
 [HttpGet("vigentes-en-fecha")]
 public IActionResult ObtenerVigentesEnFecha(
     [FromQuery] DateTime? fecha)

@@ -48,6 +48,23 @@
 
         <div class="card-body">
 
+            <!-- BUSCADOR POR DNI -->
+            <div class="input-group mb-3">
+                <span class="input-group-text">
+                    <i class="bi bi-search"></i>
+                </span>
+
+                <input type="text" class="form-control" placeholder="Buscar por DNI..."
+                       inputmode="numeric" autocomplete="off" maxlength="10"
+                       v-model="busquedaDni" @@input="alBuscarDni"
+                       @@keyup.esc="limpiarBusquedaDni" />
+
+                <button v-if="busquedaDni" type="button" class="btn btn-outline-secondary"
+                        title="Limpiar búsqueda" @@click="limpiarBusquedaDni">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
             <div v-if="cargando" class="text-center py-4">
                 <div class="spinner-border" role="status">
                 </div>
@@ -62,7 +79,9 @@
                 <i class="bi bi-card-list fs-1"></i>
 
                 <p class="mt-3 mb-0">
-                    No hay membresías para mostrar.
+                    {{ busquedaDni
+                        ? 'No se encontraron membresías con ese DNI.'
+                        : 'No hay membresías para mostrar.' }}
                 </p>
 
             </div>
@@ -462,6 +481,8 @@
                     token: '',
 
                     membresias: [],
+                    busquedaDni: '',
+                    temporizadorDni: null,
                     busquedaSocio: '',
                     resultadosSocios: [],
                     buscandoSocios: false,
@@ -594,10 +615,16 @@
                                 ? `${API}/activos`
                                 : `${API}/inactivos`;
 
+                        let url =
+                            `${endpoint}?pagina=${this.pagina}&tamPagina=${this.tamPagina}`;
+
+                        const dni = this.busquedaDni.trim();
+
+                        if (dni)
+                            url += `&dni=${encodeURIComponent(dni)}`;
+
                         const response =
-                            await this.peticionApi(
-                                `${endpoint}?pagina=${this.pagina}&tamPagina=${this.tamPagina}`
-                            );
+                            await this.peticionApi(url);
 
                         if (!response.ok)
                             throw new Error(
@@ -624,6 +651,32 @@
 
                         this.cargando = false;
                     }
+
+                },
+
+                //  Buscador de membresías por DNI 
+                alBuscarDni() {
+
+                    // El DNI son solo números: descartamos cualquier otro carácter.
+                    this.busquedaDni = this.busquedaDni.replace(/\D/g, '');
+
+                    clearTimeout(this.temporizadorDni);
+
+                    // Espera 300 ms sin tipear para no consultar en cada tecla
+                    this.temporizadorDni = setTimeout(() => {
+                        this.pagina = 1;
+                        this.cargarMembresias();
+                    }, 300);
+
+                },
+
+                limpiarBusquedaDni() {
+
+                    clearTimeout(this.temporizadorDni);
+
+                    this.busquedaDni = '';
+                    this.pagina = 1;
+                    this.cargarMembresias();
 
                 },
 

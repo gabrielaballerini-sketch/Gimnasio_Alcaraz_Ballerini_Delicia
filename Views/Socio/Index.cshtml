@@ -159,6 +159,22 @@
         </li>
     </ul>
 
+    <!-- Buscador (usa /api/socios/buscar: nombre, apellido o DNI) -->
+    <div class="input-group mb-3">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="text" class="form-control" autocomplete="off" maxlength="40"
+               v-bind:placeholder="pestana === 'activos'
+                   ? 'Buscar por nombre, apellido o DNI...'
+                   : 'La búsqueda solo está disponible en Activos'"
+               v-bind:disabled="pestana !== 'activos'"
+               v-model="busqueda" v-on:input="programarBusqueda"
+               v-on:keyup.esc="limpiarBusqueda">
+        <button v-if="busqueda" type="button" class="btn btn-outline-secondary"
+                title="Limpiar búsqueda" v-on:click="limpiarBusqueda">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
+
     <!-- Tabla -->
     <table class="table table-striped align-middle">
         <thead>
@@ -183,21 +199,28 @@
                     </span>
                 </td>
                 <td class="text-end">
-                    <button class="btn btn-sm btn-outline-primary me-1" v-on:click="editar(s)">Editar</button>
+                    <button class="btn btn-sm btn-outline-primary me-1" v-on:click="editar(s)"><i class="bi bi-pencil"></i></button>
                     <button class="btn btn-sm btn-outline-danger" v-if="pestana === 'activos'"
-                            v-on:click="pedirBaja(s)">Dar de baja</button>
+                            v-on:click="pedirBaja(s)">  <i class="bi bi-trash"></i></button>
                     <button class="btn btn-sm btn-outline-success" v-if="pestana === 'inactivos'"
                             v-on:click="pedirReactivar(s)">Reactivar</button>
                 </td>
             </tr>
             <tr v-if="socios.length === 0">
-                <td colspan="6" class="text-center text-muted">No hay socios para mostrar.</td>
+                <td colspan="6" class="text-center text-muted">
+                    {{ enBusqueda ? 'No se encontraron socios con esa búsqueda.' : 'No hay socios para mostrar.' }}
+                </td>
             </tr>
         </tbody>
     </table>
 
+    <!-- Resultado de la búsqueda (máx. 10 coincidencias) -->
+    <div v-if="enBusqueda" class="text-muted">
+        {{ socios.length }} resultado(s). Si no ves al socio, escribí más datos para afinar la búsqueda.
+    </div>
+
     <!-- Paginación -->
-    <div class="d-flex justify-content-between align-items-center">
+    <div v-else class="d-flex justify-content-between align-items-center">
         <div>
             <label class="me-2">Por página:</label>
             <select class="form-select d-inline-block w-auto" v-model.number="tamPagina" v-on:change="cambiarTamano">
@@ -238,6 +261,8 @@
             data() {
                 return {
                     socios: [],
+                    busqueda: '',
+                    temporizadorBusqueda: null,
                     pestana: 'activos',
                     pagina: 1,
                     tamPagina: 10,
@@ -258,6 +283,10 @@
                 };
             },
             computed: {
+                // La búsqueda se activa con 2 o más caracteres, solo en Activos
+                enBusqueda() {
+                    return this.pestana === 'activos' && this.busqueda.trim().length >= 2;
+                },
                 // Al crear, el socio no se puede guardar sin los datos de la cuenta
                 puedeGuardar() {
                     if (this.editando) return true;
@@ -310,6 +339,10 @@
 
                 // ---------- Listado ----------
                 async cargar() {
+                    // Con búsqueda activa se refresca el resultado de la búsqueda
+                    // (también tras editar o dar de baja un socio).
+                    if (this.enBusqueda) return this.buscar();
+
                     const resp = await this.peticionApi(
                         `${API}/${this.pestana}?pagina=${this.pagina}&tamPagina=${this.tamPagina}`);
 
@@ -333,8 +366,47 @@
                     this.total = datos.total;
                     this.totalPaginas = datos.totalPaginas;
                 },
+                // ---------- Buscador (reutiliza GET api/socios/buscar) ----------
+                programarBusqueda() {
+                    clearTimeout(this.temporizadorBusqueda);
+
+                    // Espera 300 ms sin tipear para no consultar en cada tecla
+                    this.temporizadorBusqueda = setTimeout(() => {
+                        this.pagina = 1;
+                        this.cargar();
+                    }, 300);
+                },
+                async buscar() {
+                    const texto = this.busqueda.trim();
+
+                    try {
+                        const resp = await this.peticionApi(
+                            `${API}/buscar?texto=${encodeURIComponent(texto)}`);
+
+                        if (!resp.ok)
+                            throw new Error('No se pudo buscar socios.');
+
+                        const datos = await resp.json();
+
+                        // Si siguió escribiendo, esta respuesta quedó vieja
+                        if (texto !== this.busqueda.trim()) return;
+
+                        this.socios = datos;
+                    }
+                    catch (e) {
+                        this.mostrarAviso('error', e.message);
+                    }
+                },
+                limpiarBusqueda() {
+                    clearTimeout(this.temporizadorBusqueda);
+                    this.busqueda = '';
+                    this.pagina = 1;
+                    this.cargar();
+                },
                 cambiarPestana(nombre) {
                     if (this.pestana === nombre) return;
+                    clearTimeout(this.temporizadorBusqueda);
+                    this.busqueda = '';
                     this.pestana = nombre;
                     this.pagina = 1;
                     this.cargar();

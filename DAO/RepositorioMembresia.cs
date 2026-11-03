@@ -347,6 +347,94 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             return reader.Read() ? Mapear(reader) : null;
         }
 
+        // Escapa \ % _ para que el DNI se busque como texto común en el LIKE.
+        private static string PatronDni(string dni)
+        {
+            return dni.Trim()
+                .Replace("\\", "\\\\")
+                .Replace("%", "\\%")
+                .Replace("_", "\\_") + "%";
+        }
+
+        public IList<Membresia> BuscarPorDni(
+            string dni,
+            bool soloActivas,
+            int pagina = 1,
+            int tamPagina = 10)
+        {
+            (pagina, tamPagina) = PaginacionParametros.Normalizar(pagina, tamPagina);
+
+            var lista = new List<Membresia>();
+
+            using var conexion = CrearConexion();
+
+            const string sql = @"
+                SELECT
+                    m.IdMembresia,
+                    m.IdSocio,
+                    m.IdPlan,
+                    m.FechaInicio,
+                    m.FechaFin,
+                    m.PrecioContratado,
+                    m.Estado,
+                    m.Pagada,
+                    m.IdUsuarioCreador,
+
+                    s.IdSocio AS Socio_IdSocio,
+                    s.Nombre AS Socio_Nombre,
+                    s.Apellido AS Socio_Apellido,
+                    s.Dni AS Socio_Dni,
+
+                    p.IdPlan AS Plan_IdPlan,
+                    p.Nombre AS Plan_Nombre,
+                    p.Precio AS Plan_Precio,
+                    p.UtilizacionesMensuales AS Plan_UtilizacionesMensuales
+
+                FROM membresia m
+                INNER JOIN socio s ON s.IdSocio = m.IdSocio
+                INNER JOIN plan p ON p.IdPlan = m.IdPlan
+                WHERE m.Estado = @Estado
+                  AND s.Dni LIKE @Dni
+                ORDER BY m.FechaInicio DESC, m.IdMembresia DESC
+                LIMIT @TamPagina OFFSET @Desplazamiento;";
+
+            using var comando = new MySqlCommand(sql, conexion);
+            comando.Parameters.AddWithValue("@Estado", soloActivas ? 1 : 0);
+            comando.Parameters.AddWithValue("@Dni", PatronDni(dni));
+            comando.Parameters.AddWithValue("@TamPagina", tamPagina);
+            comando.Parameters.AddWithValue(
+                "@Desplazamiento", (pagina - 1) * tamPagina);
+
+            conexion.Open();
+
+            using var reader = comando.ExecuteReader();
+
+            while (reader.Read())
+                lista.Add(Mapear(reader));
+
+            return lista;
+        }
+
+        public int ObtenerCantidadPorDni(string dni, bool soloActivas)
+        {
+            using var conexion = CrearConexion();
+
+            const string sql = @"
+                SELECT COUNT(*)
+                FROM membresia m
+                INNER JOIN socio s ON s.IdSocio = m.IdSocio
+                WHERE m.Estado = @Estado
+                  AND s.Dni LIKE @Dni;";
+
+            using var comando = new MySqlCommand(sql, conexion);
+            comando.Parameters.AddWithValue("@Estado", soloActivas ? 1 : 0);
+            comando.Parameters.AddWithValue("@Dni", PatronDni(dni));
+
+            conexion.Open();
+
+            return Convert.ToInt32(comando.ExecuteScalar());
+        }
+
         public IList<Membresia> ObtenerActivosPorSocio(
             int idSocio,
             int pagina = 1,

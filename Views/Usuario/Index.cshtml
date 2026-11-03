@@ -831,23 +831,24 @@
                             this.mensaje = mensaje;
                         },
 
-
-
-                        // CONVERTIR EN SOCIO
+                      
+                        
+                         // CONVERTIR EN SOCIO
 
                         convertirEnSocio(usuario) {
                             // Si ya tuvo ficha, se recupera sin pedir datos.
                             if (usuario.socio) {
-                                const ok = confirm(
-                                    `¿Convertir a ${usuario.email} en socio? ` +
-                                    `Se recupera su ficha anterior (${usuario.socio.apellido}, ${usuario.socio.nombre}).`
-                                );
+                                this.confirmacion = {
+                               titulo: 'Convertir en socio',
+                                mensaje: `¿Convertir a ${usuario.email} en socio? Se recuperará su ficha anterior (${usuario.socio.apellido}, ${usuario.socio.nombre}).`,
+                                textoBoton: 'Convertir en socio',
+                                usuario,
+                                accion: () => this.enviarConversion(usuario, {}, false)
+                        };
+                        this.modalConfirmar.show();
+                        return;
+                    }
 
-                                if (ok)
-                                    this.enviarConversion(usuario, {}, false);
-
-                                return;
-                            }
 
                             // Si nunca fue socio, se abre el formulario con los datos.
                             this.usuarioAConvertir = usuario;

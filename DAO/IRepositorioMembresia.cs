@@ -6,6 +6,15 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
     {
         Membresia? ObtenerParaCobroPorDni(string dni);
 
+       
+        IList<Membresia> BuscarPorDni(
+            string dni,
+            bool soloActivas,
+            int pagina = 1,
+            int tamPagina = 10);
+
+        int ObtenerCantidadPorDni(string dni, bool soloActivas);
+
 
         bool ExistePorSocio(int idSocio);
         

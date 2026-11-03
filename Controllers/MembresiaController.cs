@@ -17,7 +17,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Controllers
         }
 
 
-        [Authorize(Roles = "Administrador, Empleado")]
+        [Authorize(Roles = "Administrador")]
         [HttpGet]
         public IActionResult ProximasAVencer()
 
@@ -25,7 +25,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Controllers
             return View();
         }
 
-        [Authorize(Roles = "Administrador, Empleado")]
+        [Authorize(Roles = "Administrador")]
          public IActionResult VigentesEnFecha()
         {
          return View();

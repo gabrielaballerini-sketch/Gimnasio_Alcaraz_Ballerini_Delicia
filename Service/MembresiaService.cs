@@ -55,6 +55,38 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
         }
 
 
+        // Búsqueda por DNI dentro de las membresías activas o inactivas.
+        public ResultadoPaginado<Membresia> BuscarPorDni(
+            string dni,
+            bool soloActivas,
+            int pagina = PaginacionParametros.PaginaPredeterminada,
+            int tamPagina = PaginacionParametros.TamPaginaPredeterminado)
+        {
+            (pagina, tamPagina) = PaginacionParametros.Normalizar(pagina, tamPagina);
+
+            // El DNI son solo dígitos: ignoramos puntos, espacios y cualquier otro carácter.
+            var soloDigitos = new string((dni ?? string.Empty).Where(char.IsDigit).ToArray());
+
+            if (soloDigitos.Length == 0)
+            {
+                return new ResultadoPaginado<Membresia>
+                {
+                    Items = new List<Membresia>(),
+                    Pagina = pagina,
+                    TamPagina = tamPagina,
+                    Total = 0
+                };
+            }
+
+            return new ResultadoPaginado<Membresia>
+            {
+                Items = _repo.BuscarPorDni(soloDigitos, soloActivas, pagina, tamPagina),
+                Pagina = pagina,
+                TamPagina = tamPagina,
+                Total = _repo.ObtenerCantidadPorDni(soloDigitos, soloActivas)
+            };
+        }
+
         public Membresia? Obtener(int id)
         {
             if (id <= 0)
