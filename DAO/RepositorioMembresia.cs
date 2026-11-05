@@ -545,9 +545,11 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
         }
 
           public IList<Membresia> ObtenerProximasAVencer(
-             DateTime hoy,
-             DateTime fechaLimite)
-       {
+    DateTime hoy,
+    DateTime fechaLimite,
+    int pagina,
+    int tamPagina)
+{
     var lista = new List<Membresia>();
 
     using var conexion = CrearConexion();
@@ -587,15 +589,23 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
           AND m.FechaFin >= @Hoy
           AND m.FechaFin <= @FechaLimite
 
-        ORDER BY m.FechaFin ASC, s.Apellido ASC;";
+        ORDER BY
+            m.FechaFin ASC,
+            s.Apellido ASC,
+            s.Nombre ASC
+
+        LIMIT @TamPagina OFFSET @Desplazamiento;";
 
     using var comando = new MySqlCommand(sql, conexion);
 
     comando.Parameters.AddWithValue("@Hoy", hoy.Date);
+    comando.Parameters.AddWithValue("@FechaLimite", fechaLimite.Date);
+    comando.Parameters.AddWithValue("@TamPagina", tamPagina);
 
     comando.Parameters.AddWithValue(
-        "@FechaLimite",
-        fechaLimite.Date);
+        "@Desplazamiento",
+        (pagina - 1) * tamPagina
+    );
 
     conexion.Open();
 
@@ -610,7 +620,35 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
 }
 
 
-public IList<Membresia> ObtenerVigentesEnFecha(DateTime fecha)
+public int ObtenerCantidadProximasAVencer(
+    DateTime hoy,
+    DateTime fechaLimite)
+{
+    using var conexion = CrearConexion();
+
+    const string sql = @"
+        SELECT COUNT(*)
+        FROM membresia m
+        WHERE m.Estado = 1
+          AND m.Pagada = 1
+          AND m.FechaFin >= @Hoy
+          AND m.FechaFin <= @FechaLimite;";
+
+    using var comando = new MySqlCommand(sql, conexion);
+
+    comando.Parameters.AddWithValue("@Hoy", hoy.Date);
+    comando.Parameters.AddWithValue("@FechaLimite", fechaLimite.Date);
+
+    conexion.Open();
+
+    return Convert.ToInt32(comando.ExecuteScalar());
+}
+
+
+public IList<Membresia> ObtenerVigentesEnFecha(
+    DateTime fecha,
+    int pagina,
+    int tamPagina)
 {
     var lista = new List<Membresia>();
 
@@ -651,11 +689,21 @@ public IList<Membresia> ObtenerVigentesEnFecha(DateTime fecha)
           AND m.FechaInicio <= @Fecha
           AND m.FechaFin >= @Fecha
 
-        ORDER BY s.Apellido ASC, s.Nombre ASC;";
+        ORDER BY
+            s.Apellido ASC,
+            s.Nombre ASC
+
+        LIMIT @TamPagina OFFSET @Desplazamiento;";
 
     using var comando = new MySqlCommand(sql, conexion);
 
     comando.Parameters.AddWithValue("@Fecha", fecha.Date);
+    comando.Parameters.AddWithValue("@TamPagina", tamPagina);
+
+    comando.Parameters.AddWithValue(
+        "@Desplazamiento",
+        (pagina - 1) * tamPagina
+    );
 
     conexion.Open();
 
@@ -670,9 +718,26 @@ public IList<Membresia> ObtenerVigentesEnFecha(DateTime fecha)
 }
 
 
+public int ObtenerCantidadVigentesEnFecha(DateTime fecha)
+{
+    using var conexion = CrearConexion();
 
+    const string sql = @"
+        SELECT COUNT(*)
+        FROM membresia m
+        WHERE m.Estado = 1
+          AND m.Pagada = 1
+          AND m.FechaInicio <= @Fecha
+          AND m.FechaFin >= @Fecha;";
 
+    using var comando = new MySqlCommand(sql, conexion);
 
+    comando.Parameters.AddWithValue("@Fecha", fecha.Date);
+
+    conexion.Open();
+
+    return Convert.ToInt32(comando.ExecuteScalar());
+}
 
 
 

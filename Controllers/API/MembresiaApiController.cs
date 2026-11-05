@@ -315,14 +315,26 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
     Roles = "Administrador")]
 [HttpGet("proximas-vencer")]
 public IActionResult ObtenerProximasAVencer(
-    [FromQuery] int dias = 15)
+    [FromQuery] int dias = 15,
+    [FromQuery] int pagina = 1,
+    [FromQuery] int tamPagina = 10)
 {
     try
     {
-        var membresias =
-            _service.ObtenerProximasAVencer(dias);
+        var resultado = _service.ObtenerProximasAVencer(
+            dias,
+            pagina,
+            tamPagina
+        );
 
-        return Ok(membresias);
+        return Ok(new
+        {
+            items = resultado.Items,
+            pagina = resultado.Pagina,
+            tamPagina = resultado.TamPagina,
+            total = resultado.Total,
+            totalPaginas = resultado.TotalPaginas
+        });
     }
     catch (ReglaNegocioException ex)
     {
@@ -339,7 +351,9 @@ public IActionResult ObtenerProximasAVencer(
     Roles = "Administrador")]
 [HttpGet("vigentes-en-fecha")]
 public IActionResult ObtenerVigentesEnFecha(
-    [FromQuery] DateTime? fecha)
+    [FromQuery] DateTime? fecha,
+    [FromQuery] int pagina = 1,
+    [FromQuery] int tamPagina = 10)
 {
     if (!fecha.HasValue)
     {
@@ -351,10 +365,20 @@ public IActionResult ObtenerVigentesEnFecha(
 
     try
     {
-        var membresias =
-            _service.ObtenerVigentesEnFecha(fecha.Value);
+        var resultado = _service.ObtenerVigentesEnFecha(
+            fecha.Value,
+            pagina,
+            tamPagina
+        );
 
-        return Ok(membresias);
+        return Ok(new
+        {
+            items = resultado.Items,
+            pagina = resultado.Pagina,
+            tamPagina = resultado.TamPagina,
+            total = resultado.Total,
+            totalPaginas = resultado.TotalPaginas
+        });
     }
     catch (ReglaNegocioException ex)
     {
@@ -364,7 +388,6 @@ public IActionResult ObtenerVigentesEnFecha(
         });
     }
 }
-
 
     }
 }

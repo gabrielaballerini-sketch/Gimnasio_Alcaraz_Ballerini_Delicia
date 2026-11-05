@@ -4,8 +4,9 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Gimnasio_Alcaraz_Ballerini_Delicia.DAO;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using DotNetEnv;
 
-
+Env.Load();
 var builder = WebApplication.CreateBuilder(args);
 
 
@@ -16,8 +17,14 @@ builder.Services.AddControllersWithViews()
     });
 
 // 1. Validar y obtener la clave JWT desde appsettings.json ANTES de registrar la autenticación
-var jwtKey = builder.Configuration["Jwt:Key"]
-    ?? throw new InvalidOperationException("Falta configurar 'Jwt:Key' en appsettings.json");
+var jwtKey = builder.Configuration["Jwt:Key"];
+
+    
+    if (string.IsNullOrWhiteSpace(jwtKey)){
+    throw new InvalidOperationException(
+      "No se encontró Jwt:Key. Verificá que exista el archivo .env y esté configurado correctamente."
+    );
+}
 
 // 2. Configurar Autenticación (Cookies + JWT)
 builder.Services.AddAuthentication(options =>

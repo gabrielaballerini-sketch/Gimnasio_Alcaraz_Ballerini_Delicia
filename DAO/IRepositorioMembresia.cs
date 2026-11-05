@@ -23,13 +23,23 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.DAO
             int pagina = 1,
             int tamPagina = 10);
 
-       IList<Membresia> ObtenerProximasAVencer(
-           DateTime hoy,
-           DateTime fechaLimite);
+      IList<Membresia> ObtenerProximasAVencer(
+    DateTime hoy,
+    DateTime fechaLimite,
+    int pagina,
+    int tamPagina
+);
+int ObtenerCantidadProximasAVencer(
+    DateTime hoy,
+    DateTime fechaLimite
+);
 
 
-       IList<Membresia> ObtenerVigentesEnFecha(DateTime fecha);
-
+      IList<Membresia> ObtenerVigentesEnFecha(
+    DateTime fecha,
+    int pagina,
+    int tamPagina);
+    int ObtenerCantidadVigentesEnFecha(DateTime fecha);
 
     }
 }

@@ -301,34 +301,74 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.Service
         }
 
 
-         public IList<Membresia> ObtenerProximasAVencer(int dias)
-
-        {
-        if (dias < 1 || dias > 365)
-
-        {
+        public ResultadoPaginado<Membresia> ObtenerProximasAVencer(
+    int dias,
+    int pagina = PaginacionParametros.PaginaPredeterminada,
+    int tamPagina = PaginacionParametros.TamPaginaPredeterminado)
+{
+    if (dias < 1 || dias > 365)
+    {
         throw new ReglaNegocioException(
-            "La cantidad de días debe estar entre 1 y 365.");
-         }
+            "La cantidad de días debe estar entre 1 y 365."
+        );
+    }
 
-          DateTime hoy = DateTime.Today;
+    (pagina, tamPagina) =
+        PaginacionParametros.Normalizar(pagina, tamPagina);
 
-          DateTime fechaLimite = hoy.AddDays(dias);
+    DateTime hoy = DateTime.Today;
+    DateTime fechaLimite = hoy.AddDays(dias);
 
-         return _repo.ObtenerProximasAVencer(
-           hoy,
-            fechaLimite);
-} 
+    return new ResultadoPaginado<Membresia>
+    {
+        Items = _repo.ObtenerProximasAVencer(
+            hoy,
+            fechaLimite,
+            pagina,
+            tamPagina
+        ),
 
-public IList<Membresia> ObtenerVigentesEnFecha(DateTime fecha)
+        Pagina = pagina,
+        TamPagina = tamPagina,
+
+        Total = _repo.ObtenerCantidadProximasAVencer(
+            hoy,
+            fechaLimite
+        )
+    };
+}
+
+
+public ResultadoPaginado<Membresia> ObtenerVigentesEnFecha(
+    DateTime fecha,
+    int pagina = PaginacionParametros.PaginaPredeterminada,
+    int tamPagina = PaginacionParametros.TamPaginaPredeterminado)
 {
     if (fecha == DateTime.MinValue)
     {
         throw new ReglaNegocioException(
-            "Debe seleccionar una fecha.");
+            "Debe seleccionar una fecha."
+        );
     }
 
-    return _repo.ObtenerVigentesEnFecha(fecha.Date);
+    (pagina, tamPagina) =
+        PaginacionParametros.Normalizar(pagina, tamPagina);
+
+    fecha = fecha.Date;
+
+    return new ResultadoPaginado<Membresia>
+    {
+        Items = _repo.ObtenerVigentesEnFecha(
+            fecha,
+            pagina,
+            tamPagina
+        ),
+
+        Pagina = pagina,
+        TamPagina = tamPagina,
+
+        Total = _repo.ObtenerCantidadVigentesEnFecha(fecha)
+    };
 }
 
 
