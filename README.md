@@ -75,7 +75,7 @@ https://app.diagrams.net/#G1FPVwLtrSQqKW9cfozjx3BES7mHRqP07R#%7B%22pageId%22%3A%
 
 1. *Clonar el repositorio*
    bash
-   git clone <https://github.com/gabrielaballerini-sketch/Gimnasio_Alcaraz_Ballerini_Delicia.git>
+   git clone https://github.com/gabrielaballerini-sketch/Gimnasio_Alcaraz_Ballerini_Delicia.git
    cd Gimnasio_Alcaraz_Ballerini_Delicia
    
 
