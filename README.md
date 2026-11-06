@@ -1,4 +1,7 @@
 
+#  NARRATIVA 
+
+https://docs.google.com/document/d/1EQsWR04fUSinOmlX88qyfa7eZWuDyPaGR_h6-R1qiyI/edit?tab=t.0#heading=h.o0nj2ff9tunt
 
 
 #  Gimnasio — Sistema de Gestión (Proyecto Integrador Final)

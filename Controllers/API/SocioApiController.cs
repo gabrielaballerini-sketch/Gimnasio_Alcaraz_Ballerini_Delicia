@@ -28,7 +28,7 @@ namespace Gimnasio_Alcaraz_Ballerini_Delicia.API
 
         // GET api/socios/inactivos?pagina=1&tamPagina=10
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-            Roles = "Administrador,Empleado")]
+            Roles = "Administrador")]
         [HttpGet("inactivos")]
         public IActionResult ObtenerInactivos([FromQuery] int pagina = 1, [FromQuery] int tamPagina = 10)
         {
