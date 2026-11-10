@@ -200,10 +200,14 @@
                 </td>
                 <td class="text-end">
                     <button class="btn btn-sm btn-outline-primary me-1" v-on:click="editar(s)"><i class="bi bi-pencil"></i></button>
+                    @if (User.Identity?.IsAuthenticated == true &&
+                    User.IsInRole("Administrador"))
+                    {
                     <button class="btn btn-sm btn-outline-danger" v-if="pestana === 'activos'"
                             v-on:click="pedirBaja(s)">  <i class="bi bi-trash"></i></button>
                     <button class="btn btn-sm btn-outline-success" v-if="pestana === 'inactivos'"
                             v-on:click="pedirReactivar(s)">Reactivar</button>
+                            }
                 </td>
             </tr>
             <tr v-if="socios.length === 0">

@@ -152,12 +152,14 @@
                                     @@click="editar(m)">
                                     <i class="bi bi-pencil"></i>
                                 </button>
-
+                                @if (User.Identity?.IsAuthenticated == true &&
+                                User.IsInRole("Administrador"))
+                                {
                                 <button v-if="mostrarActivos" class="btn btn-sm btn-outline-danger"
                                     @@click="pedirBaja(m)">
                                     <i class="bi bi-trash"></i>
                                 </button>
-
+                                }
                                 <button v-else class="btn btn-sm btn-outline-success" @@click="reactivar(m)">
                                     <i class="bi bi-arrow-clockwise"></i>
                                 </button>

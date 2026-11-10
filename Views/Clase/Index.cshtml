@@ -195,10 +195,13 @@
                             <button class="btn btn-sm btn-outline-primary me-1" v-on:click="editar(clase)">
                                 <i class="bi bi-pencil"></i>
                             </button>
-
+                            @if (User.Identity?.IsAuthenticated == true &&
+                             User.IsInRole("Administrador"))
+                            {
                             <button class="btn btn-sm btn-outline-danger" v-on:click="pedirBaja(clase)">
                                 <i class="bi bi-trash"></i>
                             </button>
+                            }
                         </template>
 
                         <template v-else>

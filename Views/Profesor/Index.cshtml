@@ -289,7 +289,9 @@
 
                     </button>
 
-
+                    @if (User.Identity?.IsAuthenticated == true &&
+                    User.IsInRole("Administrador"))
+                    {     
                     <button class="btn btn-sm btn-outline-danger" v-if="pestana === 'activos'"
                         v-on:click="pedirBaja(p)">
 
@@ -303,7 +305,7 @@
                         Reactivar
 
                     </button>
-
+                    }
                 </td>
 
             </tr>
